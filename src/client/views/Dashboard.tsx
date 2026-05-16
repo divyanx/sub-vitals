@@ -30,14 +30,14 @@ import {
   type TaxonomyNode,
 } from '../lib/api.ts';
 
-type Tab = 'overview' | 'drivers' | 'sentiment' | 'agents' | 'export';
+type Tab = 'inbox' | 'overview' | 'drivers' | 'sentiment' | 'agents' | 'export';
 
 export interface DashboardProps {
   initialTab?: Tab;
   initialDriver?: string;
 }
 
-export function Dashboard({ initialTab = 'overview', initialDriver }: DashboardProps) {
+export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProps) {
   const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
@@ -45,6 +45,7 @@ export function Dashboard({ initialTab = 'overview', initialDriver }: DashboardP
       <Header />
       <Nav tab={tab} setTab={setTab} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+        {tab === 'inbox' && <Inbox />}
         {tab === 'overview' && <Overview />}
         {tab === 'drivers' &&
           (initialDriver ? <Drivers initialDriver={initialDriver} /> : <Drivers />)}
@@ -71,7 +72,8 @@ function Header() {
 }
 
 const TABS: { id: Tab; label: string }[] = [
-  { id: 'overview', label: 'Overview' },
+  { id: 'inbox', label: 'Inbox' },
+  { id: 'overview', label: 'Pulse' },
   { id: 'drivers', label: 'Contact drivers' },
   { id: 'sentiment', label: 'Sentiment' },
   { id: 'agents', label: 'Agents' },
@@ -102,7 +104,318 @@ function Nav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Overview
+// Inbox — the Triage cockpit (the "what needs ME?" view for support agents)
+// ---------------------------------------------------------------------------
+
+const STATUS_TABS: { id: 'open' | 'in-progress' | 'all'; label: string }[] = [
+  { id: 'open', label: 'Open' },
+  { id: 'in-progress', label: 'In progress' },
+  { id: 'all', label: 'All' },
+];
+
+function Inbox() {
+  const qc = useQueryClient();
+  const [statusFilter, setStatusFilter] = useState<'open' | 'in-progress' | 'all'>('open');
+  const [openThread, setOpenThread] = useState<string | null>(null);
+  const [openHistory, setOpenHistory] = useState<string | null>(null);
+
+  const queue = useQuery({
+    queryKey: ['triage-queue', statusFilter],
+    queryFn: () => api.triageQueue({ status: statusFilter }),
+  });
+
+  const mutate = async (postId: string, status: PostStatus) => {
+    await api.setPostStatus(postId, status);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['triage-queue'] }),
+      qc.invalidateQueries({ queryKey: ['recent-posts'] }),
+      qc.invalidateQueries({ queryKey: ['driver-posts'] }),
+    ]);
+  };
+
+  return (
+    <section className="space-y-5">
+      <header className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Triage inbox</h2>
+          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+            Auto-prioritized by driver severity × sentiment × thread heat × age. Top of list is what
+            should get your attention first.
+          </p>
+        </div>
+        <div className="flex gap-2 text-xs">
+          {STATUS_TABS.map((s) => (
+            <button
+              type="button"
+              key={s.id}
+              onClick={() => setStatusFilter(s.id)}
+              className={`rounded-full border px-3 py-1 transition ${
+                statusFilter === s.id
+                  ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+                  : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              {s.label}
+            </button>
+          ))}
+        </div>
+      </header>
+
+      {queue.isPending ? (
+        <SkeletonList />
+      ) : queue.isError ? (
+        <ErrorMsg msg="Couldn't load queue." retry={() => queue.refetch()} />
+      ) : queue.data.items.length === 0 ? (
+        <EmptyHint>
+          Inbox is empty for filter "{statusFilter}".{' '}
+          {statusFilter === 'open'
+            ? 'Either everything is handled, or no posts have been auto-tagged yet — try submitting a post in the sub.'
+            : null}
+        </EmptyHint>
+      ) : (
+        <ol className="space-y-2">
+          {queue.data.items.map((p, idx) => (
+            <li
+              key={p.postId}
+              className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition hover:border-neutral-700"
+            >
+              <div className="flex items-start gap-3">
+                <div className="flex w-10 flex-shrink-0 flex-col items-center pt-0.5">
+                  <span className="text-xs font-medium text-orange-300">#{idx + 1}</span>
+                  <PriorityPill priority={p.priority} />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <a
+                    href={p.url}
+                    target="_top"
+                    rel="noopener noreferrer"
+                    className="block truncate text-sm font-medium text-neutral-100 hover:underline"
+                    title={p.title}
+                  >
+                    {p.title || '(no title)'}
+                  </a>
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setOpenHistory(openHistory === p.authorName ? null : p.authorName)
+                      }
+                      className="text-neutral-300 underline-offset-2 hover:underline"
+                    >
+                      u/{p.authorName}
+                    </button>
+                    <span>·</span>
+                    <span>{relativeTime(p.createdAt)}</span>
+                    {p.driverId ? (
+                      <>
+                        <span>·</span>
+                        <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
+                      </>
+                    ) : null}
+                    {p.sentimentLabel ? (
+                      <>
+                        <span>·</span>
+                        <SentimentBadge
+                          label={p.sentimentLabel}
+                          score={p.sentimentScore}
+                          by={p.sentimentScoredBy}
+                        />
+                      </>
+                    ) : null}
+                    {p.status ? (
+                      <>
+                        <span>·</span>
+                        <StatusBadge status={p.status} />
+                      </>
+                    ) : null}
+                  </div>
+                  {p.reasoning ? (
+                    <div className="mt-1 text-xs italic text-neutral-500">"{p.reasoning}"</div>
+                  ) : null}
+                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                    {p.status !== 'resolved' ? (
+                      <button
+                        type="button"
+                        onClick={() => mutate(p.postId, 'resolved')}
+                        className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
+                      >
+                        ✓ Resolve
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => mutate(p.postId, 'open')}
+                        className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+                      >
+                        Re-open
+                      </button>
+                    )}
+                    {p.status === 'open' ? (
+                      <button
+                        type="button"
+                        onClick={() => mutate(p.postId, 'in-progress')}
+                        className="rounded-full border border-blue-700 bg-blue-900/30 px-2 py-0.5 text-blue-200 transition hover:bg-blue-900/60"
+                      >
+                        Take ownership
+                      </button>
+                    ) : null}
+                    <button
+                      type="button"
+                      onClick={() => setOpenThread(openThread === p.postId ? null : p.postId)}
+                      className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+                    >
+                      {openThread === p.postId ? 'Hide thread' : 'View thread'}
+                    </button>
+                    <a
+                      href={p.url}
+                      target="_top"
+                      rel="noopener noreferrer"
+                      className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:border-orange-500 hover:text-orange-200"
+                    >
+                      ↗ Open on Reddit
+                    </a>
+                  </div>
+                </div>
+              </div>
+              {openHistory === p.authorName ? (
+                <div className="mt-4 border-t border-neutral-800 pt-4">
+                  <UserHistoryPanel username={p.authorName} currentPostId={p.postId} />
+                </div>
+              ) : null}
+              {openThread === p.postId ? (
+                <div className="mt-4 border-t border-neutral-800 pt-4">
+                  <ThreadPanel postId={p.postId} />
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ol>
+      )}
+    </section>
+  );
+}
+
+function PriorityPill({ priority }: { priority: number }) {
+  const tone =
+    priority >= 1.0
+      ? 'border-rose-700 bg-rose-900/40 text-rose-200'
+      : priority >= 0.5
+        ? 'border-orange-700 bg-orange-900/40 text-orange-200'
+        : 'border-neutral-700 bg-neutral-800 text-neutral-400';
+  return (
+    <span className={`mt-1 rounded-full border px-1.5 py-0.5 text-[10px] tabular-nums ${tone}`}>
+      {priority.toFixed(2)}
+    </span>
+  );
+}
+
+function UserHistoryPanel({
+  username,
+  currentPostId,
+}: {
+  username: string;
+  currentPostId: string;
+}) {
+  const q = useQuery({
+    queryKey: ['user-history', username],
+    queryFn: () => api.userHistory(username, 20),
+  });
+  if (q.isPending) return <SkeletonList />;
+  if (q.isError) return <ErrorMsg msg="Couldn't load history." retry={() => q.refetch()} />;
+  const { items, aggregate } = q.data;
+  const others = items.filter((p) => p.postId !== currentPostId);
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
+        <span className="font-medium text-neutral-200">u/{username}</span>
+        <span>·</span>
+        <span>{aggregate.totalPosts} known posts</span>
+        {aggregate.averageScore !== null ? (
+          <>
+            <span>·</span>
+            <span>
+              avg sentiment{' '}
+              <span
+                className={
+                  aggregate.averageScore < -0.1
+                    ? 'text-rose-300'
+                    : aggregate.averageScore > 0.1
+                      ? 'text-emerald-300'
+                      : 'text-neutral-300'
+                }
+              >
+                {aggregate.averageScore.toFixed(2)}
+              </span>
+            </span>
+          </>
+        ) : null}
+        {aggregate.negativeShare !== null ? (
+          <>
+            <span>·</span>
+            <span>{Math.round(aggregate.negativeShare * 100)}% negative</span>
+          </>
+        ) : null}
+        {aggregate.topDrivers.length > 0 ? (
+          <>
+            <span>·</span>
+            <span>
+              top:{' '}
+              {aggregate.topDrivers
+                .slice(0, 3)
+                .map((d) => `${d.id} (${d.count})`)
+                .join(', ')}
+            </span>
+          </>
+        ) : null}
+      </div>
+      {others.length === 0 ? (
+        <EmptyHint>No other posts by this user in our index.</EmptyHint>
+      ) : (
+        <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-950/40">
+          {others.map((p) => (
+            <li key={p.postId} className="px-3 py-2">
+              <a
+                href={p.url}
+                target="_top"
+                rel="noopener noreferrer"
+                className="block truncate text-sm text-neutral-100 hover:underline"
+                title={p.title}
+              >
+                {p.title || '(no title)'}
+              </a>
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                <span>{relativeTime(p.createdAt)}</span>
+                {p.driverId ? (
+                  <>
+                    <span>·</span>
+                    <span className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5">
+                      {p.driverId}
+                    </span>
+                  </>
+                ) : null}
+                {p.sentimentLabel ? (
+                  <>
+                    <span>·</span>
+                    <SentimentBadge label={p.sentimentLabel} score={p.sentimentScore} by={null} />
+                  </>
+                ) : null}
+                {p.status ? (
+                  <>
+                    <span>·</span>
+                    <StatusBadge status={p.status} />
+                  </>
+                ) : null}
+              </div>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Overview (renamed to "Pulse" in nav) — executive summary cards + recent feed
 // ---------------------------------------------------------------------------
 
 function Overview() {

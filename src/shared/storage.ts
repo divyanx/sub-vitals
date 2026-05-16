@@ -118,6 +118,21 @@ export async function ensurePostMeta(meta: PostMeta): Promise<void> {
   if (count > RECENT_POSTS_CAP) {
     await redis.zRemRangeByRank(K.recentPosts(), 0, count - RECENT_POSTS_CAP - 1);
   }
+  // Per-user index for context drawer / history view.
+  if (meta.authorName && meta.authorName !== 'unknown') {
+    await redis.zAdd(K.userPosts(meta.authorName), {
+      score: meta.createdAt,
+      member: meta.postId,
+    });
+  }
+}
+
+export async function getUserPostIds(username: string, limit = 25): Promise<string[]> {
+  const members = await redis.zRange(K.userPosts(username), 0, limit - 1, {
+    reverse: true,
+    by: 'rank',
+  });
+  return members.map((m) => m.member);
 }
 
 export async function getPostMeta(postId: string): Promise<PostMeta | null> {
@@ -160,6 +175,13 @@ export async function ensureCommentMeta(meta: CommentMeta): Promise<void> {
       0,
       count - COMMENTS_PER_POST_CAP - 1,
     );
+  }
+  // Per-user comment index for context drawer.
+  if (meta.authorName && meta.authorName !== 'unknown') {
+    await redis.zAdd(K.userComments(meta.authorName), {
+      score: meta.createdAt,
+      member: meta.commentId,
+    });
   }
 }
 

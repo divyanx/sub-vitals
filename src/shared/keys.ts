@@ -21,6 +21,10 @@ export const K = {
   commentMeta: (commentId: string) => `rl:cmt:${commentId}`,
   commentsForPost: (postId: string) => `rl:cmt:post:${postId}`,
 
+  // per-user (post author) index for context drawer
+  userPosts: (username: string) => `rl:user:posts:${username.toLowerCase()}`,
+  userComments: (username: string) => `rl:user:comments:${username.toLowerCase()}`,
+
   // pinned daily pulse
   pulsePostId: () => 'rl:pulse:postId',
 

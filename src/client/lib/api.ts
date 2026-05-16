@@ -100,6 +100,38 @@ export const api = {
     getJson<{ items: RecentPost[]; count: number }>(`/api/dashboard/recent-posts?limit=${limit}`),
   taxonomy: () => getJson<{ taxonomy: TaxonomyNode[] }>('/api/drivers/taxonomy'),
   driverVolume: () => getJson<DriverVolume>('/api/drivers/volume'),
+  triageQueue: (opts: { limit?: number; status?: PostStatus | 'all' } = {}) => {
+    const q = new URLSearchParams();
+    q.set('limit', String(opts.limit ?? 50));
+    if (opts.status) q.set('status', opts.status);
+    return getJson<{
+      items: Array<RecentPost & { priority: number; status: PostStatus | null }>;
+      count: number;
+      generatedAt: number;
+    }>(`/api/triage/queue?${q.toString()}`);
+  },
+  userHistory: (username: string, limit = 20) =>
+    getJson<{
+      username: string;
+      items: Array<{
+        postId: string;
+        title: string;
+        authorName: string;
+        url: string;
+        createdAt: number;
+        driverId: string | null;
+        status: PostStatus | null;
+        sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
+        sentimentScore: number | null;
+      }>;
+      aggregate: {
+        totalPosts: number;
+        totalScored: number;
+        averageScore: number | null;
+        negativeShare: number | null;
+        topDrivers: Array<{ id: string; count: number }>;
+      };
+    }>(`/api/users/${encodeURIComponent(username)}/history?limit=${limit}`),
   postThread: (postId: string) =>
     getJson<{
       post: {

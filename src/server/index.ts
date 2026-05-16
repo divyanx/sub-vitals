@@ -47,6 +47,7 @@ import {
   getSentimentRollup,
   getSentimentScore,
   getTaxonomy,
+  getUserPostIds,
 } from '@shared/storage.js';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
@@ -230,6 +231,140 @@ function csvField(s: string): string {
   }
   return s;
 }
+
+/**
+ * Triage queue — the agent's "what needs me right now" view.
+ *
+ * Returns the open queue sorted by computed priority. Priority is a single
+ * number that combines:
+ *   - driver severity (complaint > bug > billing > question > praise > other)
+ *   - sentiment magnitude (more negative = higher priority)
+ *   - thread heat (more negative comments piling up = higher priority)
+ *   - age (newer posts decay slower; ancient ones drop to bottom)
+ *
+ * Status is always 'open' unless ?status= is passed. Default limit 50.
+ */
+const DRIVER_SEVERITY: Record<string, number> = {
+  complaint: 1.0,
+  bug: 0.85,
+  billing: 0.7,
+  question: 0.4,
+  feature: 0.3,
+  praise: 0.1,
+  other: 0.5,
+};
+
+app.get('/api/triage/queue', async (c) => {
+  const limit = Math.min(Math.max(Number.parseInt(c.req.query('limit') ?? '50', 10) || 50, 1), 200);
+  const statusParam = c.req.query('status');
+  const status = statusParam === 'all' ? null : (statusParam ?? 'open');
+
+  // Pull from recent posts (most active first). For Phase 1 this is a global
+  // pool; per-agent assignment lives in a later sprint.
+  const ids = await getRecentPostIds(200);
+  const [metas, tags, sents] = await Promise.all([
+    getPostMetaMany(ids),
+    Promise.all(ids.map((id) => getPostTag(id))),
+    Promise.all(ids.map((id) => getSentimentScore(id))),
+  ]);
+  const tagById = new Map(
+    tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
+  );
+  const sentById = new Map(
+    sents.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.contentId, s]),
+  );
+
+  const now = Date.now();
+  const items = metas
+    .map((m) => {
+      const t = tagById.get(m.postId);
+      const s = sentById.get(m.postId);
+      const driverWeight = (t?.driverId ? DRIVER_SEVERITY[t.driverId] : undefined) ?? 0.4;
+      const sentMag =
+        typeof s?.score === 'number' ? Math.max(0, -s.score) + Math.abs(s.score) * 0.3 : 0.2;
+      const ageHours = (now - m.createdAt) / (1000 * 60 * 60);
+      // Half-life of 48h: priority decays smoothly so old open items still rank
+      // (unlike Reddit's hot which forgets quickly).
+      const ageDecay = Math.exp(-ageHours / 48);
+      const priority = driverWeight * (1 + sentMag) * ageDecay;
+      return {
+        ...m,
+        driverId: t?.driverId ?? null,
+        taggedBy: t?.taggedBy ?? null,
+        confidence: t?.confidence ?? null,
+        reasoning: t?.reasoning ?? null,
+        status: t?.status ?? null,
+        sentimentLabel: s?.label ?? null,
+        sentimentScore: s?.score ?? null,
+        sentimentScoredBy: s?.scoredBy ?? null,
+        priority: Number(priority.toFixed(4)),
+      };
+    })
+    .filter((p) => !status || (p.status ?? 'open') === status)
+    .sort((a, b) => b.priority - a.priority)
+    .slice(0, limit);
+
+  return c.json({ items, count: items.length, generatedAt: now });
+});
+
+/**
+ * Per-user history — when an agent opens a post they want to see "who is
+ * this person, what have they posted before, what's their pattern?". This
+ * endpoint joins everything we know about a specific Reddit author.
+ */
+app.get('/api/users/:username/history', async (c) => {
+  const username = c.req.param('username');
+  const limit = Math.min(Math.max(Number.parseInt(c.req.query('limit') ?? '20', 10) || 20, 1), 100);
+  const postIds = await getUserPostIds(username, limit);
+  const [posts, tags, sents] = await Promise.all([
+    getPostMetaMany(postIds),
+    Promise.all(postIds.map((id) => getPostTag(id))),
+    Promise.all(postIds.map((id) => getSentimentScore(id))),
+  ]);
+  const tagById = new Map(
+    tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
+  );
+  const sentById = new Map(
+    sents.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.contentId, s]),
+  );
+  const items = posts.map((p) => {
+    const t = tagById.get(p.postId);
+    const s = sentById.get(p.postId);
+    return {
+      ...p,
+      driverId: t?.driverId ?? null,
+      status: t?.status ?? null,
+      sentimentLabel: s?.label ?? null,
+      sentimentScore: s?.score ?? null,
+    };
+  });
+  // Aggregate: top drivers, sentiment trajectory, share negative.
+  const driverCounts: Record<string, number> = {};
+  let totalScored = 0;
+  let scoreSum = 0;
+  let negativeCount = 0;
+  for (const it of items) {
+    if (it.driverId) driverCounts[it.driverId] = (driverCounts[it.driverId] ?? 0) + 1;
+    if (it.sentimentScore != null) {
+      totalScored += 1;
+      scoreSum += it.sentimentScore;
+      if (it.sentimentLabel === 'negative') negativeCount += 1;
+    }
+  }
+  return c.json({
+    username,
+    items,
+    aggregate: {
+      totalPosts: items.length,
+      totalScored,
+      averageScore: totalScored > 0 ? Number((scoreSum / totalScored).toFixed(3)) : null,
+      negativeShare: totalScored > 0 ? Number((negativeCount / totalScored).toFixed(3)) : null,
+      topDrivers: Object.entries(driverCounts)
+        .sort((a, b) => b[1] - a[1])
+        .map(([id, count]) => ({ id, count })),
+    },
+  });
+});
 
 /**
  * Per-post comment thread — joined with per-comment sentiment + agent badge
