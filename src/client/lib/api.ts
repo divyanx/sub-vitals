@@ -167,6 +167,33 @@ export const api = {
       `/api/drivers/${encodeURIComponent(driverId)}/posts?${q.toString()}`,
     );
   },
+  draftReply: async (postId: string) => {
+    const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/draft-reply`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+    });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      const err = new Error(
+        (body as { hint?: string; error?: string }).hint ??
+          (body as { error?: string }).error ??
+          `HTTP ${r.status}`,
+      );
+      throw err;
+    }
+    return (await r.json()) as {
+      postId: string;
+      cached: boolean;
+      tokensIn: number;
+      tokensOut: number;
+      costCents: number;
+      candidates: Array<{
+        tone: 'empathetic' | 'direct' | 'concise' | 'investigative';
+        rationale: string;
+        reply: string;
+      }>;
+    };
+  },
   setPostStatus: async (postId: string, status: PostStatus): Promise<void> => {
     const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/status`, {
       method: 'POST',

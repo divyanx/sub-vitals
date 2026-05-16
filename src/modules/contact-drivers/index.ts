@@ -440,7 +440,7 @@ async function maybeRouteToTeam(args: {
     `Driver: \`${args.driverLabel}\``,
     `Link: ${args.postUrl}`,
     args.reasoning ? `> ${escapeMd(args.reasoning)}` : null,
-    mentionLine + 'Tagged automatically by RedLattice. Reply to this modmail to coordinate.',
+    `${mentionLine}Tagged automatically by RedLattice. Reply to this modmail to coordinate.`,
   ]
     .filter(Boolean)
     .join('\n\n');

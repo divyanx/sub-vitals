@@ -118,6 +118,7 @@ function Inbox() {
   const [statusFilter, setStatusFilter] = useState<'open' | 'in-progress' | 'all'>('open');
   const [openThread, setOpenThread] = useState<string | null>(null);
   const [openHistory, setOpenHistory] = useState<string | null>(null);
+  const [openDraft, setOpenDraft] = useState<string | null>(null);
 
   const queue = useQuery({
     queryKey: ['triage-queue', statusFilter],
@@ -266,6 +267,13 @@ function Inbox() {
                     >
                       {openThread === p.postId ? 'Hide thread' : 'View thread'}
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => setOpenDraft(openDraft === p.postId ? null : p.postId)}
+                      className="rounded-full border border-violet-700 bg-violet-900/30 px-2 py-0.5 text-violet-200 transition hover:bg-violet-900/60"
+                    >
+                      {openDraft === p.postId ? 'Hide drafts' : '✨ Draft reply'}
+                    </button>
                     <a
                       href={p.url}
                       target="_top"
@@ -285,6 +293,11 @@ function Inbox() {
               {openThread === p.postId ? (
                 <div className="mt-4 border-t border-neutral-800 pt-4">
                   <ThreadPanel postId={p.postId} />
+                </div>
+              ) : null}
+              {openDraft === p.postId ? (
+                <div className="mt-4 border-t border-neutral-800 pt-4">
+                  <DraftReplyPanel postId={p.postId} />
                 </div>
               ) : null}
             </li>
@@ -410,6 +423,134 @@ function UserHistoryPanel({
           ))}
         </ul>
       )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// AI Draft Reply — the cockpit's "give me 2-3 candidate replies" panel
+// ---------------------------------------------------------------------------
+
+const TONE_COLOR: Record<string, string> = {
+  empathetic: 'border-emerald-700 bg-emerald-900/30 text-emerald-200',
+  direct: 'border-orange-700 bg-orange-900/30 text-orange-200',
+  concise: 'border-neutral-700 bg-neutral-900 text-neutral-200',
+  investigative: 'border-blue-700 bg-blue-900/30 text-blue-200',
+};
+
+function DraftReplyPanel({ postId }: { postId: string }) {
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [data, setData] = useState<Awaited<ReturnType<typeof api.draftReply>> | null>(null);
+  const [edits, setEdits] = useState<Record<number, string>>({});
+  const [copiedIdx, setCopiedIdx] = useState<number | null>(null);
+
+  const generate = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const r = await api.draftReply(postId);
+      setData(r);
+      setEdits({});
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Auto-fetch on first mount so the panel feels instant when opened.
+  if (!data && !loading && !error) {
+    void generate();
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="flex items-center gap-2 text-xs text-neutral-400">
+          <span className="font-medium text-violet-300">✨ AI draft replies</span>
+          {data ? (
+            <span className="text-neutral-500">
+              · {data.candidates.length} candidates · {data.tokensIn + data.tokensOut} tokens · $
+              {(data.costCents / 100).toFixed(4)}
+              {data.cached ? ' · cached' : ''}
+            </span>
+          ) : null}
+        </div>
+        <button
+          type="button"
+          onClick={generate}
+          disabled={loading}
+          className="rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1 text-xs text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+        >
+          {loading ? 'Generating…' : data ? 'Regenerate' : 'Generate'}
+        </button>
+      </div>
+      {error ? (
+        <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">
+          {error}
+        </div>
+      ) : null}
+      {loading && !data ? (
+        <div className="space-y-2" aria-busy="true">
+          {[0, 1, 2].map((i) => (
+            <div
+              key={i}
+              className="h-24 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+            />
+          ))}
+        </div>
+      ) : null}
+      {data ? (
+        <ul className="space-y-3">
+          {data.candidates.map((c, i) => {
+            const text = edits[i] ?? c.reply;
+            return (
+              <li
+                key={`${c.tone}-${i}`}
+                className="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950/50"
+              >
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`rounded-full border px-2 py-0.5 ${TONE_COLOR[c.tone] ?? TONE_COLOR.concise}`}
+                    >
+                      {c.tone}
+                    </span>
+                    <span className="text-neutral-500">{c.rationale}</span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      try {
+                        await navigator.clipboard.writeText(text);
+                        setCopiedIdx(i);
+                        setTimeout(() => setCopiedIdx((cur) => (cur === i ? null : cur)), 1800);
+                      } catch {
+                        /* clipboard blocked — user can still select+copy */
+                      }
+                    }}
+                    className="rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-neutral-200 transition hover:border-orange-500 hover:text-orange-200"
+                  >
+                    {copiedIdx === i ? '✓ Copied' : 'Copy'}
+                  </button>
+                </div>
+                <textarea
+                  value={text}
+                  onChange={(e) => setEdits((prev) => ({ ...prev, [i]: e.target.value }))}
+                  rows={Math.min(10, Math.max(3, text.split('\n').length + 2))}
+                  className="block w-full resize-y border-0 bg-transparent px-3 py-3 text-sm text-neutral-100 outline-none focus:bg-neutral-900/40"
+                  spellCheck
+                />
+              </li>
+            );
+          })}
+        </ul>
+      ) : null}
+      <p className="text-xs text-neutral-500">
+        Edits stay local — copy the version you like and paste it into Reddit's reply box. Brand
+        voice is configurable via the subreddit setting <code>brand-voice</code>.
+      </p>
     </div>
   );
 }

@@ -147,6 +147,11 @@
         "type": "paragraph",
         "label": "Per-driver routing rules (JSON)",
         "helpText": "Optional JSON map of driverId → { subject?, mentions?: [usernames] }. When a post is auto-tagged with that driver, modmail fires once per post with title + URL + sentiment + reasoning, mentioning the listed users. Example: {\"bug\": {\"subject\": \"[ENG] new bug post\", \"mentions\": [\"dev-alice\"]}, \"billing\": {\"mentions\": [\"finops\"]}}"
+      },
+      "brand-voice": {
+        "type": "paragraph",
+        "label": "Brand voice for AI response drafts",
+        "helpText": "Free-form note describing your brand's tone of voice. Used by the \"Draft reply\" feature to shape candidate replies. e.g. \"Friendly, empathetic, never defensive. Acknowledge the user's frustration first. Avoid corporate-speak. Sign off as the Sonos community team.\""
       }
     }
   },

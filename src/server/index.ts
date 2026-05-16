@@ -16,7 +16,7 @@
  * one file.
  */
 
-import { context, createServer, getServerPort, reddit, redis } from '@devvit/web/server';
+import { context, createServer, getServerPort, reddit, redis, settings } from '@devvit/web/server';
 import { serve } from '@hono/node-server';
 import {
   agentVerificationModule,
@@ -34,8 +34,9 @@ import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/ind
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
 import { K, today, yyyymm } from '@shared/keys.js';
-import { readMonthlyCents, readMonthlyTokens } from '@shared/llm.js';
+import { llmObject, readMonthlyCents, readMonthlyTokens } from '@shared/llm.js';
 import { log } from '@shared/log.js';
+import { requireMod } from '@shared/permissions.js';
 import {
   getCommentIdsForPost,
   getCommentMeta,
@@ -51,6 +52,7 @@ import {
 } from '@shared/storage.js';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
+import { z } from 'zod';
 
 // ---------------------------------------------------------------------------
 // Module registration — order doesn't matter; failure isolation in dispatcher.
@@ -305,6 +307,120 @@ app.get('/api/triage/queue', async (c) => {
     .slice(0, limit);
 
   return c.json({ items, count: items.length, generatedAt: now });
+});
+
+/**
+ * AI response drafts — the cockpit's "Draft reply" button.
+ *
+ * Reads the full post + the last N comments + per-comment sentiment + agent
+ * tag + the configured brand-voice note. Calls the LLM to produce 2-3
+ * candidate replies in different tones: one empathetic / one direct +
+ * actionable / one concise acknowledgment. Each candidate comes with a label
+ * + a short rationale + the reply body itself.
+ *
+ * The reply body is plain text suitable for pasting straight into Reddit's
+ * comment box. Always mod-gated; cost-capped via the shared llm.ts.
+ */
+const draftReplySchema = z.object({
+  candidates: z
+    .array(
+      z.object({
+        tone: z.enum(['empathetic', 'direct', 'concise', 'investigative']),
+        rationale: z.string().max(200),
+        reply: z.string().min(10).max(1500),
+      }),
+    )
+    .min(1)
+    .max(4),
+});
+
+app.post('/api/posts/:postId/draft-reply', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const postId = c.req.param('postId');
+
+  const [postMeta, postTag, postSent, commentIds, brandVoiceRaw] = await Promise.all([
+    getPostMeta(postId),
+    getPostTag(postId),
+    getSentimentScore(postId),
+    getCommentIdsForPost(postId),
+    settings.get('brand-voice').catch(() => undefined),
+  ]);
+  if (!postMeta) return c.json({ error: 'post not in index' }, 404);
+
+  // Take the most-recent ~10 comments for context.
+  const recentIds = commentIds.slice(-10);
+  const recentComments = await Promise.all(recentIds.map((id) => getCommentMeta(id)));
+  const recentSents = await Promise.all(recentIds.map((id) => getSentimentScore(id)));
+  const commentLines = recentComments
+    .map((cm, i) => {
+      if (!cm) return null;
+      const s = recentSents[i];
+      const tag = cm.isAgent ? '[AGENT]' : '[USER]';
+      const sent = s ? ` (${s.label} ${s.score.toFixed(2)})` : '';
+      const body = cm.body.length > 280 ? `${cm.body.slice(0, 280)}…` : cm.body;
+      return `${tag} u/${cm.authorName}${sent}: ${body}`;
+    })
+    .filter((x): x is string => x !== null);
+
+  const brandVoice =
+    typeof brandVoiceRaw === 'string' && brandVoiceRaw.trim().length > 0
+      ? brandVoiceRaw.trim()
+      : "Warm and professional. Acknowledge the user, be specific, avoid generic corporate phrases. Never make commitments you can't back up.";
+
+  const prompt = [
+    `Brand voice:\n${brandVoice}`,
+    '',
+    `Post by u/${postMeta.authorName}:`,
+    `Title: ${postMeta.title}`,
+    postTag?.driverId ? `Detected contact driver: ${postTag.driverId}` : null,
+    postSent ? `Detected sentiment: ${postSent.label} (${postSent.score.toFixed(2)})` : null,
+    '',
+    commentLines.length > 0
+      ? `Recent comments on the thread (oldest → newest):\n${commentLines.join('\n')}`
+      : '(no comments yet)',
+    '',
+    'Produce 2-3 candidate replies for the brand to post as a Reddit comment. Each candidate must have a distinct tone (empathetic, direct, concise, investigative — pick whichever 2-3 fit best). For each: brief rationale (≤1 sentence) + the actual reply text. Keep replies under ~150 words. Do not impersonate engineering or commit to fixes. Do not include hashtags or emoji unless they fit the brand voice. Do not include greetings like "Hi u/{author}" — Reddit threading handles that.',
+  ]
+    .filter((x): x is string => typeof x === 'string')
+    .join('\n');
+
+  const result = await llmObject({
+    name: 'draft-reply',
+    schema: draftReplySchema,
+    system:
+      'You are an experienced brand customer-experience writer drafting candidate Reddit comment replies for a brand support team to choose from and refine before posting.',
+    prompt,
+    maxTokens: 900,
+    temperature: 0.6,
+  });
+
+  if (!result.ok) {
+    return c.json(
+      {
+        error: 'llm-unavailable',
+        reason: result.reason,
+        hint:
+          result.reason === 'no-api-key'
+            ? 'Set the openrouter-api-key global setting first.'
+            : result.reason === 'cost-cap-exceeded'
+              ? 'Monthly LLM cost cap reached. Raise llm-monthly-cost-cap-cents or wait for next month.'
+              : result.reason === 'rate-limited'
+                ? 'Hit the per-installation LLM rate limit. Retry in a few seconds.'
+                : 'Try again or check the live logs.',
+      },
+      503,
+    );
+  }
+
+  return c.json({
+    postId,
+    model: 'configured',
+    cached: result.cached,
+    tokensIn: result.tokensIn,
+    tokensOut: result.tokensOut,
+    costCents: Number(result.costCents.toFixed(4)),
+    candidates: result.data.candidates,
+  });
 });
 
 /**
