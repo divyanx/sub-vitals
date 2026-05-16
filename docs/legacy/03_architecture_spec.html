@@ -1,0 +1,703 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>BrandPulse — Technical Architecture Spec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,700&family=Geist:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #faf8f3;
+    --bg-card: #ffffff;
+    --bg-elev: #f3efe7;
+    --line: #e0dbcc;
+    --line-soft: #ecead9;
+    --ink: #1a1d29;
+    --ink-soft: #555866;
+    --ink-mute: #8a8d9a;
+    --orange: #d63a00;
+    --orange-soft: #ff4500;
+    --orange-dim: #fff0e8;
+    --mint: #047857;
+    --rose: #b91c1c;
+    --amber: #b45309;
+    --violet: #6d28d9;
+    --serif: 'Fraunces', Georgia, serif;
+    --sans: 'Geist', -apple-system, sans-serif;
+    --mono: 'JetBrains Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.65;
+    font-size: 15px;
+  }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 32px; }
+
+  /* Cover */
+  .cover {
+    padding: 80px 0 50px;
+    border-bottom: 2px solid var(--ink);
+    position: relative;
+  }
+  .doc-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--ink-mute);
+    margin-bottom: 60px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--line);
+  }
+  h1 {
+    font-family: var(--serif);
+    font-size: clamp(56px, 8vw, 96px);
+    font-weight: 400;
+    line-height: 0.92;
+    letter-spacing: -0.04em;
+    margin-bottom: 32px;
+  }
+  h1 .em { font-style: italic; color: var(--orange); }
+  .subtitle {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 300;
+    color: var(--ink-soft);
+    max-width: 720px;
+    line-height: 1.4;
+    margin-bottom: 40px;
+  }
+  .spec-info {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 24px;
+    padding-top: 24px;
+    border-top: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .spec-info-item .label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--ink-mute);
+    margin-bottom: 4px;
+  }
+  .spec-info-item .value { font-weight: 500; }
+
+  /* Sections */
+  section {
+    padding: 64px 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .sec-num {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--orange);
+    letter-spacing: 0.15em;
+    margin-bottom: 12px;
+  }
+  h2 {
+    font-family: var(--serif);
+    font-size: 40px;
+    font-weight: 500;
+    line-height: 1.08;
+    letter-spacing: -0.02em;
+    margin-bottom: 24px;
+    max-width: 800px;
+  }
+  h2 .em { font-style: italic; color: var(--orange); }
+  h3 {
+    font-family: var(--serif);
+    font-size: 22px;
+    font-weight: 500;
+    margin: 32px 0 12px;
+    letter-spacing: -0.01em;
+  }
+  h4 {
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--orange);
+    margin: 24px 0 8px;
+  }
+  p {
+    margin-bottom: 14px;
+    color: var(--ink-soft);
+    max-width: 780px;
+  }
+  p strong, li strong { color: var(--ink); font-weight: 600; }
+  code {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--bg-elev);
+    padding: 1px 6px;
+    border-radius: 3px;
+    color: var(--orange);
+    border: 1px solid var(--line-soft);
+  }
+  ul, ol { margin: 12px 0 20px 24px; max-width: 780px; }
+  li { margin-bottom: 6px; color: var(--ink-soft); }
+  li::marker { color: var(--orange); }
+
+  /* Code */
+  pre {
+    font-family: var(--mono);
+    font-size: 12.5px;
+    background: var(--ink);
+    color: #e8eaf0;
+    padding: 18px 22px;
+    border-radius: 4px;
+    overflow-x: auto;
+    margin: 16px 0 24px;
+    line-height: 1.6;
+    border-left: 3px solid var(--orange);
+  }
+  pre code { background: none; padding: 0; border: none; color: inherit; }
+  .tok-k { color: #c084fc; }
+  .tok-s { color: #86efac; }
+  .tok-f { color: #60a5fa; }
+  .tok-p { color: #fbbf24; }
+  .tok-c { color: #94a3b8; font-style: italic; }
+
+  /* Tables */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0 28px;
+    font-size: 13.5px;
+    border: 1px solid var(--line);
+  }
+  th {
+    background: var(--ink);
+    color: white;
+    text-align: left;
+    padding: 12px 14px;
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: 600;
+  }
+  td {
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--line-soft);
+    vertical-align: top;
+    color: var(--ink-soft);
+  }
+  tr:last-child td { border-bottom: none; }
+  tr:nth-child(even) td { background: var(--bg-elev); }
+  td b { color: var(--ink); }
+
+  /* Diagram */
+  .diagram {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 28px;
+    margin: 24px 0;
+    overflow-x: auto;
+  }
+  .layer {
+    border: 1px solid var(--line);
+    padding: 14px;
+    margin-bottom: 10px;
+    background: var(--bg-elev);
+  }
+  .layer-title {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--orange);
+    font-weight: 700;
+    margin-bottom: 10px;
+  }
+  .boxes {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+  .box {
+    background: white;
+    border: 1px solid var(--line);
+    padding: 6px 10px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--ink);
+  }
+  .box.hi { border-color: var(--orange); color: var(--orange); background: var(--orange-dim); }
+  .arrow {
+    text-align: center;
+    font-family: var(--mono);
+    color: var(--ink-mute);
+    font-size: 12px;
+    padding: 4px 0;
+  }
+
+  /* Callout */
+  .callout {
+    background: var(--orange-dim);
+    border-left: 3px solid var(--orange);
+    padding: 16px 20px;
+    margin: 20px 0;
+    max-width: 800px;
+  }
+  .callout-label {
+    font-family: var(--mono);
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--orange);
+    margin-bottom: 4px;
+    font-weight: 700;
+  }
+  .callout p { color: var(--ink); margin-bottom: 0; font-size: 14px; }
+
+  /* Sequence */
+  .sequence {
+    background: var(--bg-card);
+    border: 1px solid var(--line);
+    padding: 24px;
+    margin: 20px 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    line-height: 1.8;
+  }
+  .seq-step {
+    display: flex;
+    gap: 14px;
+    padding: 6px 0;
+  }
+  .seq-num {
+    color: var(--orange);
+    font-weight: 700;
+    flex-shrink: 0;
+    width: 28px;
+  }
+  .seq-actor { color: var(--violet); font-weight: 500; }
+  .seq-arrow { color: var(--ink-mute); }
+  .seq-msg { color: var(--ink); }
+
+  footer {
+    padding: 50px 0 80px;
+    text-align: center;
+    color: var(--ink-mute);
+    font-size: 11px;
+    font-family: var(--mono);
+  }
+</style>
+</head>
+<body>
+
+<section class="cover">
+  <div class="wrap">
+    <div class="doc-meta">
+      <span>Doc 03 / 03 · Technical Architecture Spec</span>
+      <span>v1.0 · 2026-05-16</span>
+    </div>
+    <h1>BrandPulse<br>technical <span class="em">architecture</span></h1>
+    <p class="subtitle">Module contracts, data flows, key schemas, and integration topology for a multi-surface Devvit application.</p>
+    <div class="spec-info">
+      <div class="spec-info-item">
+        <div class="label">Author</div>
+        <div class="value">Solo founder, ex-Sprinklr</div>
+      </div>
+      <div class="spec-info-item">
+        <div class="label">Target Platform</div>
+        <div class="value">Devvit + Devvit Web</div>
+      </div>
+      <div class="spec-info-item">
+        <div class="label">Hackathon</div>
+        <div class="value">Reddit Devvit · May 27</div>
+      </div>
+      <div class="spec-info-item">
+        <div class="label">MVP Modules</div>
+        <div class="value">3 of 6</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 1: System topology -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 01</div>
+    <h2>System <span class="em">topology</span></h2>
+    <p>BrandPulse is a single Devvit app exposing two render surfaces, six event listeners, three scheduled jobs, and a REST API for the webview dashboard. All persistence is Devvit Redis (auto-scoped per installation). External AI providers are reached over HTTP with App-scope secrets.</p>
+
+    <div class="diagram">
+      <div class="layer">
+        <div class="layer-title">L5 · User-Facing Surfaces</div>
+        <div class="boxes">
+          <div class="box hi">Native Menu Items</div>
+          <div class="box hi">Custom Post: Daily Pulse</div>
+          <div class="box hi">WebView Dashboard</div>
+          <div class="box hi">Modmail Notifications</div>
+          <div class="box hi">Settings Page</div>
+        </div>
+      </div>
+      <div class="arrow">↓ render / dispatch</div>
+      <div class="layer">
+        <div class="layer-title">L4 · Devvit Registration (src/main.tsx)</div>
+        <div class="boxes">
+          <div class="box">Devvit.addCustomPostType</div>
+          <div class="box">Devvit.addMenuItem ×5</div>
+          <div class="box">Devvit.addTrigger ×6</div>
+          <div class="box">Devvit.addSchedulerJob ×3</div>
+          <div class="box">Devvit.addSettings ×7</div>
+          <div class="box">Devvit.createForm</div>
+        </div>
+      </div>
+      <div class="arrow">↓ event fan-out</div>
+      <div class="layer">
+        <div class="layer-title">L3 · Dispatcher + Hono Server</div>
+        <div class="boxes">
+          <div class="box">dispatcher.dispatch(event, payload, ctx)</div>
+          <div class="box">Hono app · /api/* routes · /internal/*</div>
+        </div>
+      </div>
+      <div class="arrow">↓ business logic</div>
+      <div class="layer">
+        <div class="layer-title">L2 · Module Layer</div>
+        <div class="boxes">
+          <div class="box">agent-verification</div>
+          <div class="box">contact-drivers</div>
+          <div class="box">sentiment</div>
+          <div class="box">pii-guardian (P2)</div>
+          <div class="box">response-analytics (P2)</div>
+          <div class="box">ai-detector (P3)</div>
+        </div>
+      </div>
+      <div class="arrow">↓ shared services</div>
+      <div class="layer">
+        <div class="layer-title">L1 · Shared (src/shared/)</div>
+        <div class="boxes">
+          <div class="box">storage.ts (K + accessors)</div>
+          <div class="box">permissions.ts</div>
+          <div class="box">dispatcher.ts</div>
+          <div class="box">types.ts</div>
+        </div>
+      </div>
+      <div class="arrow">↓ persistence</div>
+      <div class="layer">
+        <div class="layer-title">L0 · Data + External</div>
+        <div class="boxes">
+          <div class="box">Devvit Redis</div>
+          <div class="box">Devvit Settings (App + Install)</div>
+          <div class="box">Reddit API</div>
+          <div class="box">api.openai.com</div>
+          <div class="box">generativelanguage.googleapis.com</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 2: Module contract -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 02</div>
+    <h2>Module <span class="em">contract</span></h2>
+    <p>Every module is a TypeScript object implementing <code>BrandPulseModule</code>. The contract is intentionally narrow: it gives modules optional hooks for every event surface, plus optional menu items and API routes. Modules never touch <code>Devvit.add*</code> directly — registration is centralized in <code>main.tsx</code>.</p>
+
+    <pre><code><span class="tok-k">export interface</span> BrandPulseModule {
+  <span class="tok-k">readonly</span> name: <span class="tok-k">string</span>;
+  <span class="tok-k">readonly</span> description: <span class="tok-k">string</span>;
+  <span class="tok-k">readonly</span> tier: <span class="tok-s">'core'</span> | <span class="tok-s">'pro'</span> | <span class="tok-s">'enterprise'</span>;
+
+  <span class="tok-c">// Feature-flag check (reads from Installation settings)</span>
+  <span class="tok-f">enabled</span>(ctx: Context): Promise&lt;<span class="tok-k">boolean</span>&gt;;
+
+  <span class="tok-c">// Optional event handlers — only those the module needs</span>
+  <span class="tok-f">onAppInstall</span>?(event, ctx): Promise&lt;<span class="tok-k">void</span>&gt;;
+  <span class="tok-f">onPostSubmit</span>?(event, ctx): Promise&lt;<span class="tok-k">void</span>&gt;;
+  <span class="tok-f">onCommentSubmit</span>?(event, ctx): Promise&lt;<span class="tok-k">void</span>&gt;;
+  <span class="tok-f">onPostUpdate</span>?(event, ctx): Promise&lt;<span class="tok-k">void</span>&gt;;
+  <span class="tok-f">onModAction</span>?(event, ctx): Promise&lt;<span class="tok-k">void</span>&gt;;
+
+  <span class="tok-c">// Optional surfaces the module owns</span>
+  <span class="tok-f">menuItems</span>?(): Devvit.MenuItem[];
+  <span class="tok-f">apiRoutes</span>?(app: Hono): <span class="tok-k">void</span>;
+  <span class="tok-f">schedulerTasks</span>?(): SchedulerTask[];
+}</code></pre>
+
+    <div class="callout">
+      <div class="callout-label">Why a uniform contract</div>
+      <p>It makes adding/removing modules a one-line change in <code>main.tsx</code>. It also gives the dispatcher a single place to enforce <em>failure isolation</em>: if one module throws on <code>onPostSubmit</code>, the others still run because the dispatcher wraps each handler in <code>try/catch</code>. No cascading failures from one buggy module.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 3: Event flow -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 03</div>
+    <h2>Event flow: <span class="em">PostSubmit</span></h2>
+    <p>The most common path. When a user posts in a subreddit where BrandPulse is installed, the following sequence fires:</p>
+
+    <div class="sequence">
+      <div class="seq-step"><span class="seq-num">1.</span><span class="seq-actor">Reddit</span> <span class="seq-arrow">→</span> <span class="seq-actor">Devvit Platform</span><span class="seq-arrow"> :</span> <span class="seq-msg">PostSubmit event emitted</span></div>
+      <div class="seq-step"><span class="seq-num">2.</span><span class="seq-actor">Devvit Platform</span> <span class="seq-arrow">→</span> <span class="seq-actor">main.tsx trigger</span><span class="seq-arrow"> :</span> <span class="seq-msg">onEvent(event, ctx) invoked</span></div>
+      <div class="seq-step"><span class="seq-num">3.</span><span class="seq-actor">main.tsx</span> <span class="seq-arrow">→</span> <span class="seq-actor">dispatcher.dispatch</span><span class="seq-arrow"> :</span> <span class="seq-msg">dispatch('onPostSubmit', event, ctx)</span></div>
+      <div class="seq-step"><span class="seq-num">4.</span><span class="seq-actor">dispatcher</span> <span class="seq-arrow">→</span> <span class="seq-actor">[all modules]</span><span class="seq-arrow"> :</span> <span class="seq-msg">Promise.all(modules with handler)</span></div>
+      <div class="seq-step"><span class="seq-num">5a.</span><span class="seq-actor">contact-drivers</span> <span class="seq-arrow">→</span> <span class="seq-actor">Redis</span><span class="seq-arrow"> :</span> <span class="seq-msg">SET bp:tag:{postId} · ZADD bp:dr:idx · update rollup</span></div>
+      <div class="seq-step"><span class="seq-num">5b.</span><span class="seq-actor">sentiment</span> <span class="seq-arrow">→</span> <span class="seq-actor">lexicon scorer</span><span class="seq-arrow"> :</span> <span class="seq-msg">score = lexicon(text)</span></div>
+      <div class="seq-step"><span class="seq-num">5c.</span><span class="seq-actor">sentiment</span> <span class="seq-arrow">→</span> <span class="seq-actor">Redis</span><span class="seq-arrow"> :</span> <span class="seq-msg">SET bp:sent:{postId} · update daily rollup</span></div>
+      <div class="seq-step"><span class="seq-num">5d.</span><span class="seq-actor">pii-guardian (P2)</span> <span class="seq-arrow">→</span> <span class="seq-actor">regex + LLM</span><span class="seq-arrow"> :</span> <span class="seq-msg">scan for PII; if found, modmail or auto-redact</span></div>
+      <div class="seq-step"><span class="seq-num">6.</span><span class="seq-actor">dispatcher</span> <span class="seq-arrow">→</span> <span class="seq-actor">main.tsx</span><span class="seq-arrow"> :</span> <span class="seq-msg">all handlers settled (isolated errors logged)</span></div>
+      <div class="seq-step"><span class="seq-num">7.</span><span class="seq-actor">main.tsx</span> <span class="seq-arrow">→</span> <span class="seq-actor">Devvit Platform</span><span class="seq-arrow"> :</span> <span class="seq-msg">200 OK</span></div>
+    </div>
+
+    <p>Total budget for the entire fan-out: ~1–3 seconds (Devvit allows up to ~30s per trigger but you should aim for &lt;5). Lexicon-based sentiment is sub-ms. Redis writes are ~5ms each. The expensive path is Phase 2's LLM-based AI tagging — that one runs async after we acknowledge the trigger.</p>
+  </div>
+</section>
+
+<!-- 4: Storage schema -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 04</div>
+    <h2>Storage <span class="em">schema</span></h2>
+    <p>All Redis keys are prefixed with <code>bp:</code> and built via the <code>K</code> helper in <code>src/shared/storage.ts</code>. The schema is intentionally flat — no embedded JSON trees that require read-modify-write at scale.</p>
+
+    <table>
+      <thead>
+        <tr><th>Key</th><th>Type</th><th>Owner module</th><th>Cardinality</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>bp:tx:{sub}</code></td><td>JSON</td><td>contact-drivers</td><td>1 per sub</td></tr>
+        <tr><td><code>bp:tag:{postId}</code></td><td>JSON</td><td>contact-drivers</td><td>1 per tagged post</td></tr>
+        <tr><td><code>bp:dr:idx:{sub}:{driverId}</code></td><td>ZSET</td><td>contact-drivers</td><td>1 per driver per sub</td></tr>
+        <tr><td><code>bp:dr:roll:{sub}:{date}</code></td><td>JSON</td><td>contact-drivers</td><td>1 per day per sub</td></tr>
+        <tr><td><code>bp:ag:{sub}:{user}</code></td><td>JSON</td><td>agent-verification</td><td>1 per agent</td></tr>
+        <tr><td><code>bp:ag:list:{sub}</code></td><td>ZSET</td><td>agent-verification</td><td>1 per sub</td></tr>
+        <tr><td><code>bp:sent:{contentId}</code></td><td>JSON</td><td>sentiment</td><td>1 per scored content</td></tr>
+        <tr><td><code>bp:sent:roll:{sub}:{date}</code></td><td>JSON</td><td>sentiment</td><td>1 per day per sub</td></tr>
+        <tr><td><code>bp:sent:cd:{sub}:{postId}</code></td><td>STRING + TTL</td><td>sentiment</td><td>cooldown, 4h TTL</td></tr>
+        <tr><td><code>bp:rsp:{postId}</code></td><td>JSON</td><td>response-analytics (P2)</td><td>1 per post</td></tr>
+        <tr><td><code>bp:rsp:open:{sub}</code></td><td>ZSET</td><td>response-analytics (P2)</td><td>1 per sub</td></tr>
+        <tr><td><code>bp:pii:log:{sub}</code></td><td>ZSET</td><td>pii-guardian (P2)</td><td>1 per sub</td></tr>
+        <tr><td><code>bp:perm:mod:{sub}:{user}</code></td><td>STRING + TTL</td><td>permissions</td><td>5-min cache</td></tr>
+      </tbody>
+    </table>
+
+    <div class="callout">
+      <div class="callout-label">Scaling note</div>
+      <p>Daily rollups use a read-modify-write pattern because Devvit Redis doesn't expose <code>HINCRBY</code> with auto-create-on-miss the way standalone Redis does. For Phase 2, swap to a hash per day (<code>HSET bp:dr:roll:{sub}:{date} {driver} {count}</code> + <code>HINCRBY</code>) to avoid the RMW race under bursty load.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 5: Integration surfaces -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 05</div>
+    <h2>Integration <span class="em">surfaces</span></h2>
+    <p>BrandPulse exposes itself through every surface Devvit offers, deliberately. Mods who prefer in-feed actions get menu items. Mods who want full analytics get the dashboard. Teams running Sprinklr or Khoros get the REST API. Each surface is independently usable.</p>
+
+    <h4>Surface 1 · Native Reddit UI (Menu Items + Custom Posts + Modmail)</h4>
+    <ul>
+      <li><strong>Post menu</strong>: Tag Issue, View Sentiment Trail, Scan for PII</li>
+      <li><strong>Comment menu</strong>: Mark/Remove Verified Agent</li>
+      <li><strong>Subreddit menu</strong>: Open BrandPulse Dashboard</li>
+      <li><strong>Custom Post</strong>: pinned Daily Pulse digest, auto-updates every morning</li>
+      <li><strong>Modmail</strong>: sentiment escalation alerts, weekly digest, SLA breach notifications</li>
+    </ul>
+
+    <h4>Surface 2 · WebView Dashboard (Devvit Web)</h4>
+    <ul>
+      <li>Vite-built React app served as iframe content</li>
+      <li>Tabs: Overview · Contact Drivers · Sentiment · Agents · Settings</li>
+      <li>Talks to the Hono backend via fetch on same origin</li>
+      <li>Native-feel styling: IBM Plex Sans, dark theme default, Reddit-orange accents, restrained color</li>
+    </ul>
+
+    <h4>Surface 3 · REST API (for external tools)</h4>
+    <p>Same Hono server that powers the webview also exposes the public API. Same routes, same auth model. External tools (Sprinklr, Khoros, in-house CX dashboards) hit endpoints like:</p>
+    <pre><code>GET  /api/agents
+GET  /api/drivers/volume?from=2026-05-01&amp;to=2026-05-16
+GET  /api/drivers/:driverId/posts
+POST /api/drivers/tag
+GET  /api/sentiment/rollup
+GET  /api/dashboard/summary</code></pre>
+    <p>Phase 2 hardens this with HMAC-signed requests for non-mod consumers (CI bots, external dashboards). Until then, all routes require mod status via <code>requireMod()</code>.</p>
+
+    <h4>Surface 4 · Settings (App + Installation scope)</h4>
+    <ul>
+      <li><strong>App-scope</strong>: <code>openai-api-key</code>, <code>gemini-api-key</code> — managed via <code>devvit settings set</code> CLI, encrypted at rest, never exposed to mods</li>
+      <li><strong>Installation-scope</strong>: agent whitelist, taxonomy JSON, sentiment threshold, PII auto-redact toggle, SLA window — managed per-subreddit by that sub's mod team</li>
+    </ul>
+  </div>
+</section>
+
+<!-- 6: Permissions model -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 06</div>
+    <h2>Permissions <span class="em">model</span></h2>
+    <p>Three principal types interact with BrandPulse:</p>
+
+    <table>
+      <thead>
+        <tr><th>Principal</th><th>Identification</th><th>Allowed surfaces</th><th>Mutation rights</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><b>Developer (you)</b></td><td>Devvit CLI login</td><td>App settings via CLI</td><td>Secrets, app deployment</td></tr>
+        <tr><td><b>Subreddit moderator</b></td><td><code>ctx.reddit.getModerators()</code></td><td>All menu items, dashboard, installation settings</td><td>Tag posts, mark agents, configure</td></tr>
+        <tr><td><b>Regular Reddit user</b></td><td>Default</td><td>Custom Post (Daily Pulse) read-only view</td><td>None</td></tr>
+      </tbody>
+    </table>
+
+    <p>Every mutating handler calls <code>requireMod(ctx)</code> first. The function checks the current user against the subreddit's moderator list and caches the result for 5 minutes per (sub, user) pair to avoid hammering Reddit's API on repeat actions.</p>
+
+    <pre><code><span class="tok-k">async function</span> <span class="tok-f">requireMod</span>(ctx: Context): Promise&lt;<span class="tok-k">boolean</span>&gt; {
+  <span class="tok-k">const</span> ok = <span class="tok-k">await</span> <span class="tok-f">isCurrentUserMod</span>(ctx);
+  <span class="tok-k">if</span> (!ok) {
+    ctx.ui.<span class="tok-f">showToast</span>({ appearance: <span class="tok-s">'neutral'</span>, text: <span class="tok-s">'Mod-only action.'</span> });
+  }
+  <span class="tok-k">return</span> ok;
+}
+
+<span class="tok-c">// Usage in every mod menu handler:</span>
+<span class="tok-k">onPress</span>: <span class="tok-k">async</span> (event, ctx) =&gt; {
+  <span class="tok-k">if</span> (!(<span class="tok-k">await</span> <span class="tok-f">requireMod</span>(ctx))) <span class="tok-k">return</span>;
+  <span class="tok-c">// mutation logic</span>
+}</code></pre>
+  </div>
+</section>
+
+<!-- 7: External integrations -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 07</div>
+    <h2>External <span class="em">integrations</span></h2>
+    <p>BrandPulse is designed so a Sprinklr-style CX platform can consume Reddit signal from it without writing Reddit-specific code.</p>
+
+    <h4>Outbound webhooks (Phase 2)</h4>
+    <p>Per-installation setting accepts a webhook URL. On every interesting event (post tagged, sentiment alert, SLA breach), BrandPulse POSTs a normalized JSON payload:</p>
+    <pre><code>{
+  <span class="tok-s">"event"</span>: <span class="tok-s">"sentiment.escalation"</span>,
+  <span class="tok-s">"sub"</span>: <span class="tok-s">"sonos"</span>,
+  <span class="tok-s">"postId"</span>: <span class="tok-s">"t3_abc123"</span>,
+  <span class="tok-s">"url"</span>: <span class="tok-s">"https://reddit.com/r/sonos/comments/abc123"</span>,
+  <span class="tok-s">"negativeCommentCount"</span>: 7,
+  <span class="tok-s">"sample"</span>: 10,
+  <span class="tok-s">"timestamp"</span>: 1747000000000
+}</code></pre>
+
+    <h4>Pull API (Phase 2)</h4>
+    <p>The Hono server exposes the same routes the webview uses, but reachable from outside via a Devvit-issued bearer token. External tools can poll <code>/api/drivers/volume</code>, <code>/api/sentiment/rollup</code>, etc., and ingest the data into their own warehouses.</p>
+
+    <h4>CSV export (Phase 1.5)</h4>
+    <p>Dashboard offers a "Download CSV" button per view. Drives Excel users (CX ops teams) without forcing them to use the dashboard. Cheap to ship, high perceived value.</p>
+
+    <div class="callout">
+      <div class="callout-label">Sprinklr strategy</div>
+      <p>Don't try to formally integrate. Make BrandPulse data trivially ingestible (CSV export + bearer-token REST). Sprinklr customers can wire it themselves in 30 minutes. Avoids any partnership negotiation while still capturing the enterprise CX-tooling demand.</p>
+    </div>
+  </div>
+</section>
+
+<!-- 8: Failure modes -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 08</div>
+    <h2>Failure modes <span class="em">&amp; mitigation</span></h2>
+
+    <table>
+      <thead>
+        <tr><th>Failure</th><th>Impact</th><th>Mitigation</th></tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><b>One module throws on trigger</b></td>
+          <td>Could break all event processing</td>
+          <td>Dispatcher wraps every handler in try/catch; logs and continues</td>
+        </tr>
+        <tr>
+          <td><b>OpenAI / Gemini API outage</b></td>
+          <td>AI-powered modules degrade</td>
+          <td>Phase 2 modules fall back to lexicon/regex baselines; alert via modmail if sustained outage</td>
+        </tr>
+        <tr>
+          <td><b>Settings scope confusion</b></td>
+          <td>App can't read configured value</td>
+          <td>Document scope decisions; never change scope after deploy (known Devvit bug)</td>
+        </tr>
+        <tr>
+          <td><b>Redis read-modify-write race</b></td>
+          <td>Rollup counts could undercount</td>
+          <td>Phase 2: migrate to Redis HINCRBY-style atomic increments</td>
+        </tr>
+        <tr>
+          <td><b>Trigger handler timeout</b></td>
+          <td>Devvit kills the handler</td>
+          <td>Keep handlers under 5s; defer expensive work (LLM calls) to scheduler jobs</td>
+        </tr>
+        <tr>
+          <td><b>Mod permission check fails (Reddit API hiccup)</b></td>
+          <td>Mod action incorrectly rejected</td>
+          <td>5-min permission cache; show clear error toast on cache miss + API failure</td>
+        </tr>
+        <tr>
+          <td><b>ModAction trigger floods the dispatcher</b></td>
+          <td>Burst load on Redis</td>
+          <td>Handler must filter action type early; only react to relevant types</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- 9: Phasing -->
+<section>
+  <div class="wrap">
+    <div class="sec-num">§ 09</div>
+    <h2>Phasing <span class="em">plan</span></h2>
+
+    <h4>Phase 1 · Hackathon MVP (May 16–27)</h4>
+    <ul>
+      <li>Agent Verification (settings whitelist + menu actions)</li>
+      <li>Contact Drivers (manual tagging + keyword auto-suggest)</li>
+      <li>Sentiment Dashboard (lexicon scoring + escalation modmail)</li>
+      <li>Daily Pulse custom post</li>
+      <li>WebView dashboard (Overview, Drivers, Agents tabs)</li>
+    </ul>
+
+    <h4>Phase 2 · Pro tier (June–July 2026)</h4>
+    <ul>
+      <li>PII Guardian (regex + LLM redactor)</li>
+      <li>Response Analytics (SLA tracking via agent comment timestamps)</li>
+      <li>AI sentiment upgrade (LLM judge for ambiguous cases)</li>
+      <li>Outbound webhooks</li>
+      <li>CSV export</li>
+    </ul>
+
+    <h4>Phase 3 · Enterprise tier (Q3 2026)</h4>
+    <ul>
+      <li>AI Content Detector (perplexity + LLM judge)</li>
+      <li>Harassment pattern alerts</li>
+      <li>Bulk historical import (last 90 days)</li>
+      <li>Quality Management scorecards (Sprinklr-style agent QA)</li>
+      <li>Bearer-token REST API for external CX tools</li>
+    </ul>
+  </div>
+</section>
+
+<footer>
+  Companion documents · Doc 01: Devvit Research Brief · Doc 02: BrandPulse Code Scaffold
+</footer>
+
+</body>
+</html>

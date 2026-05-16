@@ -1,0 +1,143 @@
+{
+  "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
+  "schema": "v1",
+  "name": "redlattice",
+  "permissions": {
+    "reddit": { "enable": true, "scope": "moderator", "asUser": [] },
+    "redis": true,
+    "http": {
+      "enable": true,
+      "domains": ["api.openai.com", "generativelanguage.googleapis.com"]
+    },
+    "media": true,
+    "menu": true,
+    "settings": true,
+    "triggers": true,
+    "realtime": false,
+    "payments": false
+  },
+  "post": {
+    "dir": "dist/post",
+    "entrypoints": {
+      "default": {
+        "entry": "index.html",
+        "name": "Daily Pulse",
+        "height": "tall"
+      }
+    }
+  },
+  "server": {
+    "dir": "dist/server",
+    "entry": "server/index.js"
+  },
+  "triggers": {
+    "onAppInstall": "/internal/triggers/app-install",
+    "onAppUpgrade": "/internal/triggers/app-upgrade",
+    "onPostCreate": "/internal/triggers/post-create",
+    "onPostUpdate": "/internal/triggers/post-update",
+    "onCommentCreate": "/internal/triggers/comment-create",
+    "onModAction": "/internal/triggers/mod-action"
+  },
+  "menu": {
+    "items": [
+      {
+        "label": "RedLattice · Tag issue",
+        "description": "Categorize this post by contact driver",
+        "forUserType": "moderator",
+        "location": ["post"],
+        "endpoint": "/internal/menu/tag-issue",
+        "postFilter": "none"
+      },
+      {
+        "label": "RedLattice · View sentiment",
+        "description": "Show the sentiment score recorded for this post",
+        "forUserType": "moderator",
+        "location": ["post"],
+        "endpoint": "/internal/menu/sentiment-trail",
+        "postFilter": "none"
+      },
+      {
+        "label": "RedLattice · Mark verified agent",
+        "description": "Mark this comment's author as a verified company agent",
+        "forUserType": "moderator",
+        "location": ["comment"],
+        "endpoint": "/internal/menu/mark-agent",
+        "postFilter": "none"
+      },
+      {
+        "label": "RedLattice · Remove verified agent",
+        "description": "Remove the comment author's verified-agent status",
+        "forUserType": "moderator",
+        "location": ["comment"],
+        "endpoint": "/internal/menu/unmark-agent",
+        "postFilter": "none"
+      },
+      {
+        "label": "RedLattice · Open dashboard",
+        "description": "Open the RedLattice analytics dashboard",
+        "forUserType": "moderator",
+        "location": ["subreddit"],
+        "endpoint": "/internal/menu/open-dashboard",
+        "postFilter": "none"
+      }
+    ]
+  },
+  "scheduler": {
+    "tasks": {
+      "daily-aggregate": {
+        "endpoint": "/internal/scheduler/daily-aggregate",
+        "cron": "0 2 * * *"
+      },
+      "weekly-digest": {
+        "endpoint": "/internal/scheduler/weekly-digest",
+        "cron": "0 9 * * MON"
+      }
+    }
+  },
+  "forms": {
+    "tag-issue": "/internal/forms/tag-issue"
+  },
+  "settings": {
+    "global": {
+      "openai-api-key": {
+        "type": "string",
+        "label": "OpenAI API key",
+        "helpText": "Used for AI auto-tagging (Phase 2). Encrypted at rest.",
+        "isSecret": true
+      },
+      "gemini-api-key": {
+        "type": "string",
+        "label": "Gemini API key",
+        "helpText": "Fallback AI provider for auto-tagging (Phase 2). Encrypted at rest.",
+        "isSecret": true
+      }
+    },
+    "subreddit": {
+      "agent-whitelist": {
+        "type": "paragraph",
+        "label": "Verified agent usernames",
+        "helpText": "One username per line. Pre-seeds the agent list on install."
+      },
+      "taxonomy-json": {
+        "type": "paragraph",
+        "label": "Custom issue taxonomy (JSON)",
+        "helpText": "Optional JSON array of {id,label,color}. Leave blank for defaults."
+      },
+      "sentiment-threshold": {
+        "type": "number",
+        "label": "Negative thread alert threshold",
+        "helpText": "Number of negative comments in a thread before mods get a modmail alert.",
+        "defaultValue": 5
+      },
+      "sla-minutes": {
+        "type": "number",
+        "label": "First-response SLA (minutes)",
+        "helpText": "Posts unanswered by a verified agent beyond this threshold appear in the SLA breach feed.",
+        "defaultValue": 120
+      }
+    }
+  },
+  "dev": {
+    "subreddit": ""
+  }
+}

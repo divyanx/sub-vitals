@@ -1,0 +1,59 @@
+{
+  "name": "redlattice",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Native CX analytics for Reddit brand communities — issue taxonomy, sentiment, agent verification, response analytics. Built on Devvit Web.",
+  "license": "BSD-3-Clause",
+  "type": "module",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "packageManager": "npm@11.9.0",
+  "scripts": {
+    "dev": "devvit playtest",
+    "clean": "rm -rf dist",
+    "build": "npm run clean && npm run build:client && npm run build:server",
+    "build:client": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "type-check": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
+    "lint": "biome check .",
+    "lint:fix": "biome check --write .",
+    "format": "biome format --write .",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:cov": "vitest run --coverage",
+    "deploy": "devvit upload",
+    "launch": "devvit publish",
+    "prepare": "simple-git-hooks"
+  },
+  "dependencies": {
+    "@devvit/web": "0.12.23",
+    "@hono/node-server": "2.0.2",
+    "@tanstack/react-query": "5.100.10",
+    "hono": "4.12.19",
+    "pino": "10.3.1",
+    "react": "19.2.6",
+    "react-dom": "19.2.6",
+    "recharts": "3.8.1",
+    "sentiment": "5.0.2",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.4.1",
+    "@tailwindcss/vite": "4.3.0",
+    "@types/node": "25.8.0",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "@types/sentiment": "5.0.4",
+    "@vitejs/plugin-react": "6.0.2",
+    "devvit": "0.12.23",
+    "simple-git-hooks": "2.13.1",
+    "tailwindcss": "4.3.0",
+    "typescript": "6.0.3",
+    "vite": "8.0.13",
+    "vitest": "4.1.6"
+  },
+  "simple-git-hooks": {
+    "pre-commit": "npm run lint && npm run type-check && npm run test"
+  }
+}

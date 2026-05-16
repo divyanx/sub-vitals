@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "lib": ["ES2023"],
+    "types": ["node"],
+    "rootDir": "src",
+    "outDir": "dist/server",
+    "noEmit": false,
+    "declaration": false,
+    "sourceMap": true
+  },
+  "include": ["src/server/**/*", "src/shared/**/*", "src/modules/**/*"],
+  "exclude": ["src/post/**/*", "tests/**/*", "node_modules", "dist"]
+}
