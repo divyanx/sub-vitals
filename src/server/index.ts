@@ -16,7 +16,7 @@
  * one file.
  */
 
-import { createServer, getServerPort } from '@devvit/web/server';
+import { context, createServer, getServerPort, reddit, redis } from '@devvit/web/server';
 import { serve } from '@hono/node-server';
 import {
   agentVerificationModule,
@@ -30,9 +30,18 @@ import {
 } from '@modules/contact-drivers/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
-import { today, yyyymm } from '@shared/keys.js';
+import { K, today, yyyymm } from '@shared/keys.js';
+import { readMonthlyCents, readMonthlyTokens } from '@shared/llm.js';
 import { log } from '@shared/log.js';
-import { getDriverRollup, getSentimentRollup } from '@shared/storage.js';
+import {
+  getDriverRollup,
+  getPostMetaMany,
+  getPostTag,
+  getRecentPostIds,
+  getSentimentRollup,
+  getSentimentScore,
+  getTaxonomy,
+} from '@shared/storage.js';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 
@@ -73,7 +82,13 @@ app.get('/api/health', (c) => c.json({ ok: true, ts: Date.now() }));
 app.get('/api/dashboard/summary', async (c) => {
   const d = today();
   const yMonth = yyyymm();
-  const [driversToday, sentToday] = await Promise.all([getDriverRollup(d), getSentimentRollup(d)]);
+  const [driversToday, sentToday, taxonomy, monthlyCents, monthlyTokens] = await Promise.all([
+    getDriverRollup(d),
+    getSentimentRollup(d),
+    getTaxonomy(),
+    readMonthlyCents(),
+    readMonthlyTokens(),
+  ]);
 
   let topDriverId: string | null = null;
   let topDriverCount = 0;
@@ -85,6 +100,9 @@ app.get('/api/dashboard/summary', async (c) => {
       }
     }
   }
+  const topDriverLabel = topDriverId
+    ? (taxonomy.find((t) => t.id === topDriverId)?.label ?? topDriverId)
+    : null;
 
   return c.json({
     today: d,
@@ -92,10 +110,52 @@ app.get('/api/dashboard/summary', async (c) => {
     drivers: {
       today: driversToday,
       topDriverId,
+      topDriverLabel,
       topDriverCount,
     },
     sentiment: sentToday,
+    llm: {
+      monthCents: Number(monthlyCents.toFixed(4)),
+      monthTokensIn: monthlyTokens.tokensIn,
+      monthTokensOut: monthlyTokens.tokensOut,
+    },
   });
+});
+
+/**
+ * Recent posts feed — newest first, joined with sentiment + driver tag for
+ * the dashboard "activity" stream. Mod-only by default.
+ */
+app.get('/api/dashboard/recent-posts', async (c) => {
+  const limit = Math.min(Math.max(Number.parseInt(c.req.query('limit') ?? '25', 10) || 25, 1), 100);
+  const ids = await getRecentPostIds(limit);
+  const [metas, tags, sents] = await Promise.all([
+    getPostMetaMany(ids),
+    Promise.all(ids.map((id) => getPostTag(id))),
+    Promise.all(ids.map((id) => getSentimentScore(id))),
+  ]);
+  // Re-key by postId for stable join
+  const tagById = new Map(
+    tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
+  );
+  const sentById = new Map(
+    sents.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.contentId, s]),
+  );
+  const items = metas.map((m) => {
+    const t = tagById.get(m.postId);
+    const s = sentById.get(m.postId);
+    return {
+      ...m,
+      driverId: t?.driverId ?? null,
+      taggedBy: t?.taggedBy ?? null,
+      confidence: t?.confidence ?? null,
+      reasoning: t?.reasoning ?? null,
+      sentimentLabel: s?.label ?? null,
+      sentimentScore: s?.score ?? null,
+      sentimentScoredBy: s?.scoredBy ?? null,
+    };
+  });
+  return c.json({ items, count: items.length });
 });
 
 // ---------------------------------------------------------------------------
@@ -149,11 +209,47 @@ app.post('/internal/menu/sentiment-trail', handleSentimentTrailMenu);
 app.post('/internal/menu/mark-agent', handleMarkAgentMenu);
 app.post('/internal/menu/unmark-agent', handleUnmarkAgentMenu);
 
-app.post('/internal/menu/open-dashboard', (c) =>
-  c.json({
-    navigateTo: `https://www.reddit.com/r/${c.req.header('x-subreddit') ?? ''}`,
-  }),
-);
+app.post('/internal/menu/open-dashboard', async (c) => {
+  // Idempotent: reuse the pinned dashboard post if one already exists for this
+  // installation; otherwise create + sticky it. Navigates the mod to it.
+  const sub = context.subredditName;
+  if (!sub) return c.json({ showToast: 'No subreddit context.' }, 400);
+
+  try {
+    const existingId = await redis.get(K.pulsePostId());
+    if (existingId) {
+      log.info('open-dashboard: reusing existing dashboard post', { postId: existingId });
+      return c.json({
+        navigateTo: `https://www.reddit.com/r/${sub}/comments/${existingId.replace('t3_', '')}`,
+      });
+    }
+
+    const post = await reddit.submitCustomPost({
+      title: 'RedLattice · Analytics Dashboard',
+      subredditName: sub,
+    });
+    await redis.set(K.pulsePostId(), post.id);
+    log.info('open-dashboard: post created', { postId: post.id });
+
+    // Best-effort sticky to position 2 so the sub's own pinned content stays on top.
+    try {
+      await post.sticky(2);
+    } catch (err) {
+      log.warn('open-dashboard: sticky failed (non-fatal)', {
+        err: err instanceof Error ? err.message : String(err),
+      });
+    }
+
+    return c.json({
+      navigateTo: `https://www.reddit.com/r/${sub}/comments/${post.id.replace('t3_', '')}`,
+    });
+  } catch (err) {
+    log.error('open-dashboard: failed', {
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return c.json({ showToast: 'Could not create dashboard post.' }, 500);
+  }
+});
 
 // ---------------------------------------------------------------------------
 // Forms

@@ -12,6 +12,7 @@
 import { context, reddit, redis, settings } from '@devvit/web/server';
 import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, K, today } from '@shared/keys.js';
+import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import {
@@ -35,12 +36,15 @@ import {
 } from '@shared/validation.js';
 import type { Context, Hono } from 'hono';
 import Sentiment from 'sentiment';
+import { z } from 'zod';
 
 const HANDLER_POST = 'sentiment:post';
 const HANDLER_COMMENT = 'sentiment:comment';
 const ESCALATION_COOLDOWN_SEC = 4 * 60 * 60; // 4h
 const ESCALATION_SAMPLE_SIZE = 10;
 const DEFAULT_THRESHOLD = 5;
+const LLM_AMBIGUITY_BAND = 0.15; // |lexicon| < this → ask LLM
+const LLM_MIN_TEXT_LEN = 12; // skip LLM on very short content (titles like "ok")
 
 const analyzer = new Sentiment();
 
@@ -55,14 +59,31 @@ export const sentimentModule: RedLatticeModule = {
 
   async onPostCreate(event: OnPostCreateRequest): Promise<void> {
     const parsed = postCreateMinimalSchema.safeParse(event);
-    if (!parsed.success || !parsed.data.post) return;
+    if (!parsed.success || !parsed.data.post) {
+      log.warn('sentiment: post parse failed', {
+        issues: parsed.success ? null : parsed.error.issues,
+      });
+      return;
+    }
     const post = parsed.data.post;
 
     if (!(await processedOnce(HANDLER_POST, post.id))) return;
 
     const text = `${post.title ?? ''} ${post.selftext ?? post.body ?? ''}`;
-    const { score, label } = scoreText(text);
-    await persistScore({ contentId: post.id, contentType: 'post', score, label });
+    const judged = await judge(text);
+    await persistScore({
+      contentId: post.id,
+      contentType: 'post',
+      score: judged.score,
+      label: judged.label,
+      scoredBy: judged.scoredBy,
+    });
+    log.info('sentiment: post scored', {
+      postId: post.id,
+      score: Number(judged.score.toFixed(3)),
+      label: judged.label,
+      scoredBy: judged.scoredBy,
+    });
   },
 
   async onCommentCreate(event: OnCommentCreateRequest): Promise<void> {
@@ -72,8 +93,15 @@ export const sentimentModule: RedLatticeModule = {
 
     if (!(await processedOnce(HANDLER_COMMENT, comment.id))) return;
 
-    const { score, label } = scoreText(comment.body);
-    await persistScore({ contentId: comment.id, contentType: 'comment', score, label });
+    const judged = await judge(comment.body);
+    const { score, label } = judged;
+    await persistScore({
+      contentId: comment.id,
+      contentType: 'comment',
+      score,
+      label,
+      scoredBy: judged.scoredBy,
+    });
 
     if (label === 'negative' && score < -0.5 && comment.postId) {
       await checkForEscalation(comment.postId);
@@ -160,14 +188,45 @@ async function persistScore(args: {
   contentType: 'post' | 'comment';
   score: number;
   label: SentimentLabel;
+  scoredBy: 'lexicon' | 'ai';
 }): Promise<void> {
   const record: SentimentScore = {
     ...args,
     scoredAt: Date.now(),
-    scoredBy: 'lexicon',
   };
   await setSentimentScore(record);
   await incrSentimentRollup(args.label, args.score);
+}
+
+// ---------------------------------------------------------------------------
+// Hybrid judge — lexicon fast path with LLM fallback for ambiguous content
+// ---------------------------------------------------------------------------
+
+const llmSchema = z.object({
+  label: z.enum(['positive', 'neutral', 'negative']),
+  score: z.number().min(-1).max(1),
+  reasoning: z.string().max(160),
+});
+
+async function judge(
+  text: string,
+): Promise<{ score: number; label: SentimentLabel; scoredBy: 'lexicon' | 'ai' }> {
+  const lexicon = scoreText(text);
+  const trimmed = text.trim();
+  if (trimmed.length < LLM_MIN_TEXT_LEN) return { ...lexicon, scoredBy: 'lexicon' };
+  if (Math.abs(lexicon.score) >= LLM_AMBIGUITY_BAND) return { ...lexicon, scoredBy: 'lexicon' };
+
+  const result = await llmObject({
+    name: 'sentiment-judge',
+    schema: llmSchema,
+    system:
+      'You judge the sentiment of short Reddit posts about a brand product. Reply with a label (positive/neutral/negative), a score from -1 (very negative) to +1 (very positive), and a one-sentence reasoning.',
+    prompt: `Text:\n"""${trimmed.slice(0, 1500)}"""`,
+    maxTokens: 120,
+  });
+
+  if (!result.ok) return { ...lexicon, scoredBy: 'lexicon' };
+  return { score: result.data.score, label: result.data.label, scoredBy: 'ai' };
 }
 
 async function checkForEscalation(postId: string): Promise<void> {

@@ -13,6 +13,13 @@ export const K = {
   driverIndex: (driverId: string) => `rl:dr:idx:${driverId}`,
   driverRollup: (date: string) => `rl:dr:roll:${date}`,
 
+  // post metadata (cross-module)
+  postMeta: (postId: string) => `rl:meta:${postId}`,
+  recentPosts: () => 'rl:meta:recent',
+
+  // pinned daily pulse
+  pulsePostId: () => 'rl:pulse:postId',
+
   // agent-verification
   agent: (username: string) => `rl:ag:${username.toLowerCase()}`,
   agentList: () => 'rl:ag:list',

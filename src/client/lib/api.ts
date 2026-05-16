@@ -9,6 +9,7 @@ export interface DashboardSummary {
   drivers: {
     today: { date: string; totalPosts: number; counts: Record<string, number> } | null;
     topDriverId: string | null;
+    topDriverLabel: string | null;
     topDriverCount: number;
   };
   sentiment: {
@@ -19,6 +20,11 @@ export interface DashboardSummary {
     total: number;
     averageScore: number;
   } | null;
+  llm: {
+    monthCents: number;
+    monthTokensIn: number;
+    monthTokensOut: number;
+  };
 }
 
 export interface DriverVolume {
@@ -50,6 +56,33 @@ export interface SentimentRollup {
   averageScore: number;
 }
 
+export interface DriverPost {
+  postId: string;
+  title: string;
+  authorName: string;
+  url: string;
+  createdAt: number;
+  driverId: string;
+  taggedBy?: 'manual' | 'auto' | 'ai' | null;
+  confidence?: number | null;
+  reasoning?: string | null;
+}
+
+export interface RecentPost {
+  postId: string;
+  title: string;
+  authorName: string;
+  url: string;
+  createdAt: number;
+  driverId: string | null;
+  taggedBy: 'manual' | 'auto' | 'ai' | null;
+  confidence: number | null;
+  reasoning: string | null;
+  sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
+  sentimentScore: number | null;
+  sentimentScoredBy: 'lexicon' | 'ai' | null;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const r = await fetch(path, { headers: { accept: 'application/json' } });
   if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
@@ -59,8 +92,14 @@ async function getJson<T>(path: string): Promise<T> {
 export const api = {
   health: () => getJson<{ ok: boolean; ts: number }>('/api/health'),
   summary: () => getJson<DashboardSummary>('/api/dashboard/summary'),
+  recentPosts: (limit = 25) =>
+    getJson<{ items: RecentPost[]; count: number }>(`/api/dashboard/recent-posts?limit=${limit}`),
   taxonomy: () => getJson<{ taxonomy: TaxonomyNode[] }>('/api/drivers/taxonomy'),
   driverVolume: () => getJson<DriverVolume>('/api/drivers/volume'),
+  driverPosts: (driverId: string, limit = 50) =>
+    getJson<{ driverId: string; posts: DriverPost[]; count: number }>(
+      `/api/drivers/${encodeURIComponent(driverId)}/posts?limit=${limit}`,
+    ),
   agents: () => getJson<{ agents: Agent[] }>('/api/agents'),
   sentimentRollup: () =>
     getJson<{ from: string; to: string; series: SentimentRollup[] }>('/api/sentiment/rollup'),

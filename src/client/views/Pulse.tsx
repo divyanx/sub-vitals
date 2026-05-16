@@ -30,7 +30,7 @@ export function Pulse({ onOpenDashboard }: Props) {
         <section className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           <Stat
             label="Top contact driver"
-            value={summary.data.drivers.topDriverId ?? '—'}
+            value={summary.data.drivers.topDriverLabel ?? summary.data.drivers.topDriverId ?? '—'}
             sub={
               summary.data.drivers.topDriverCount > 0
                 ? `${summary.data.drivers.topDriverCount} posts today`

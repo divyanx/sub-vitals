@@ -1,64 +1,79 @@
 /**
  * Structured JSON logger.
  *
- * Built on pino. Auto-injects per-request fields (subredditName, userId,
- * traceId) from Devvit's async-local `context`. Never log values whose keys
- * end in `-key`, `-secret`, or `-token` — those are redacted automatically.
+ * Uses console.{log,warn,error} so Devvit's `devvit logs` capture picks it up
+ * (Devvit hooks the console object, not stdout fd 1). Each call emits one
+ * JSON line. Per-request fields (subredditName, userId, postId) are pulled
+ * from Devvit's async-local `context` when available.
  *
- * Usage:
- *   import { log } from '@shared/log';
- *   log.info('post tagged', { postId, driverId });
+ * Secrets whose keys end in `-key`, `-secret`, `-token`, or whose key is
+ * `apiKey`, `secret`, `token`, are redacted recursively before emission.
+ *
+ * Why not pino: it relies on a worker thread for non-sync transports which
+ * isn't reliable in Devvit's sandboxed Node runtime, and its output bypasses
+ * `console.*`. A 40-line shim does what we need.
  */
 
 import { context } from '@devvit/web/server';
-import pino from 'pino';
 
-const base = pino({
-  level: process.env.LOG_LEVEL ?? 'info',
-  base: { app: 'redlattice' },
-  redact: {
-    paths: ['*-key', '*-secret', '*-token', '*.apiKey', '*.secret', '*.token'],
-    censor: '[REDACTED]',
-  },
-  formatters: {
-    level: (label) => ({ level: label }),
-  },
-  timestamp: pino.stdTimeFunctions.isoTime,
-});
+type Fields = Record<string, unknown>;
+type Level = 'debug' | 'info' | 'warn' | 'error';
 
-function withContext(fields?: Record<string, unknown>): Record<string, unknown> {
-  // `context` access can throw if called outside a request scope (e.g. at
-  // module load). Guard so logging never crashes the caller.
-  let sub: string | undefined;
-  let userId: string | undefined;
-  let postId: string | undefined;
-  try {
-    sub = context.subredditName;
-    userId = context.userId;
-    postId = context.postId;
-  } catch {
-    /* outside request scope — no extra fields */
+const REDACT_KEY_RE = /(?:^|-)(?:key|secret|token|apikey|api[-_]key)$/i;
+
+function redact(value: unknown): unknown {
+  if (value == null) return value;
+  if (Array.isArray(value)) return value.map(redact);
+  if (typeof value === 'object') {
+    const out: Fields = {};
+    for (const [k, v] of Object.entries(value as Fields)) {
+      out[k] = REDACT_KEY_RE.test(k) ? '[REDACTED]' : redact(v);
+    }
+    return out;
   }
-  return {
-    ...(sub && { sub }),
-    ...(userId && { userId }),
-    ...(postId && { postId }),
-    ...fields,
+  return value;
+}
+
+function contextFields(): Fields {
+  try {
+    const fields: Fields = {};
+    if (context.subredditName) fields.sub = context.subredditName;
+    if (context.userId) fields.userId = context.userId;
+    if (context.username) fields.username = context.username;
+    if (context.postId) fields.postId = context.postId;
+    return fields;
+  } catch {
+    return {};
+  }
+}
+
+function emit(level: Level, msg: string, fields?: Fields): void {
+  const record = {
+    ts: new Date().toISOString(),
+    level,
+    app: 'redlattice',
+    msg,
+    ...contextFields(),
+    ...((fields ? (redact(fields) as Fields) : undefined) ?? {}),
   };
+  const line = JSON.stringify(record);
+  if (level === 'error') console.error(line);
+  else if (level === 'warn') console.warn(line);
+  else console.log(line);
 }
 
 export const log = {
-  debug(msg: string, fields?: Record<string, unknown>): void {
-    base.debug(withContext(fields), msg);
+  debug(msg: string, fields?: Fields): void {
+    emit('debug', msg, fields);
   },
-  info(msg: string, fields?: Record<string, unknown>): void {
-    base.info(withContext(fields), msg);
+  info(msg: string, fields?: Fields): void {
+    emit('info', msg, fields);
   },
-  warn(msg: string, fields?: Record<string, unknown>): void {
-    base.warn(withContext(fields), msg);
+  warn(msg: string, fields?: Fields): void {
+    emit('warn', msg, fields);
   },
-  error(msg: string, fields?: Record<string, unknown>): void {
-    base.error(withContext(fields), msg);
+  error(msg: string, fields?: Fields): void {
+    emit('error', msg, fields);
   },
 };
 

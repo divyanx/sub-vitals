@@ -11,6 +11,7 @@ import { log } from './log.js';
 import type {
   AgentRecord,
   DriverRollup,
+  PostMeta,
   PostTag,
   SentimentLabel,
   SentimentRollup,
@@ -73,6 +74,42 @@ export async function getPostTag(postId: string): Promise<PostTag | null> {
 
 export async function getPostsByDriver(driverId: string, limit = 100): Promise<string[]> {
   const members = await redis.zRange(K.driverIndex(driverId), 0, limit - 1, {
+    reverse: true,
+    by: 'rank',
+  });
+  return members.map((m) => m.member);
+}
+
+// ---------------------------------------------------------------------------
+// Post metadata — written once per post for dashboard drill-through
+// ---------------------------------------------------------------------------
+
+const RECENT_POSTS_CAP = 1000;
+
+export async function ensurePostMeta(meta: PostMeta): Promise<void> {
+  const existing = await redis.get(K.postMeta(meta.postId));
+  if (existing) return;
+  await redis.set(K.postMeta(meta.postId), JSON.stringify(meta));
+  await redis.zAdd(K.recentPosts(), { score: meta.createdAt, member: meta.postId });
+  const count = await redis.zCard(K.recentPosts());
+  if (count > RECENT_POSTS_CAP) {
+    await redis.zRemRangeByRank(K.recentPosts(), 0, count - RECENT_POSTS_CAP - 1);
+  }
+}
+
+export async function getPostMeta(postId: string): Promise<PostMeta | null> {
+  const raw = await redis.get(K.postMeta(postId));
+  return raw ? (JSON.parse(raw) as PostMeta) : null;
+}
+
+export async function getPostMetaMany(postIds: string[]): Promise<PostMeta[]> {
+  if (postIds.length === 0) return [];
+  const records = await Promise.all(postIds.map((id) => getPostMeta(id)));
+  return records.filter((r): r is PostMeta => r !== null);
+}
+
+export async function getRecentPostIds(limit = 25): Promise<string[]> {
+  const members = await redis.zRange(K.recentPosts(), 0, limit - 1, {
     reverse: true,
     by: 'rank',
   });

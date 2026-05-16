@@ -17,11 +17,14 @@
 import { context } from '@devvit/web/server';
 import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, today } from '@shared/keys.js';
+import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import {
   DEFAULT_TAXONOMY,
+  ensurePostMeta,
   getDriverRollup,
+  getPostMetaMany,
   getPostsByDriver,
   getPostTag,
   getTaxonomy,
@@ -41,8 +44,10 @@ import {
   tagPostBodySchema,
 } from '@shared/validation.js';
 import type { Context, Hono } from 'hono';
+import { z } from 'zod';
 
 const HANDLER_NAME = 'contact-drivers';
+const LLM_CONFIDENCE_FLOOR = 0.6;
 
 export const contactDriversModule: RedLatticeModule = {
   name: 'contact-drivers',
@@ -57,6 +62,22 @@ export const contactDriversModule: RedLatticeModule = {
     const parsed = postCreateMinimalSchema.safeParse(event);
     if (!parsed.success || !parsed.data.post) return;
     const post = parsed.data.post;
+    const subName = parsed.data.subreddit?.name ?? context.subredditName ?? '';
+
+    log.info('contact-drivers: PostCreate received', {
+      postId: post.id,
+      titleLen: (post.title ?? '').length,
+      bodyLen: (post.selftext ?? post.body ?? '').length,
+    });
+
+    // Cross-module: persist post metadata first (idempotent).
+    await ensurePostMeta({
+      postId: post.id,
+      title: post.title ?? '',
+      authorName: post.authorName ?? 'unknown',
+      url: `https://www.reddit.com/r/${subName}/comments/${post.id.replace('t3_', '')}`,
+      createdAt: Date.now(),
+    });
 
     if (!(await processedOnce(`${HANDLER_NAME}:create`, post.id))) {
       log.debug('contact-drivers: post already processed', { postId: post.id });
@@ -64,23 +85,42 @@ export const contactDriversModule: RedLatticeModule = {
     }
 
     const taxonomy = await getTaxonomy();
-    const text = `${post.title ?? ''} ${post.selftext ?? post.body ?? ''}`.toLowerCase();
-    const suggestion = suggestDriver(text, taxonomy);
-    if (!suggestion) return;
+    const title = post.title ?? '';
+    const body = post.selftext ?? post.body ?? '';
 
+    // 1. Fast lexicon pass.
+    const lexicon = suggestDriver(`${title} ${body}`.toLowerCase(), taxonomy);
+
+    // 2. LLM judgment when lexicon is weak (no match OR low confidence).
+    const needLlm = !lexicon || lexicon.confidence < LLM_CONFIDENCE_FLOOR;
+    let llmResult: { id: string; confidence: number; reasoning: string } | null = null;
+    if (needLlm) {
+      llmResult = await classifyWithLlm({ title, body, taxonomy });
+    }
+
+    const final = llmResult ?? lexicon;
+    if (!final) {
+      log.info('contact-drivers: no tag (lexicon empty, LLM unavailable)', { postId: post.id });
+      return;
+    }
+
+    const reasoning =
+      llmResult && typeof llmResult.reasoning === 'string' ? llmResult.reasoning : undefined;
     const tag: PostTag = {
       postId: post.id,
-      driverId: suggestion.id,
-      taggedBy: 'auto',
-      confidence: suggestion.confidence,
+      driverId: final.id,
+      taggedBy: llmResult ? 'ai' : 'auto',
+      confidence: final.confidence,
+      ...(reasoning ? { reasoning } : {}),
       taggedAt: Date.now(),
     };
     await setPostTag(tag);
-    await incrDriverRollup(suggestion.id);
-    log.info('contact-drivers: auto-tagged', {
+    await incrDriverRollup(final.id);
+    log.info('contact-drivers: tagged', {
       postId: post.id,
-      driverId: suggestion.id,
-      confidence: suggestion.confidence,
+      driverId: final.id,
+      confidence: final.confidence,
+      taggedBy: tag.taggedBy,
     });
   },
 
@@ -105,8 +145,21 @@ export const contactDriversModule: RedLatticeModule = {
     app.get('/api/drivers/:driverId/posts', async (c) => {
       const driverId = c.req.param('driverId');
       const limit = Number.parseInt(c.req.query('limit') ?? '50', 10);
-      const postIds = await getPostsByDriver(driverId, Number.isFinite(limit) ? limit : 50);
-      return c.json({ driverId, postIds, count: postIds.length });
+      const cap = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 200) : 50;
+      const postIds = await getPostsByDriver(driverId, cap);
+      const posts = await getPostMetaMany(postIds);
+      const tags = await Promise.all(postIds.map((id) => getPostTag(id)));
+      const enriched = posts.map((p, i) => {
+        const t = tags[i];
+        return {
+          ...p,
+          driverId,
+          taggedBy: t?.taggedBy,
+          confidence: t?.confidence,
+          reasoning: t?.reasoning,
+        };
+      });
+      return c.json({ driverId, posts: enriched, count: enriched.length });
     });
 
     app.post('/api/drivers/tag', async (c) => {
@@ -240,4 +293,40 @@ function defaultFromDate(): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 30);
   return d.toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// LLM classifier — Phase 2 hybrid layer
+// ---------------------------------------------------------------------------
+
+async function classifyWithLlm(args: {
+  title: string;
+  body: string;
+  taxonomy: TaxonomyNode[];
+}): Promise<{ id: string; confidence: number; reasoning: string } | null> {
+  const ids = args.taxonomy.map((t) => t.id);
+  if (ids.length === 0) return null;
+  const [firstId, ...restIds] = ids;
+  if (!firstId) return null;
+  const schema = z.object({
+    category: z.enum([firstId, ...restIds]),
+    confidence: z.number().min(0).max(1),
+    reasoning: z.string().max(200),
+  });
+  const categoryList = args.taxonomy
+    .map((t) => `- ${t.id}: ${t.label}${t.description ? ` — ${t.description}` : ''}`)
+    .join('\n');
+  const result = await llmObject({
+    name: 'contact-drivers-tag',
+    schema,
+    system:
+      'You categorize Reddit posts in a brand support subreddit by their contact driver (why the customer is posting). Choose the single best matching category. Reply with the category id, your confidence (0-1), and a one-sentence reasoning.',
+    prompt: `Categories:\n${categoryList}\n\nPost title: ${args.title}\nPost body: ${args.body || '(empty)'}\n\nReturn the best matching category id, a confidence score, and a brief reasoning.`,
+  });
+  if (!result.ok) return null;
+  return {
+    id: result.data.category,
+    confidence: result.data.confidence,
+    reasoning: result.data.reasoning,
+  };
 }

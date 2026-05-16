@@ -87,7 +87,16 @@ export interface PostTag {
   taggedBy: 'manual' | 'auto' | 'ai';
   taggedByUser?: string | undefined;
   confidence?: number | undefined;
+  reasoning?: string | undefined;
   taggedAt: number;
+}
+
+export interface PostMeta {
+  postId: string;
+  title: string;
+  authorName: string;
+  url: string;
+  createdAt: number;
 }
 
 export type SentimentLabel = 'positive' | 'neutral' | 'negative';

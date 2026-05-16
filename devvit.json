@@ -2,15 +2,11 @@
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "redlattuce",
   "permissions": {
-    "reddit": {
-      "enable": true,
-      "scope": "moderator",
-      "asUser": []
-    },
+    "reddit": { "enable": true, "scope": "moderator", "asUser": [] },
     "redis": true,
     "http": {
       "enable": true,
-      "domains": ["api.openai.com", "generativelanguage.googleapis.com"]
+      "domains": ["api.openai.com", "generativelanguage.googleapis.com", "openrouter.ai"]
     },
     "media": true
   },
@@ -38,44 +34,39 @@
   "menu": {
     "items": [
       {
-        "label": "RedLattice · Tag issue",
+        "label": "Tag issue",
         "description": "Categorize this post by contact driver",
+        "location": "post",
         "forUserType": "moderator",
-        "location": ["post"],
-        "endpoint": "/internal/menu/tag-issue",
-        "postFilter": "none"
+        "endpoint": "/internal/menu/tag-issue"
       },
       {
-        "label": "RedLattice · View sentiment",
+        "label": "View sentiment",
         "description": "Show the sentiment score recorded for this post",
+        "location": "post",
         "forUserType": "moderator",
-        "location": ["post"],
-        "endpoint": "/internal/menu/sentiment-trail",
-        "postFilter": "none"
+        "endpoint": "/internal/menu/sentiment-trail"
       },
       {
-        "label": "RedLattice · Mark verified agent",
+        "label": "Mark verified agent",
         "description": "Mark this comment's author as a verified company agent",
+        "location": "comment",
         "forUserType": "moderator",
-        "location": ["comment"],
-        "endpoint": "/internal/menu/mark-agent",
-        "postFilter": "none"
+        "endpoint": "/internal/menu/mark-agent"
       },
       {
-        "label": "RedLattice · Remove verified agent",
+        "label": "Remove verified agent",
         "description": "Remove the comment author's verified-agent status",
+        "location": "comment",
         "forUserType": "moderator",
-        "location": ["comment"],
-        "endpoint": "/internal/menu/unmark-agent",
-        "postFilter": "none"
+        "endpoint": "/internal/menu/unmark-agent"
       },
       {
-        "label": "RedLattice · Open dashboard",
+        "label": "Open RedLattice dashboard",
         "description": "Open the RedLattice analytics dashboard",
+        "location": "subreddit",
         "forUserType": "moderator",
-        "location": ["subreddit"],
-        "endpoint": "/internal/menu/open-dashboard",
-        "postFilter": "none"
+        "endpoint": "/internal/menu/open-dashboard"
       }
     ]
   },
@@ -96,17 +87,23 @@
   },
   "settings": {
     "global": {
-      "openai-api-key": {
+      "openrouter-api-key": {
         "type": "string",
-        "label": "OpenAI API key",
-        "helpText": "Used for AI auto-tagging (Phase 2). Encrypted at rest.",
+        "label": "OpenRouter API key",
+        "helpText": "OpenAI-compatible meta-provider. Used for AI tagging + sentiment. Encrypted at rest. Get one at openrouter.ai/keys.",
         "isSecret": true
       },
-      "gemini-api-key": {
+      "llm-model": {
         "type": "string",
-        "label": "Gemini API key",
-        "helpText": "Fallback AI provider for auto-tagging (Phase 2). Encrypted at rest.",
-        "isSecret": true
+        "label": "OpenRouter model slug",
+        "helpText": "Model identifier (e.g. anthropic/claude-haiku-4.5, openai/gpt-5-mini, google/gemini-2.5-flash). Defaults to claude-haiku-4.5 if blank.",
+        "defaultValue": "anthropic/claude-haiku-4.5"
+      },
+      "llm-monthly-cost-cap-cents": {
+        "type": "number",
+        "label": "Monthly LLM cost cap (USD cents)",
+        "helpText": "Hard limit on AI spend per calendar month per installation. When exceeded, falls back to lexicon-only. Default $5.00 = 500 cents.",
+        "defaultValue": 500
       }
     },
     "subreddit": {
