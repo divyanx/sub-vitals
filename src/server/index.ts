@@ -28,6 +28,7 @@ import {
   handleTagIssueFormSubmit,
   handleTagIssueMenu,
 } from '@modules/contact-drivers/index.js';
+import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
 import { K, today, yyyymm } from '@shared/keys.js';
@@ -52,6 +53,7 @@ import { logger } from 'hono/logger';
 registerModule(agentVerificationModule);
 registerModule(contactDriversModule);
 registerModule(sentimentModule);
+registerModule(dashboardOrchestratorModule);
 
 // ---------------------------------------------------------------------------
 // App
@@ -162,7 +164,12 @@ app.get('/api/dashboard/recent-posts', async (c) => {
 // Mount module-owned /api routes
 // ---------------------------------------------------------------------------
 
-for (const mod of [agentVerificationModule, contactDriversModule, sentimentModule]) {
+for (const mod of [
+  agentVerificationModule,
+  contactDriversModule,
+  sentimentModule,
+  dashboardOrchestratorModule,
+]) {
   mod.apiRoutes?.(app);
 }
 
