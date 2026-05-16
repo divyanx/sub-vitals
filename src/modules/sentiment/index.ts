@@ -16,9 +16,11 @@ import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import {
+  ensureCommentMeta,
   getSentimentRollup,
   getSentimentScore,
   incrSentimentRollup,
+  isAgent,
   setSentimentScore,
 } from '@shared/storage.js';
 import {
@@ -92,6 +94,27 @@ export const sentimentModule: RedLatticeModule = {
     const comment = parsed.data.comment;
 
     if (!(await processedOnce(HANDLER_COMMENT, comment.id))) return;
+
+    // Persist comment metadata up-front so the dashboard's thread view has
+    // everything it needs without re-fetching from Reddit. Best-effort agent
+    // lookup — falls back to false on any error.
+    if (comment.postId) {
+      let agentMarker = false;
+      try {
+        agentMarker = comment.authorName ? await isAgent(comment.authorName) : false;
+      } catch (err) {
+        log.warn('sentiment: agent lookup failed (non-fatal)', { err: String(err) });
+      }
+      await ensureCommentMeta({
+        commentId: comment.id,
+        postId: comment.postId,
+        ...(comment.parentId ? { parentId: comment.parentId } : {}),
+        authorName: comment.authorName ?? 'unknown',
+        body: comment.body,
+        createdAt: Date.now(),
+        isAgent: agentMarker,
+      });
+    }
 
     const judged = await judge(comment.body);
     const { score, label } = judged;

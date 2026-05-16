@@ -399,6 +399,7 @@ function DriverPostsPanel({ driver }: { driver: TaxonomyNode }) {
 
 function DriverPostList({ posts, driverId }: { posts: DriverPost[]; driverId: string }) {
   const qc = useQueryClient();
+  const [openThread, setOpenThread] = useState<string | null>(null);
   const mutate = async (postId: string, status: PostStatus) => {
     await api.setPostStatus(postId, status);
     await Promise.all([
@@ -467,10 +468,90 @@ function DriverPostList({ posts, driverId }: { posts: DriverPost[]; driverId: st
                 Take ownership
               </button>
             ) : null}
+            <button
+              type="button"
+              onClick={() => setOpenThread(openThread === p.postId ? null : p.postId)}
+              className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+            >
+              {openThread === p.postId ? 'Hide thread' : 'Show thread'}
+            </button>
           </div>
+          {openThread === p.postId ? (
+            <div className="mt-3">
+              <ThreadPanel postId={p.postId} />
+            </div>
+          ) : null}
         </li>
       ))}
     </ul>
+  );
+}
+
+function ThreadPanel({ postId }: { postId: string }) {
+  const q = useQuery({
+    queryKey: ['post-thread', postId],
+    queryFn: () => api.postThread(postId),
+  });
+  if (q.isPending) return <SkeletonList />;
+  if (q.isError) return <ErrorMsg msg="Couldn't load thread." retry={() => q.refetch()} />;
+  const { comments, heat } = q.data;
+  if (comments.length === 0)
+    return (
+      <EmptyHint>
+        No comments processed on this post yet. New comments appear within ~30s.
+      </EmptyHint>
+    );
+  return (
+    <div className="space-y-3 rounded-lg border border-neutral-800 bg-neutral-950/60 p-3">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-neutral-400">
+          {comments.length} comment{comments.length === 1 ? '' : 's'} processed
+        </span>
+        {heat.isHot ? (
+          <span className="rounded-full border border-rose-700 bg-rose-900/40 px-2 py-0.5 text-rose-200">
+            🔥 thread heating up ({(heat.negativeShare * 100).toFixed(0)}% recent negative)
+          </span>
+        ) : (
+          <span className="text-neutral-500">
+            {(heat.negativeShare * 100).toFixed(0)}% recent negative
+          </span>
+        )}
+      </div>
+      <ul className="space-y-2">
+        {comments.map((c) => (
+          <li
+            key={c.commentId}
+            className={`rounded-lg border px-3 py-2 ${
+              c.isAgent ? 'border-blue-800 bg-blue-950/30' : 'border-neutral-800 bg-neutral-900'
+            }`}
+          >
+            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+              <span className={c.isAgent ? 'font-medium text-blue-300' : 'text-neutral-300'}>
+                u/{c.authorName}
+              </span>
+              {c.isAgent ? (
+                <span className="rounded-full border border-blue-700 bg-blue-900/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-blue-200">
+                  Verified agent
+                </span>
+              ) : null}
+              <span>·</span>
+              <span>{relativeTime(c.createdAt)}</span>
+              {c.sentimentLabel ? (
+                <>
+                  <span>·</span>
+                  <SentimentBadge
+                    label={c.sentimentLabel}
+                    score={c.sentimentScore}
+                    by={c.sentimentScoredBy}
+                  />
+                </>
+              ) : null}
+            </div>
+            <div className="mt-1 text-sm whitespace-pre-wrap text-neutral-200">{c.body}</div>
+          </li>
+        ))}
+      </ul>
+    </div>
   );
 }
 

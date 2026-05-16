@@ -17,6 +17,10 @@ export const K = {
   postMeta: (postId: string) => `rl:meta:${postId}`,
   recentPosts: () => 'rl:meta:recent',
 
+  // comment metadata + per-post thread index
+  commentMeta: (commentId: string) => `rl:cmt:${commentId}`,
+  commentsForPost: (postId: string) => `rl:cmt:post:${postId}`,
+
   // pinned daily pulse
   pulsePostId: () => 'rl:pulse:postId',
 

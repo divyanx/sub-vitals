@@ -104,6 +104,16 @@ export interface PostMeta {
   createdAt: number;
 }
 
+export interface CommentMeta {
+  commentId: string;
+  postId: string;
+  parentId?: string | undefined;
+  authorName: string;
+  body: string;
+  createdAt: number;
+  isAgent: boolean;
+}
+
 export type SentimentLabel = 'positive' | 'neutral' | 'negative';
 
 export interface SentimentScore {

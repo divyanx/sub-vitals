@@ -10,6 +10,7 @@ import { K, today } from './keys.js';
 import { log } from './log.js';
 import type {
   AgentRecord,
+  CommentMeta,
   DriverRollup,
   PostMeta,
   PostStatus,
@@ -133,6 +134,47 @@ export async function getPostMetaMany(postIds: string[]): Promise<PostMeta[]> {
 export async function getRecentPostIds(limit = 25): Promise<string[]> {
   const members = await redis.zRange(K.recentPosts(), 0, limit - 1, {
     reverse: true,
+    by: 'rank',
+  });
+  return members.map((m) => m.member);
+}
+
+// ---------------------------------------------------------------------------
+// Comment metadata — persisted per comment for thread reconstruction
+// ---------------------------------------------------------------------------
+
+const COMMENTS_PER_POST_CAP = 500;
+
+export async function ensureCommentMeta(meta: CommentMeta): Promise<void> {
+  const existing = await redis.get(K.commentMeta(meta.commentId));
+  if (existing) return;
+  await redis.set(K.commentMeta(meta.commentId), JSON.stringify(meta));
+  await redis.zAdd(K.commentsForPost(meta.postId), {
+    score: meta.createdAt,
+    member: meta.commentId,
+  });
+  const count = await redis.zCard(K.commentsForPost(meta.postId));
+  if (count > COMMENTS_PER_POST_CAP) {
+    await redis.zRemRangeByRank(
+      K.commentsForPost(meta.postId),
+      0,
+      count - COMMENTS_PER_POST_CAP - 1,
+    );
+  }
+}
+
+export async function getCommentMeta(commentId: string): Promise<CommentMeta | null> {
+  const raw = await redis.get(K.commentMeta(commentId));
+  return raw ? (JSON.parse(raw) as CommentMeta) : null;
+}
+
+/**
+ * Return all known comments for a post, oldest first (so the thread reads
+ * top-to-bottom in chronological order — easier to follow than reverse).
+ */
+export async function getCommentIdsForPost(postId: string): Promise<string[]> {
+  const members = await redis.zRange(K.commentsForPost(postId), 0, -1, {
+    reverse: false,
     by: 'rank',
   });
   return members.map((m) => m.member);

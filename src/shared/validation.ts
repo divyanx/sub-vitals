@@ -68,6 +68,7 @@ export const commentCreateMinimalSchema = z.object({
       authorId: z.string().optional(),
       authorName: z.string().optional(),
       postId: z.string().optional(),
+      parentId: z.string().optional(),
     })
     .optional(),
   subreddit: z

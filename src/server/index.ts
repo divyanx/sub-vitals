@@ -37,7 +37,10 @@ import { K, today, yyyymm } from '@shared/keys.js';
 import { readMonthlyCents, readMonthlyTokens } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import {
+  getCommentIdsForPost,
+  getCommentMeta,
   getDriverRollup,
+  getPostMeta,
   getPostMetaMany,
   getPostTag,
   getRecentPostIds,
@@ -227,6 +230,67 @@ function csvField(s: string): string {
   }
   return s;
 }
+
+/**
+ * Per-post comment thread — joined with per-comment sentiment + agent badge
+ * + parent linkage. Ordered chronologically so it reads top-to-bottom.
+ * Includes the parent post's meta + tag + sentiment for context. The
+ * dashboard's "expand thread" panel consumes this single endpoint.
+ */
+app.get('/api/posts/:postId/thread', async (c) => {
+  const postId = c.req.param('postId');
+  const [postMeta, postTag, postSent, commentIds] = await Promise.all([
+    getPostMeta(postId),
+    getPostTag(postId),
+    getSentimentScore(postId),
+    getCommentIdsForPost(postId),
+  ]);
+  const comments = await Promise.all(commentIds.map((id) => getCommentMeta(id)));
+  const sents = await Promise.all(commentIds.map((id) => getSentimentScore(id)));
+  const items = comments
+    .map((cm, i) => {
+      if (!cm) return null;
+      const s = sents[i];
+      return {
+        commentId: cm.commentId,
+        parentId: cm.parentId ?? null,
+        authorName: cm.authorName,
+        body: cm.body,
+        createdAt: cm.createdAt,
+        isAgent: cm.isAgent,
+        sentimentLabel: s?.label ?? null,
+        sentimentScore: s?.score ?? null,
+        sentimentScoredBy: s?.scoredBy ?? null,
+      };
+    })
+    .filter((x): x is NonNullable<typeof x> => x !== null);
+
+  // "Thread heat" — share of recent comments that are negative (last 10).
+  const recent = items.slice(-10);
+  const negShare =
+    recent.length > 0
+      ? recent.filter((c) => c.sentimentLabel === 'negative').length / recent.length
+      : 0;
+
+  return c.json({
+    post: postMeta
+      ? {
+          ...postMeta,
+          driverId: postTag?.driverId ?? null,
+          taggedBy: postTag?.taggedBy ?? null,
+          status: postTag?.status ?? null,
+          sentimentLabel: postSent?.label ?? null,
+          sentimentScore: postSent?.score ?? null,
+        }
+      : null,
+    comments: items,
+    heat: {
+      sampleSize: recent.length,
+      negativeShare: Number(negShare.toFixed(3)),
+      isHot: negShare >= 0.5 && recent.length >= 3,
+    },
+  });
+});
 
 /**
  * Recent posts feed — newest first, joined with sentiment + driver tag for

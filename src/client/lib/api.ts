@@ -100,6 +100,33 @@ export const api = {
     getJson<{ items: RecentPost[]; count: number }>(`/api/dashboard/recent-posts?limit=${limit}`),
   taxonomy: () => getJson<{ taxonomy: TaxonomyNode[] }>('/api/drivers/taxonomy'),
   driverVolume: () => getJson<DriverVolume>('/api/drivers/volume'),
+  postThread: (postId: string) =>
+    getJson<{
+      post: {
+        postId: string;
+        title: string;
+        authorName: string;
+        url: string;
+        createdAt: number;
+        driverId: string | null;
+        taggedBy: 'manual' | 'auto' | 'ai' | null;
+        status: PostStatus | null;
+        sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
+        sentimentScore: number | null;
+      } | null;
+      comments: Array<{
+        commentId: string;
+        parentId: string | null;
+        authorName: string;
+        body: string;
+        createdAt: number;
+        isAgent: boolean;
+        sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
+        sentimentScore: number | null;
+        sentimentScoredBy: 'lexicon' | 'ai' | null;
+      }>;
+      heat: { sampleSize: number; negativeShare: number; isHot: boolean };
+    }>(`/api/posts/${encodeURIComponent(postId)}/thread`),
   driverPosts: (driverId: string, opts: { limit?: number; status?: PostStatus } = {}) => {
     const q = new URLSearchParams();
     q.set('limit', String(opts.limit ?? 50));
