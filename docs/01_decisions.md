@@ -141,4 +141,47 @@ We could build these as two separate apps, or as one React app with different vi
 
 ---
 
-(Add new decisions above as ADR-09, ADR-10, …)
+---
+
+## ADR-09 · LLM tagging via OpenRouter, hybrid with lexicon
+
+**Date:** 2026-05-17
+**Status:** Accepted
+
+**Context.** Phase 1 shipped with keyword-only contact-driver classification and AFINN-only sentiment. Both are deterministic and free but miss subtle cases (sarcasm, multi-issue posts, anything not blatantly worded). Hackathon scoring rewards demos of real AI in action.
+
+**Decision.** Use **OpenRouter** (OpenAI-compatible meta-provider) via the **Vercel AI SDK 6** with `@ai-sdk/openai-compatible`. Default model `anthropic/claude-haiku-4.5` (configurable per-installation via the `llm-model` global setting). Pipelines are **hybrid** — lexicon runs first as a fast/free pass; LLM is invoked only when the lexicon answer is weak.
+
+**Why OpenRouter.** One key gives access to every model worth using (Anthropic, OpenAI, Google, Meta, Mistral, ...). Per-installation model swap without redeploy. Single billing surface. Standard OpenAI-compatible API so we never get locked in.
+
+**Hybrid escalation rules.**
+- **contact-drivers:** lexicon first → if no match or `confidence < 0.6`, call LLM with structured output enforcing categories from the current taxonomy. Tag stored with `taggedBy='ai'` + the model's reasoning.
+- **sentiment:** lexicon first → if `|score| < 0.15` AND text length ≥ 12 chars, escalate. Otherwise lexicon wins. Score stored with `scoredBy='ai'` for LLM-judged.
+
+**Cost control.** Every call gates through `src/shared/llm.ts` which:
+- Reads `openrouter-api-key` (global setting, encrypted) — returns failure if missing
+- Estimates per-call cost from token counts × a per-model cents table; cumulative spend tracked in `rl:cost:{YYYY-MM}` (HASH)
+- Hard cap from `llm-monthly-cost-cap-cents` setting (default $5/mo per installation); LLM returns failure when exceeded → automatic fall-back to lexicon
+- 24h SHA-256 prompt-hash response cache in `rl:llm:cache:{hash}`
+- Token-bucket rate limit (60 req/min) shared across all LLM calls per installation
+- AbortController 15s timeout, p-retry 3x exponential backoff + jitter
+- Never throws — returns `LLMResult<T> = success | { ok:false, reason }`. Callers always have a clean fallback path.
+
+**Consequences.**
+- The dashboard shows `taggedBy: 'ai' | 'auto' | 'manual'` and `scoredBy: 'lexicon' | 'ai'` badges, so mods can see what made each decision.
+- AI spend appears as a card on the Overview tab — operators see what it's costing them.
+- Setting the cap to 0 effectively disables AI without uninstalling.
+
+## ADR-10 · CSV export as primary external-integration path
+
+**Date:** 2026-05-17
+**Status:** Accepted
+
+**Context.** "Will Redis support professional use cases?" was the right question to ask. Devvit Redis is great for the operational tier (counters, recent activity) but isn't suited for long retention, ad-hoc analytics, or being a data source for Sprinklr / Khoros / a customer's data warehouse.
+
+**Decision.** Expose `GET /api/export/posts.csv?limit=N` (mod-only, same-origin via dashboard). Customers who need real warehouse analytics poll this endpoint and ingest into their own systems.
+
+**Why CSV.** Universal. Every BI tool, every warehouse loader, every spreadsheet accepts it. Phase 2 will add bearer-token auth + an additional JSON pull endpoint for fully programmatic ingestion.
+
+**Consequences.** RedLattice positions cleanly as "the on-Reddit analytics tier"; customers wire the CSV pull into their existing CX stack in 30 minutes. No partnership negotiation needed.
+

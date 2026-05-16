@@ -44,16 +44,15 @@ We're shipping in 11 days. Picking an older toolchain "to be safe" trades short-
 
 Pinning to specific latest-stable versions gives us both: modern DX *and* reproducibility.
 
-## Considered and deferred to Phase 2
+## AI / LLM (added 2026-05-17)
 
-When AI auto-tagging ships (post-hackathon), we'll add:
+| Package | Version | Role |
+|---|---|---|
+| **`ai`** | `6.0.184` | Vercel AI SDK — the `generateObject` API gives us schema-validated structured outputs in one call. Provider-agnostic. |
+| **`@ai-sdk/openai-compatible`** | `2.0.47` | Provider factory for any OpenAI-compatible endpoint. Pointed at OpenRouter's `https://openrouter.ai/api/v1`. One key, dozens of models. |
+| **`p-retry`** | `8.0.0` | Retry with exponential backoff + jitter. Used inside `llm.ts` to absorb transient 429/503 from upstream providers. |
 
-| Package | For |
-|---|---|
-| `ai` + `@ai-sdk/openai` + `@ai-sdk/google` | Vercel AI SDK — standard LLM client with provider abstraction, retries, streaming, fallbacks |
-| `p-retry` | Retry with exponential backoff + jitter (used inside LLM wrapper) |
-
-Adding these in Phase 1 would bloat `node_modules` for no benefit — Phase 1 modules don't call LLMs.
+The whole AI pipeline lives in `src/shared/llm.ts`. See [`docs/01_decisions.md#adr-09`](01_decisions.md) for the hybrid lexicon → LLM escalation policy and cost controls.
 
 ## Considered and hand-rolled
 

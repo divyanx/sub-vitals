@@ -125,7 +125,7 @@ export async function takeToken(name: string, capacity: number, refillPerSec: nu
 
 Redis-backed token bucket per installation. Used to gate external HTTP calls (LLM providers in Phase 2+).
 
-## LLM client (Phase 2 wiring, scaffolded now)
+## LLM client (active — wires contact-drivers + sentiment)
 
 ```ts
 // src/shared/llm.ts
@@ -140,7 +140,7 @@ Wraps OpenAI / Gemini with:
 - Response cache by `sha256(prompt)` for 24h
 - Cost tracking — increments `rl:cost:{YYYY-MM}` per call; hard cap configurable
 
-Phase 1 modules don't call this. It exists so Phase 2 isn't building infrastructure under deadline pressure.
+Both `contact-drivers` and `sentiment` call this with structured-output Zod schemas as a hybrid escalation layer. Lexicon wins when it's confident; LLM augments when it isn't. The client returns a discriminated-union `LLMResult<T>` and never throws — callers always have a deterministic fallback.
 
 ## Logger
 
