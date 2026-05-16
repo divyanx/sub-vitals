@@ -29,7 +29,7 @@ import {
   type TaxonomyNode,
 } from '../lib/api.ts';
 
-type Tab = 'overview' | 'drivers' | 'sentiment' | 'agents';
+type Tab = 'overview' | 'drivers' | 'sentiment' | 'agents' | 'export';
 
 export function Dashboard() {
   const [tab, setTab] = useState<Tab>('overview');
@@ -43,6 +43,7 @@ export function Dashboard() {
         {tab === 'drivers' && <Drivers />}
         {tab === 'sentiment' && <SentimentTab />}
         {tab === 'agents' && <Agents />}
+        {tab === 'export' && <ExportTab />}
       </main>
     </div>
   );
@@ -67,6 +68,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'drivers', label: 'Contact drivers' },
   { id: 'sentiment', label: 'Sentiment' },
   { id: 'agents', label: 'Agents' },
+  { id: 'export', label: 'Export' },
 ];
 
 function Nav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
@@ -510,6 +512,60 @@ function AgentList({ agents }: { agents: Agent[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Export — CSV download for warehouse / Sprinklr-style ingestion
+// ---------------------------------------------------------------------------
+
+function ExportTab() {
+  return (
+    <div className="space-y-6">
+      <section>
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">Data export</h2>
+        <p className="mb-4 max-w-2xl text-sm text-neutral-400">
+          RedLattice keeps the operational hot data in Devvit Redis. For longer retention, cross-sub
+          analytics, or pulling into your own warehouse (BigQuery, Snowflake, Sprinklr), export the
+          most recent posts as CSV. Endpoint is mod-only and same-origin to the dashboard.
+        </p>
+        <div className="flex flex-wrap gap-3">
+          <a
+            href="/api/export/posts.csv?limit=500"
+            target="_top"
+            rel="noopener noreferrer"
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-100 transition hover:border-orange-500 hover:text-orange-300"
+          >
+            Download recent 500 posts (CSV)
+          </a>
+          <a
+            href="/api/export/posts.csv?limit=1000"
+            target="_top"
+            rel="noopener noreferrer"
+            className="rounded-md border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-100 transition hover:border-orange-500 hover:text-orange-300"
+          >
+            Download recent 1000 posts (CSV)
+          </a>
+        </div>
+      </section>
+      <section>
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">REST endpoints</h2>
+        <div className="space-y-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 font-mono text-xs text-neutral-300">
+          <div>GET /api/dashboard/summary</div>
+          <div>GET /api/dashboard/recent-posts?limit=N</div>
+          <div>GET /api/drivers/taxonomy</div>
+          <div>GET /api/drivers/volume?from=YYYY-MM-DD&amp;to=YYYY-MM-DD</div>
+          <div>GET /api/drivers/&lt;driverId&gt;/posts?limit=N</div>
+          <div>GET /api/sentiment/rollup?from=YYYY-MM-DD&amp;to=YYYY-MM-DD</div>
+          <div>GET /api/agents</div>
+          <div>GET /api/export/posts.csv?limit=N</div>
+        </div>
+        <p className="mt-3 max-w-2xl text-xs text-neutral-500">
+          All routes are mod-protected and return JSON unless otherwise noted. Phase 2 will add
+          bearer-token auth so external services can pull directly without a mod session.
+        </p>
+      </section>
+    </div>
   );
 }
 

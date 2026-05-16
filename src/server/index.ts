@@ -125,6 +125,78 @@ app.get('/api/dashboard/summary', async (c) => {
 });
 
 /**
+ * CSV export — primary "professional integration" hook. Customers running
+ * Sprinklr / Khoros / a warehouse can poll this endpoint and ingest into
+ * whatever they want without touching Redis directly. Honors the same recent-
+ * post cap as the activity feed.
+ */
+app.get('/api/export/posts.csv', async (c) => {
+  const limit = Math.min(
+    Math.max(Number.parseInt(c.req.query('limit') ?? '500', 10) || 500, 1),
+    1000,
+  );
+  const ids = await getRecentPostIds(limit);
+  const [metas, tags, sents] = await Promise.all([
+    getPostMetaMany(ids),
+    Promise.all(ids.map((id) => getPostTag(id))),
+    Promise.all(ids.map((id) => getSentimentScore(id))),
+  ]);
+  const tagById = new Map(
+    tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
+  );
+  const sentById = new Map(
+    sents.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.contentId, s]),
+  );
+  const header = [
+    'post_id',
+    'created_at',
+    'author',
+    'title',
+    'url',
+    'driver_id',
+    'tagged_by',
+    'tag_confidence',
+    'sentiment_label',
+    'sentiment_score',
+    'sentiment_scored_by',
+  ];
+  const rows: string[] = [header.join(',')];
+  for (const m of metas) {
+    const t = tagById.get(m.postId);
+    const s = sentById.get(m.postId);
+    rows.push(
+      [
+        m.postId,
+        new Date(m.createdAt).toISOString(),
+        m.authorName,
+        csvField(m.title),
+        m.url,
+        t?.driverId ?? '',
+        t?.taggedBy ?? '',
+        t?.confidence != null ? t.confidence.toFixed(3) : '',
+        s?.label ?? '',
+        s?.score != null ? s.score.toFixed(3) : '',
+        s?.scoredBy ?? '',
+      ].join(','),
+    );
+  }
+  return new Response(rows.join('\n'), {
+    status: 200,
+    headers: {
+      'content-type': 'text/csv; charset=utf-8',
+      'content-disposition': `attachment; filename="redlattice-posts-${today()}.csv"`,
+    },
+  });
+});
+
+function csvField(s: string): string {
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return `"${s.replace(/"/g, '""')}"`;
+  }
+  return s;
+}
+
+/**
  * Recent posts feed — newest first, joined with sentiment + driver tag for
  * the dashboard "activity" stream. Mod-only by default.
  */
