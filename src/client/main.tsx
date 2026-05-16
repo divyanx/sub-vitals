@@ -8,8 +8,11 @@ const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
       retry: 2,
-      staleTime: 60_000,
-      refetchOnWindowFocus: false,
+      // Treat data as stale after 10s so a manual refetch is quick; auto-poll
+      // every 30s so new posts/sentiment scores appear without a manual refresh.
+      staleTime: 10_000,
+      refetchInterval: 30_000,
+      refetchOnWindowFocus: true,
     },
   },
 });
