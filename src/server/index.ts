@@ -77,6 +77,36 @@ app.onError((err, c) => {
 // Health probe (no auth).
 app.get('/api/health', (c) => c.json({ ok: true, ts: Date.now() }));
 
+/**
+ * Admin debug — module + LLM + storage state at a glance. Mod-only.
+ * Use this when the dashboard looks wrong: confirms what the server thinks
+ * the state is, separate from what the UI renders.
+ */
+app.get('/api/admin/debug', async (c) => {
+  const [monthCents, monthTokens, recentIds, taxonomy, dashboardPostId] = await Promise.all([
+    readMonthlyCents(),
+    readMonthlyTokens(),
+    getRecentPostIds(10),
+    getTaxonomy(),
+    redis.get(K.pulsePostId()),
+  ]);
+  return c.json({
+    server: { ts: Date.now(), uptimeSec: Math.round(process.uptime()) },
+    modules: [
+      agentVerificationModule.name,
+      contactDriversModule.name,
+      sentimentModule.name,
+      dashboardOrchestratorModule.name,
+    ],
+    llm: { monthCents, ...monthTokens, capCents: 500 },
+    taxonomy: taxonomy.map((t) => t.id),
+    recentPostIds: recentIds,
+    dashboardPostId,
+    subreddit: context.subredditName ?? null,
+    username: context.username ?? null,
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Cross-module aggregate route — single fetch for the dashboard overview tab
 // ---------------------------------------------------------------------------
