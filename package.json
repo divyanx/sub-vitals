@@ -1,6 +1,6 @@
 {
-  "name": "redlattice",
-  "version": "0.1.0",
+  "name": "redlattuce",
+  "version": "0.0.0",
   "private": true,
   "description": "Native CX analytics for Reddit brand communities — issue taxonomy, sentiment, agent verification, response analytics. Built on Devvit Web.",
   "license": "BSD-3-Clause",
@@ -12,9 +12,7 @@
   "scripts": {
     "dev": "devvit playtest",
     "clean": "rm -rf dist",
-    "build": "npm run clean && npm run build:client && npm run build:server",
-    "build:client": "vite build",
-    "build:server": "tsc -p tsconfig.server.json",
+    "build": "npm run clean && vite build",
     "type-check": "tsc -p tsconfig.server.json --noEmit && tsc -p tsconfig.client.json --noEmit",
     "lint": "biome check .",
     "lint:fix": "biome check --write .",
@@ -27,6 +25,7 @@
     "prepare": "simple-git-hooks"
   },
   "dependencies": {
+    "@devvit/start": "0.12.23",
     "@devvit/web": "0.12.23",
     "@hono/node-server": "2.0.2",
     "@tanstack/react-query": "5.100.10",

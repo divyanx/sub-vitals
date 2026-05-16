@@ -8,7 +8,7 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/post/**/*"],
+  "include": ["src/client/**/*"],
   "exclude": [
     "src/server/**/*",
     "src/shared/**/*",

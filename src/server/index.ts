@@ -17,7 +17,7 @@
  */
 
 import { createServer, getServerPort } from '@devvit/web/server';
-import { getRequestListener } from '@hono/node-server';
+import { serve } from '@hono/node-server';
 import {
   agentVerificationModule,
   handleMarkAgentMenu,
@@ -180,7 +180,5 @@ app.post('/internal/scheduler/weekly-digest', (c) => {
 // ---------------------------------------------------------------------------
 
 const port = getServerPort();
-const listener = getRequestListener(app.fetch);
-const server = createServer(listener);
-server.listen(port);
+serve({ fetch: app.fetch, createServer, port });
 log.info('redlattice server listening', { port });

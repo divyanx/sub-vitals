@@ -1,34 +1,31 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "schema": "v1",
-  "name": "redlattice",
+  "name": "redlattuce",
   "permissions": {
-    "reddit": { "enable": true, "scope": "moderator", "asUser": [] },
+    "reddit": {
+      "enable": true,
+      "scope": "moderator",
+      "asUser": []
+    },
     "redis": true,
     "http": {
       "enable": true,
       "domains": ["api.openai.com", "generativelanguage.googleapis.com"]
     },
-    "media": true,
-    "menu": true,
-    "settings": true,
-    "triggers": true,
-    "realtime": false,
-    "payments": false
+    "media": true
   },
   "post": {
-    "dir": "dist/post",
+    "dir": "dist/client",
     "entrypoints": {
       "default": {
         "entry": "index.html",
-        "name": "Daily Pulse",
         "height": "tall"
       }
     }
   },
   "server": {
     "dir": "dist/server",
-    "entry": "server/index.js"
+    "entry": "index.cjs"
   },
   "triggers": {
     "onAppInstall": "/internal/triggers/app-install",
@@ -137,7 +134,11 @@
       }
     }
   },
+  "scripts": {
+    "build": "vite build",
+    "dev": "vite build --watch"
+  },
   "dev": {
-    "subreddit": ""
+    "subreddit": "redlattice_divyanx_"
   }
 }

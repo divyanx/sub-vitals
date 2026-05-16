@@ -1,31 +1,18 @@
-import { resolve } from 'node:path';
+import { devvit } from '@devvit/start/vite';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { defineConfig } from 'vite';
 
 /**
- * Vite config for the Devvit Web post entry.
+ * Unified Vite config powered by `@devvit/start/vite`.
  *
- * The Daily Pulse custom post and full dashboard are served from a single React
- * bundle inside Devvit Web's iframe. The same bundle renders different views
- * based on the URL the iframe is mounted with — `?view=pulse` for the pinned
- * post, default for the full dashboard.
+ * The `devvit()` plugin uses Vite's Environment API to build the client
+ * (React iframe webview) and server (Devvit Web HTTP handlers) in one pass.
+ * Output goes to `dist/client/` and `dist/server/index.cjs` — those paths
+ * must match `post.dir` and `server.{dir,entry}` in `devvit.json`.
+ *
+ * This is the pattern used by Reddit's official devvit-template-react.
  */
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
-  root: resolve(import.meta.dirname, 'src/post'),
-  build: {
-    outDir: resolve(import.meta.dirname, 'dist/post'),
-    emptyOutDir: true,
-    sourcemap: true,
-    target: 'es2022',
-    rollupOptions: {
-      input: resolve(import.meta.dirname, 'src/post/index.html'),
-    },
-  },
-  resolve: {
-    alias: {
-      '@shared': resolve(import.meta.dirname, 'src/shared'),
-    },
-  },
+  plugins: [react(), tailwindcss(), devvit()],
 });
