@@ -7,7 +7,7 @@
  * activity feed with deep links back to the actual Reddit posts.
  */
 
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { useMemo, useState } from 'react';
 import {
@@ -24,6 +24,7 @@ import {
   api,
   type DashboardSummary,
   type DriverPost,
+  type PostStatus,
   type RecentPost,
   type SentimentRollup,
   type TaxonomyNode,
@@ -31,8 +32,13 @@ import {
 
 type Tab = 'overview' | 'drivers' | 'sentiment' | 'agents' | 'export';
 
-export function Dashboard() {
-  const [tab, setTab] = useState<Tab>('overview');
+export interface DashboardProps {
+  initialTab?: Tab;
+  initialDriver?: string;
+}
+
+export function Dashboard({ initialTab = 'overview', initialDriver }: DashboardProps) {
+  const [tab, setTab] = useState<Tab>(initialTab);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -40,7 +46,8 @@ export function Dashboard() {
       <Nav tab={tab} setTab={setTab} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         {tab === 'overview' && <Overview />}
-        {tab === 'drivers' && <Drivers />}
+        {tab === 'drivers' &&
+          (initialDriver ? <Drivers initialDriver={initialDriver} /> : <Drivers />)}
         {tab === 'sentiment' && <SentimentTab />}
         {tab === 'agents' && <Agents />}
         {tab === 'export' && <ExportTab />}
@@ -262,10 +269,10 @@ function SentimentBadge({
 // Drivers — bar list with click-through
 // ---------------------------------------------------------------------------
 
-function Drivers() {
+function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
   const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy });
   const volumeQ = useQuery({ queryKey: ['drivers-volume'], queryFn: api.driverVolume });
-  const [openDriver, setOpenDriver] = useState<string | null>(null);
+  const [openDriver, setOpenDriver] = useState<string | null>(initialDriver ?? null);
 
   if (taxonomyQ.isPending || volumeQ.isPending) return <SkeletonGrid />;
   if (taxonomyQ.isError || volumeQ.isError)
@@ -338,19 +345,67 @@ function Drivers() {
   );
 }
 
+const STATUS_FILTERS: { id: 'all' | PostStatus; label: string }[] = [
+  { id: 'all', label: 'All' },
+  { id: 'open', label: 'Open' },
+  { id: 'in-progress', label: 'In progress' },
+  { id: 'responded', label: 'Responded' },
+  { id: 'resolved', label: 'Resolved' },
+];
+
 function DriverPostsPanel({ driver }: { driver: TaxonomyNode }) {
+  const [filter, setFilter] = useState<'all' | PostStatus>('open');
   const q = useQuery({
-    queryKey: ['driver-posts', driver.id],
-    queryFn: () => api.driverPosts(driver.id, 50),
+    queryKey: ['driver-posts', driver.id, filter],
+    queryFn: () =>
+      api.driverPosts(
+        driver.id,
+        filter === 'all' ? { limit: 100 } : { limit: 100, status: filter },
+      ),
   });
-  if (q.isPending) return <SkeletonList />;
-  if (q.isError) return <ErrorMsg msg="Couldn't load posts." retry={() => q.refetch()} />;
-  if (q.data.posts.length === 0)
-    return <EmptyHint>No posts tagged "{driver.label}" yet.</EmptyHint>;
-  return <DriverPostList posts={q.data.posts} />;
+  return (
+    <div>
+      <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-neutral-500">Filter:</span>
+        {STATUS_FILTERS.map((f) => (
+          <button
+            type="button"
+            key={f.id}
+            onClick={() => setFilter(f.id)}
+            className={`rounded-full border px-2 py-0.5 transition ${
+              filter === f.id
+                ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+                : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            {f.label}
+          </button>
+        ))}
+      </div>
+      {q.isPending ? (
+        <SkeletonList />
+      ) : q.isError ? (
+        <ErrorMsg msg="Couldn't load posts." retry={() => q.refetch()} />
+      ) : q.data.posts.length === 0 ? (
+        <EmptyHint>
+          No posts in "{driver.label}" matching filter "{filter}".
+        </EmptyHint>
+      ) : (
+        <DriverPostList posts={q.data.posts} driverId={driver.id} />
+      )}
+    </div>
+  );
 }
 
-function DriverPostList({ posts }: { posts: DriverPost[] }) {
+function DriverPostList({ posts, driverId }: { posts: DriverPost[]; driverId: string }) {
+  const qc = useQueryClient();
+  const mutate = async (postId: string, status: PostStatus) => {
+    await api.setPostStatus(postId, status);
+    await Promise.all([
+      qc.invalidateQueries({ queryKey: ['driver-posts', driverId] }),
+      qc.invalidateQueries({ queryKey: ['recent-posts'] }),
+    ]);
+  };
   return (
     <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-900">
       {posts.map((p) => (
@@ -384,10 +439,51 @@ function DriverPostList({ posts }: { posts: DriverPost[] }) {
           {p.reasoning ? (
             <div className="mt-1 text-xs italic text-neutral-500">"{p.reasoning}"</div>
           ) : null}
+          <div className="mt-2 flex gap-2 text-xs">
+            <StatusBadge status={p.status} />
+            {p.status !== 'resolved' ? (
+              <button
+                type="button"
+                onClick={() => mutate(p.postId, 'resolved')}
+                className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
+              >
+                Mark resolved
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={() => mutate(p.postId, 'open')}
+                className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+              >
+                Re-open
+              </button>
+            )}
+            {p.status === 'open' ? (
+              <button
+                type="button"
+                onClick={() => mutate(p.postId, 'in-progress')}
+                className="rounded-full border border-blue-700 bg-blue-900/30 px-2 py-0.5 text-blue-200 transition hover:bg-blue-900/60"
+              >
+                Take ownership
+              </button>
+            ) : null}
+          </div>
         </li>
       ))}
     </ul>
   );
+}
+
+function StatusBadge({ status }: { status: PostStatus }) {
+  const style =
+    status === 'resolved'
+      ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
+      : status === 'in-progress'
+        ? 'border-blue-800 bg-blue-900/30 text-blue-200'
+        : status === 'responded'
+          ? 'border-violet-800 bg-violet-900/30 text-violet-200'
+          : 'border-neutral-700 bg-neutral-800 text-neutral-300';
+  return <span className={`rounded-full border px-2 py-0.5 ${style}`}>{status}</span>;
 }
 
 // ---------------------------------------------------------------------------

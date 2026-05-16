@@ -25,6 +25,8 @@ import {
 } from '@modules/agent-verification/index.js';
 import {
   contactDriversModule,
+  handleMarkOpenMenu,
+  handleMarkResolvedMenu,
   handleTagIssueFormSubmit,
   handleTagIssueMenu,
 } from '@modules/contact-drivers/index.js';
@@ -254,6 +256,7 @@ app.get('/api/dashboard/recent-posts', async (c) => {
       taggedBy: t?.taggedBy ?? null,
       confidence: t?.confidence ?? null,
       reasoning: t?.reasoning ?? null,
+      status: t?.status ?? null,
       sentimentLabel: s?.label ?? null,
       sentimentScore: s?.score ?? null,
       sentimentScoredBy: s?.scoredBy ?? null,
@@ -317,6 +320,8 @@ app.post('/internal/menu/tag-issue', handleTagIssueMenu);
 app.post('/internal/menu/sentiment-trail', handleSentimentTrailMenu);
 app.post('/internal/menu/mark-agent', handleMarkAgentMenu);
 app.post('/internal/menu/unmark-agent', handleUnmarkAgentMenu);
+app.post('/internal/menu/mark-resolved', handleMarkResolvedMenu);
+app.post('/internal/menu/mark-open', handleMarkOpenMenu);
 
 app.post('/internal/menu/open-dashboard', async (c) => {
   // Idempotent: reuse the pinned dashboard post if one already exists for this

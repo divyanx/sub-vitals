@@ -81,6 +81,8 @@ export interface TaxonomyNode {
   color?: string | undefined;
 }
 
+export type PostStatus = 'open' | 'in-progress' | 'responded' | 'resolved';
+
 export interface PostTag {
   postId: string;
   driverId: string;
@@ -89,6 +91,9 @@ export interface PostTag {
   confidence?: number | undefined;
   reasoning?: string | undefined;
   taggedAt: number;
+  status?: PostStatus | undefined;
+  statusChangedAt?: number | undefined;
+  statusChangedBy?: string | undefined;
 }
 
 export interface PostMeta {

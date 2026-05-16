@@ -14,9 +14,9 @@
  *   - LLM-based tagging when keyword confidence is low
  */
 
-import { context } from '@devvit/web/server';
+import { context, reddit, redis, settings } from '@devvit/web/server';
 import { processedOnce } from '@shared/idempotency.js';
-import { dateRange, today } from '@shared/keys.js';
+import { dateRange, K, today } from '@shared/keys.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
@@ -29,10 +29,12 @@ import {
   getPostTag,
   getTaxonomy,
   incrDriverRollup,
+  setPostStatus,
   setPostTag,
 } from '@shared/storage.js';
 import type {
   OnPostCreateRequest,
+  PostStatus,
   PostTag,
   RedLatticeModule,
   TaxonomyNode,
@@ -41,6 +43,7 @@ import {
   formRequestSchema,
   menuRequestSchema,
   postCreateMinimalSchema,
+  routingRulesSchema,
   tagPostBodySchema,
 } from '@shared/validation.js';
 import type { Context, Hono } from 'hono';
@@ -113,14 +116,45 @@ export const contactDriversModule: RedLatticeModule = {
       confidence: final.confidence,
       ...(reasoning ? { reasoning } : {}),
       taggedAt: Date.now(),
+      status: 'open',
     };
     await setPostTag(tag);
     await incrDriverRollup(final.id);
+
+    // Apply Reddit post flair so teams can filter the sub by driver natively.
+    const node = taxonomy.find((t) => t.id === final.id);
+    if (node && subName && post.id.startsWith('t3_')) {
+      try {
+        await reddit.setPostFlair({
+          subredditName: subName,
+          postId: post.id as `t3_${string}`,
+          text: node.label,
+          ...(node.color ? { backgroundColor: node.color, textColor: 'light' as const } : {}),
+        });
+      } catch (err) {
+        log.warn('contact-drivers: setPostFlair failed (non-fatal)', {
+          err: err instanceof Error ? err.message : String(err),
+          postId: post.id,
+        });
+      }
+    }
+
     log.info('contact-drivers: tagged', {
       postId: post.id,
       driverId: final.id,
       confidence: final.confidence,
       taggedBy: tag.taggedBy,
+    });
+
+    // Route to the right team via modmail if a rule matches.
+    await maybeRouteToTeam({
+      driverId: final.id,
+      driverLabel: node?.label ?? final.id,
+      postId: post.id,
+      postTitle: post.title ?? '(no title)',
+      postUrl: `https://www.reddit.com/r/${subName}/comments/${post.id.replace('t3_', '')}`,
+      reasoning: reasoning ?? null,
+      subName: subName || '',
     });
   },
 
@@ -146,19 +180,26 @@ export const contactDriversModule: RedLatticeModule = {
       const driverId = c.req.param('driverId');
       const limit = Number.parseInt(c.req.query('limit') ?? '50', 10);
       const cap = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 200) : 50;
+      const statusFilter = c.req.query('status') as PostStatus | undefined;
       const postIds = await getPostsByDriver(driverId, cap);
       const posts = await getPostMetaMany(postIds);
       const tags = await Promise.all(postIds.map((id) => getPostTag(id)));
-      const enriched = posts.map((p, i) => {
-        const t = tags[i];
-        return {
-          ...p,
-          driverId,
-          taggedBy: t?.taggedBy,
-          confidence: t?.confidence,
-          reasoning: t?.reasoning,
-        };
-      });
+      const tagById = new Map(
+        tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
+      );
+      const enriched = posts
+        .map((p) => {
+          const t = tagById.get(p.postId);
+          return {
+            ...p,
+            driverId,
+            taggedBy: t?.taggedBy ?? null,
+            confidence: t?.confidence ?? null,
+            reasoning: t?.reasoning ?? null,
+            status: (t?.status ?? 'open') as PostStatus,
+          };
+        })
+        .filter((p) => !statusFilter || p.status === statusFilter);
       return c.json({ driverId, posts: enriched, count: enriched.length });
     });
 
@@ -178,10 +219,38 @@ export const contactDriversModule: RedLatticeModule = {
         taggedBy: 'manual',
         taggedByUser: context.username,
         taggedAt: Date.now(),
+        status: 'open',
       };
       await setPostTag(tag);
       await incrDriverRollup(body.data.driverId);
       return c.json({ ok: true, tag });
+    });
+
+    /**
+     * Update a post's workflow status from the dashboard.
+     * Body: { postId, status }
+     */
+    app.post('/api/posts/:postId/status', async (c) => {
+      if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+      const postId = c.req.param('postId');
+      let body: { status?: unknown };
+      try {
+        body = await c.req.json();
+      } catch {
+        return c.json({ error: 'invalid body' }, 400);
+      }
+      const status = body.status;
+      if (
+        status !== 'open' &&
+        status !== 'in-progress' &&
+        status !== 'responded' &&
+        status !== 'resolved'
+      ) {
+        return c.json({ error: 'invalid status' }, 400);
+      }
+      const updated = await setPostStatus(postId, status, context.username ?? 'api');
+      if (!updated) return c.json({ error: 'post not tagged' }, 404);
+      return c.json({ ok: true, tag: updated });
     });
   },
 };
@@ -220,6 +289,29 @@ export async function handleTagIssueMenu(c: Context): Promise<Response> {
       data: { postId: body.data.targetId },
     },
   });
+}
+
+async function handleStatusMenu(
+  c: Context,
+  status: PostStatus,
+  toastText: string,
+): Promise<Response> {
+  if (!(await requireMod())) return c.json({ showToast: 'Mod-only action.' });
+  const body = menuRequestSchema.safeParse(await c.req.json());
+  if (!body.success) return c.json({ showToast: 'Invalid request.' }, 400);
+  const updated = await setPostStatus(body.data.targetId, status, context.username ?? 'menu');
+  if (!updated) {
+    return c.json({ showToast: 'Post is not tagged with a driver yet.' });
+  }
+  return c.json({ showToast: { text: toastText, appearance: 'success' } });
+}
+
+export function handleMarkResolvedMenu(c: Context): Promise<Response> {
+  return handleStatusMenu(c, 'resolved', '✓ Marked resolved');
+}
+
+export function handleMarkOpenMenu(c: Context): Promise<Response> {
+  return handleStatusMenu(c, 'open', 'Re-opened');
 }
 
 export async function handleTagIssueFormSubmit(c: Context): Promise<Response> {
@@ -293,6 +385,89 @@ function defaultFromDate(): string {
   const d = new Date();
   d.setUTCDate(d.getUTCDate() - 30);
   return d.toISOString().slice(0, 10);
+}
+
+// ---------------------------------------------------------------------------
+// Per-driver routing — when a post matches a configured driver, ping the right
+// team via modmail with a deep link + context. Idempotent per post.
+// ---------------------------------------------------------------------------
+
+async function maybeRouteToTeam(args: {
+  driverId: string;
+  driverLabel: string;
+  postId: string;
+  postTitle: string;
+  postUrl: string;
+  reasoning: string | null;
+  subName: string;
+}): Promise<void> {
+  const rawJson =
+    ((await settings.get('routing-json').catch(() => undefined)) as string | undefined) ?? '';
+  if (!rawJson.trim()) return;
+
+  let parsedJson: unknown;
+  try {
+    parsedJson = JSON.parse(rawJson);
+  } catch (err) {
+    log.warn('routing: invalid JSON in routing-json setting', { err: String(err) });
+    return;
+  }
+  const rulesParse = routingRulesSchema.safeParse(parsedJson);
+  if (!rulesParse.success) {
+    log.warn('routing: routing-json failed validation', { issues: rulesParse.error.issues });
+    return;
+  }
+
+  const rule = rulesParse.data[args.driverId];
+  if (!rule) return;
+  if (!args.subName) return;
+
+  // Idempotency — never modmail twice for the same post.
+  const sent = await redis.hSetNX(K.routingSent(args.postId), 'r', '1');
+  if (sent !== 1) {
+    log.debug('routing: already routed for post', { postId: args.postId });
+    return;
+  }
+  await redis.expire(K.routingSent(args.postId), 7 * 24 * 60 * 60);
+
+  const subject = rule.subject ?? `[RedLattice] new ${args.driverLabel} post`;
+  const mentionLine =
+    rule.mentions && rule.mentions.length > 0
+      ? `\n\nNotifying: ${rule.mentions.map((u) => `u/${u}`).join(' ')}\n\n`
+      : '\n\n';
+  const body = [
+    `**${escapeMd(args.postTitle)}**`,
+    `Driver: \`${args.driverLabel}\``,
+    `Link: ${args.postUrl}`,
+    args.reasoning ? `> ${escapeMd(args.reasoning)}` : null,
+    mentionLine + 'Tagged automatically by RedLattice. Reply to this modmail to coordinate.',
+  ]
+    .filter(Boolean)
+    .join('\n\n');
+
+  try {
+    await reddit.modMail.createConversation({
+      subredditName: args.subName,
+      to: null,
+      subject,
+      body,
+    });
+    log.info('routing: modmail sent', {
+      driverId: args.driverId,
+      postId: args.postId,
+      mentions: rule.mentions?.length ?? 0,
+    });
+  } catch (err) {
+    log.warn('routing: modmail create failed', {
+      err: err instanceof Error ? err.message : String(err),
+      postId: args.postId,
+    });
+  }
+}
+
+function escapeMd(s: string): string {
+  // Minimal modmail markdown escape — reddit treats body as markdown.
+  return s.replace(/([\\`*_{}[\]()#+!\-|<>])/g, '\\$1');
 }
 
 // ---------------------------------------------------------------------------

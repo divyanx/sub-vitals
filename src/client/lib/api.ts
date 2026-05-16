@@ -56,6 +56,8 @@ export interface SentimentRollup {
   averageScore: number;
 }
 
+export type PostStatus = 'open' | 'in-progress' | 'responded' | 'resolved';
+
 export interface DriverPost {
   postId: string;
   title: string;
@@ -66,6 +68,7 @@ export interface DriverPost {
   taggedBy?: 'manual' | 'auto' | 'ai' | null;
   confidence?: number | null;
   reasoning?: string | null;
+  status: PostStatus;
 }
 
 export interface RecentPost {
@@ -78,6 +81,7 @@ export interface RecentPost {
   taggedBy: 'manual' | 'auto' | 'ai' | null;
   confidence: number | null;
   reasoning: string | null;
+  status: PostStatus | null;
   sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
   sentimentScore: number | null;
   sentimentScoredBy: 'lexicon' | 'ai' | null;
@@ -96,10 +100,22 @@ export const api = {
     getJson<{ items: RecentPost[]; count: number }>(`/api/dashboard/recent-posts?limit=${limit}`),
   taxonomy: () => getJson<{ taxonomy: TaxonomyNode[] }>('/api/drivers/taxonomy'),
   driverVolume: () => getJson<DriverVolume>('/api/drivers/volume'),
-  driverPosts: (driverId: string, limit = 50) =>
-    getJson<{ driverId: string; posts: DriverPost[]; count: number }>(
-      `/api/drivers/${encodeURIComponent(driverId)}/posts?limit=${limit}`,
-    ),
+  driverPosts: (driverId: string, opts: { limit?: number; status?: PostStatus } = {}) => {
+    const q = new URLSearchParams();
+    q.set('limit', String(opts.limit ?? 50));
+    if (opts.status) q.set('status', opts.status);
+    return getJson<{ driverId: string; posts: DriverPost[]; count: number }>(
+      `/api/drivers/${encodeURIComponent(driverId)}/posts?${q.toString()}`,
+    );
+  },
+  setPostStatus: async (postId: string, status: PostStatus): Promise<void> => {
+    const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/status`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ status }),
+    });
+    if (!r.ok) throw new Error(`status update failed: HTTP ${r.status}`);
+  },
   agents: () => getJson<{ agents: Agent[] }>('/api/agents'),
   sentimentRollup: () =>
     getJson<{ from: string; to: string; series: SentimentRollup[] }>('/api/sentiment/rollup'),

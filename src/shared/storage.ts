@@ -12,6 +12,7 @@ import type {
   AgentRecord,
   DriverRollup,
   PostMeta,
+  PostStatus,
   PostTag,
   SentimentLabel,
   SentimentRollup,
@@ -78,6 +79,27 @@ export async function getPostsByDriver(driverId: string, limit = 100): Promise<s
     by: 'rank',
   });
   return members.map((m) => m.member);
+}
+
+/**
+ * Update a post's workflow status in place. Idempotent.
+ * Returns the updated PostTag, or null if no tag exists for that post.
+ */
+export async function setPostStatus(
+  postId: string,
+  status: PostStatus,
+  changedBy: string,
+): Promise<PostTag | null> {
+  const existing = await getPostTag(postId);
+  if (!existing) return null;
+  const updated: PostTag = {
+    ...existing,
+    status,
+    statusChangedAt: Date.now(),
+    statusChangedBy: changedBy,
+  };
+  await redis.set(K.postTag(postId), JSON.stringify(updated));
+  return updated;
 }
 
 // ---------------------------------------------------------------------------

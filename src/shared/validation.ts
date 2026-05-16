@@ -106,6 +106,17 @@ export const taxonomyArraySchema = z.array(
 
 export type TaxonomyArray = z.infer<typeof taxonomyArraySchema>;
 
+// Routing rules: map of driverId → { subject?, mentions? }
+export const routingRulesSchema = z.record(
+  z.string(),
+  z.object({
+    subject: z.string().max(120).optional(),
+    mentions: z.array(z.string().min(1)).max(20).optional(),
+  }),
+);
+
+export type RoutingRules = z.infer<typeof routingRulesSchema>;
+
 // ---------------------------------------------------------------------------
 // API request bodies (dashboard → server)
 // ---------------------------------------------------------------------------

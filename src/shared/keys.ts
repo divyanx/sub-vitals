@@ -20,6 +20,9 @@ export const K = {
   // pinned daily pulse
   pulsePostId: () => 'rl:pulse:postId',
 
+  // routing notification de-dup (per post)
+  routingSent: (postId: string) => `rl:route:${postId}`,
+
   // agent-verification
   agent: (username: string) => `rl:ag:${username.toLowerCase()}`,
   agentList: () => 'rl:ag:list',
