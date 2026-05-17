@@ -40,6 +40,16 @@ export const K = {
   sentimentRollup: (date: string) => `rl:sent:roll:${date}`,
   sentimentAlertCooldown: (postId: string) => `rl:sent:cd:${postId}`,
 
+  // sentiment — per-label ZSET (score = createdAt ms, member = postId)
+  sentimentLabelIndex: (label: 'positive' | 'neutral' | 'negative') => `rl:sent:label:${label}`,
+
+  // pipeline overrides (STRING: JSON blob per pipeline id)
+  pipelineOverrides: (id: string) => `rl:pipeline:${id}:overrides`,
+
+  // custom pipelines (ZSET: score = createdAt, member = id) + per-pipeline detail
+  customPipelineList: () => 'rl:pipeline:custom:list',
+  customPipeline: (id: string) => `rl:pipeline:custom:${id}`,
+
   // crisis-detection — per-hour rolling counters (HASH: total, neg)
   hourBucket: (hourSlot: string) => `rl:hr:cmt:${hourSlot}`,
   // crisis-detection — active incident pointer (STRING: incident id)
