@@ -1505,7 +1505,7 @@ function DriverBadge({
   return (
     <span className={`font-medium ${color}`} title={`ID: ${id}`}>
       {label}
-      {taggedBy ? <span className="ml-1 text-neutral-500">({taggedBy})</span> : null}
+      {taggedBy ? <span className="ml-1 text-neutral-400">({taggedBy})</span> : null}
     </span>
   );
 }
