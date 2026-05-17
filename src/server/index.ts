@@ -49,6 +49,16 @@ import { llmObject, readMonthlyCents, readMonthlyTokens } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import {
+  type CustomPipeline,
+  deleteCustomPipeline,
+  getCustomPipeline,
+  getEffectiveOverrides,
+  listCustomPipelines,
+  type PipelineOverrides,
+  saveCustomPipeline,
+  saveOverrides,
+} from '@shared/pipeline-overrides.js';
+import {
   readAllEffectiveSettings,
   readEffectiveSetting,
   writeOverrideSetting,
@@ -746,6 +756,253 @@ app.get('/api/dashboard/recent-posts', async (c) => {
     };
   });
   return c.json({ items, count: items.length });
+});
+
+// ---------------------------------------------------------------------------
+// Pipeline routes — built-in tuning + custom pipeline CRUD
+// ---------------------------------------------------------------------------
+
+const pipelineOverridesPutSchema = z.object({
+  systemPrompt: z.string().max(4000).optional(),
+  userPrompt: z.string().max(4000).optional(),
+  thresholds: z.record(z.string(), z.number()).optional(),
+  enabled: z.boolean().optional(),
+});
+
+const VALID_PIPELINE_IDS = new Set([
+  'contact-drivers',
+  'sentiment',
+  'impostor',
+  'crisis',
+  'themes',
+  'agent-metrics',
+]);
+
+/**
+ * GET /api/pipelines/builtin/:id — returns merged config (defaults + Redis overrides)
+ */
+app.get('/api/pipelines/builtin/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  if (!VALID_PIPELINE_IDS.has(id)) return c.json({ error: 'unknown pipeline id' }, 404);
+  const overrides = await getEffectiveOverrides(id);
+  return c.json({ id, overrides });
+});
+
+/**
+ * PUT /api/pipelines/builtin/:id — save overrides
+ */
+app.put('/api/pipelines/builtin/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  if (!VALID_PIPELINE_IDS.has(id)) return c.json({ error: 'unknown pipeline id' }, 404);
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+
+  const parsed = pipelineOverridesPutSchema.safeParse(rawBody);
+  if (!parsed.success)
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+
+  const merged = await saveOverrides(id, parsed.data as Partial<PipelineOverrides>);
+  return c.json({ id, overrides: merged });
+});
+
+/**
+ * POST /api/pipelines/builtin/:id/test — run pipeline once without persisting
+ */
+app.post('/api/pipelines/builtin/:id/test', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  if (!VALID_PIPELINE_IDS.has(id)) return c.json({ error: 'unknown pipeline id' }, 404);
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+  const bodySchema = z.object({ sampleInput: z.string().min(1).max(3000) });
+  const parsed = bodySchema.safeParse(rawBody);
+  if (!parsed.success) return c.json({ error: 'sampleInput required' }, 400);
+
+  const overrides = await getEffectiveOverrides(id);
+  const systemPrompt =
+    overrides.systemPrompt ??
+    `You are a RedLattice pipeline running ${id}. Analyze the input and respond concisely.`;
+  const userPromptTemplate = overrides.userPrompt ?? '{{post.body}}';
+
+  const prompt = userPromptTemplate.replace('{{post.body}}', parsed.data.sampleInput);
+
+  const testSchema = z.object({ output: z.string(), label: z.string().optional() });
+  const result = await llmObject({
+    name: `pipeline-test-${id}`,
+    schema: testSchema,
+    system: systemPrompt,
+    prompt,
+    maxTokens: 300,
+  });
+
+  if (!result.ok) {
+    return c.json({ error: 'llm-unavailable', reason: result.reason }, 503);
+  }
+
+  return c.json({
+    id,
+    output: result.data,
+    tokensIn: result.tokensIn,
+    tokensOut: result.tokensOut,
+    costCents: Number(result.costCents.toFixed(4)),
+  });
+});
+
+// Custom pipeline schemas
+const customPipelineActionSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('tag-driver'), driverId: z.string().min(1) }),
+  z.object({ type: z.literal('send-modmail'), bodyTemplate: z.string().min(1).max(2000) }),
+  z.object({
+    type: z.literal('set-status'),
+    status: z.enum(['open', 'in-progress', 'resolved']),
+  }),
+]);
+
+const customPipelineBodySchema = z.object({
+  name: z.string().min(1).max(100),
+  description: z.string().max(500).default(''),
+  trigger: z.enum(['post-create', 'comment-create']),
+  systemPrompt: z.string().min(1).max(4000),
+  userPrompt: z.string().min(1).max(4000),
+  outputSchema: z.enum(['single-label', 'label-confidence', 'boolean']),
+  action: customPipelineActionSchema,
+});
+
+/**
+ * GET /api/pipelines/custom — list custom pipelines
+ */
+app.get('/api/pipelines/custom', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const pipelines = await listCustomPipelines();
+  return c.json({ count: pipelines.length, pipelines });
+});
+
+/**
+ * POST /api/pipelines/custom — create a custom pipeline
+ */
+app.post('/api/pipelines/custom', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+
+  const parsed = customPipelineBodySchema.safeParse(rawBody);
+  if (!parsed.success)
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+
+  // Generate a short ID (8 chars, alphanumeric)
+  const id = `cp_${Math.random().toString(36).slice(2, 10)}`;
+  const now = Date.now();
+  const pipeline: CustomPipeline = {
+    id,
+    ...parsed.data,
+    createdAt: now,
+    updatedAt: now,
+  };
+  await saveCustomPipeline(pipeline);
+  return c.json({ pipeline }, 201);
+});
+
+/**
+ * PUT /api/pipelines/custom/:id — update a custom pipeline
+ */
+app.put('/api/pipelines/custom/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const existing = await getCustomPipeline(id);
+  if (!existing) return c.json({ error: 'not found' }, 404);
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+
+  const parsed = customPipelineBodySchema.partial().safeParse(rawBody);
+  if (!parsed.success)
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+
+  // Merge partial update onto existing — all required fields come from existing
+  const updated: CustomPipeline = {
+    ...existing,
+    ...(parsed.data as Partial<CustomPipeline>),
+    id: existing.id,
+    createdAt: existing.createdAt,
+    updatedAt: Date.now(),
+  };
+  await saveCustomPipeline(updated);
+  return c.json({ pipeline: updated });
+});
+
+/**
+ * DELETE /api/pipelines/custom/:id — delete a custom pipeline
+ */
+app.delete('/api/pipelines/custom/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const existing = await getCustomPipeline(id);
+  if (!existing) return c.json({ error: 'not found' }, 404);
+  await deleteCustomPipeline(id);
+  return c.json({ ok: true });
+});
+
+/**
+ * POST /api/pipelines/custom/:id/test — run a custom pipeline once
+ */
+app.post('/api/pipelines/custom/:id/test', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const pipeline = await getCustomPipeline(id);
+  if (!pipeline) return c.json({ error: 'not found' }, 404);
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+  const bodySchema = z.object({ sampleInput: z.string().min(1).max(3000) });
+  const parsed = bodySchema.safeParse(rawBody);
+  if (!parsed.success) return c.json({ error: 'sampleInput required' }, 400);
+
+  const prompt = pipeline.userPrompt.replace('{{post.body}}', parsed.data.sampleInput);
+  const testSchema = z.object({ output: z.string(), label: z.string().optional() });
+  const result = await llmObject({
+    name: `custom-pipeline-test-${id}`,
+    schema: testSchema,
+    system: pipeline.systemPrompt,
+    prompt,
+    maxTokens: 300,
+  });
+
+  if (!result.ok) {
+    return c.json({ error: 'llm-unavailable', reason: result.reason }, 503);
+  }
+
+  return c.json({
+    id,
+    output: result.data,
+    tokensIn: result.tokensIn,
+    tokensOut: result.tokensOut,
+    costCents: Number(result.costCents.toFixed(4)),
+  });
 });
 
 // ---------------------------------------------------------------------------
