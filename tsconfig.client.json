@@ -8,7 +8,7 @@
     "allowImportingTsExtensions": true,
     "noEmit": true
   },
-  "include": ["src/client/**/*"],
+  "include": ["src/client/**/*", "src/stories/**/*", ".storybook/**/*"],
   "exclude": [
     "src/server/**/*",
     "src/shared/**/*",
