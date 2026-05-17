@@ -80,7 +80,6 @@ import {
   taxonomyArraySchema,
 } from '@shared/validation.js';
 import { Hono } from 'hono';
-import { compress } from 'hono/compress';
 import { logger } from 'hono/logger';
 import { z } from 'zod';
 
@@ -105,8 +104,9 @@ registerModule(studioBridgeModule);
 
 const app = new Hono();
 
-// Gzip API responses to reduce bandwidth for mod dashboards on mobile Reddit.
-app.use('*', compress());
+// NB: do NOT add hono/compress here — Devvit's webview gateway handles
+// transport encoding itself, and adding Content-Encoding: gzip inside Hono
+// causes net::ERR_CONTENT_DECODING_FAILED in the iframe runtime.
 
 app.use(
   '*',
