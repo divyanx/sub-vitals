@@ -6,6 +6,10 @@
  * others. Each module's `enabled()` is checked first.
  */
 
+// TODO(Sprint 13): Custom pipeline runtime — currently custom pipelines are persisted only.
+// The dispatcher does not yet fan events to custom pipelines. Implement in Sprint 13 after
+// the schema stabilizes. See listCustomPipelines() in pipeline-overrides.ts for the data model.
+
 import { log } from './log.js';
 import type {
   OnAppInstallRequest,
