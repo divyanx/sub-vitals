@@ -81,7 +81,7 @@ export const themeClusteringModule: RedLatticeModule = {
       if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
       const snapshot = await regenerateThemes();
       if (!snapshot) {
-        return c.json({ error: 'regeneration failed — check LLM settings or logs' }, 503);
+        return c.json({ error: 'regeneration failed — check AI settings or logs' }, 503);
       }
       void recordAudit('theme-regenerate', null, { themeCount: snapshot.themes.length });
       // Forward to Studio (best-effort).

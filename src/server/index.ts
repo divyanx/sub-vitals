@@ -565,9 +565,9 @@ app.post('/api/posts/:postId/draft-reply', async (c) => {
           result.reason === 'no-api-key'
             ? 'Set the openrouter-api-key global setting first.'
             : result.reason === 'cost-cap-exceeded'
-              ? 'Monthly LLM cost cap reached. Raise llm-monthly-cost-cap-cents or wait for next month.'
+              ? 'Monthly AI cost cap reached. Raise llm-monthly-cost-cap-cents or wait for next month.'
               : result.reason === 'rate-limited'
-                ? 'Hit the per-installation LLM rate limit. Retry in a few seconds.'
+                ? 'Hit the per-installation AI rate limit. Retry in a few seconds.'
                 : 'Try again or check the live logs.',
       },
       503,
@@ -1203,7 +1203,7 @@ app.post('/api/settings/test-draft', async (c) => {
           result.reason === 'no-api-key'
             ? 'Set the openrouter-api-key global setting first.'
             : result.reason === 'cost-cap-exceeded'
-              ? 'Monthly LLM cost cap reached.'
+              ? 'Monthly AI cost cap reached.'
               : 'Try again or check logs.',
       },
       503,
