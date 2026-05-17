@@ -74,6 +74,12 @@ export const K = {
 
   // audit-log
   auditLog: () => 'rl:audit:log',
+
+  // llm auto-fallback
+  /** Per-model daily error counter (HASH, 48h TTL). Key = date string, field = slug. */
+  llmErrorDay: (date: string) => `bp:llm:errors:${date}`,
+  /** Sticky fallback flag — set when a model crosses the error threshold. 7d TTL. */
+  llmFallbackActive: (slug: string) => `bp:llm:fallback-active:${encodeURIComponent(slug)}`,
 } as const;
 
 // ---------------------------------------------------------------------------

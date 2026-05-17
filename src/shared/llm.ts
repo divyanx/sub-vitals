@@ -20,16 +20,18 @@
 
 import { createHash } from 'node:crypto';
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
-import { redis, settings } from '@devvit/web/server';
+import { reddit, redis, settings } from '@devvit/web/server';
 import { generateObject, NoObjectGeneratedError } from 'ai';
 import pRetry, { AbortError } from 'p-retry';
 import type { ZodTypeAny, z } from 'zod';
-import { K, yyyymm } from './keys.js';
+import { DEFAULT_MODEL } from './ai-models.js';
+import { K, today, yyyymm } from './keys.js';
 import { log } from './log.js';
 import { takeToken } from './ratelimit.js';
 import { readEffectiveSetting } from './settings-overrides.js';
 
-const DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
+// Re-export so callers can import from one place.
+export { DEFAULT_MODEL };
 const TIMEOUT_MS = 15_000;
 const RETRIES = 3;
 const CACHE_TTL_SEC = 24 * 60 * 60;
@@ -52,10 +54,21 @@ const COST_PER_1K: Record<string, { in: number; out: number }> = {
 
 const REDIS_FIELDS = { tokensIn: 'tin', tokensOut: 'tout', cents: 'c' } as const;
 
+// ---------------------------------------------------------------------------
+// Fallback constants
+// ---------------------------------------------------------------------------
+
+const FALLBACK_ERROR_THRESHOLD = 3; // errors in 24h before we flip to default
+const FALLBACK_ERROR_TTL_SEC = 48 * 60 * 60; // 48h — covers the HINCRBY key
+const FALLBACK_FLAG_TTL_SEC = 7 * 24 * 60 * 60; // 7d sticky flag
+
 export interface LLMSettings {
   apiKey: string;
   model: string;
   capCents: number;
+  isFallback: boolean;
+  /** The slug that was configured before fallback kicked in (null when not in fallback). */
+  originalSlug: string | null;
 }
 
 export type LLMSuccess<T> = {
@@ -74,6 +87,114 @@ export type LLMFailure = {
 };
 
 export type LLMResult<T> = LLMSuccess<T> | LLMFailure;
+
+// ---------------------------------------------------------------------------
+// Public API — fallback helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Resolves the model that will actually be used for a call.
+ * If the mod-configured model has a sticky fallback flag, returns DEFAULT_MODEL.
+ * The original setting is preserved in Redis so the mod can fix it.
+ */
+export async function getEffectiveModel(): Promise<{ model: string; isFallback: boolean }> {
+  const configured = await readEffectiveSetting<string>('llm-model');
+  const slug =
+    typeof configured === 'string' && configured.trim() ? configured.trim() : DEFAULT_MODEL;
+
+  if (slug === DEFAULT_MODEL) {
+    return { model: slug, isFallback: false };
+  }
+
+  const flag = await redis.get(K.llmFallbackActive(slug)).catch(() => null);
+  if (flag) {
+    return { model: DEFAULT_MODEL, isFallback: true };
+  }
+  return { model: slug, isFallback: false };
+}
+
+/** Returns the original configured slug if fallback is active, otherwise null. */
+export async function getFallbackOriginalSlug(): Promise<string | null> {
+  const configured = await readEffectiveSetting<string>('llm-model');
+  const slug =
+    typeof configured === 'string' && configured.trim() ? configured.trim() : DEFAULT_MODEL;
+  if (slug === DEFAULT_MODEL) return null;
+  const flag = await redis.get(K.llmFallbackActive(slug)).catch(() => null);
+  return flag ? slug : null;
+}
+
+/** Clears the sticky fallback flag for the given slug. Called after mod fixes the setting. */
+export async function clearFallback(slug: string): Promise<void> {
+  await redis.del(K.llmFallbackActive(slug));
+  log.info('llm: fallback flag cleared', { slug });
+}
+
+/** Returns true if the model has an active fallback flag. */
+export async function isFallbackActive(slug: string): Promise<boolean> {
+  const flag = await redis.get(K.llmFallbackActive(slug)).catch(() => null);
+  return !!flag;
+}
+
+/**
+ * Increment the per-model daily error count and trigger fallback if the threshold
+ * is crossed. Sends a modmail notification on first activation.
+ * Returns true if fallback was newly activated.
+ */
+async function trackModelError(slug: string, reason: string): Promise<boolean> {
+  if (slug === DEFAULT_MODEL) return false; // never fallback the default
+
+  const key = K.llmErrorDay(today());
+  const field = slug;
+
+  let count = 0;
+  try {
+    count = await redis.hIncrBy(key, field, 1);
+    // Set/refresh the TTL on every write so it lives 48h from last write.
+    await redis.expire(key, FALLBACK_ERROR_TTL_SEC);
+  } catch (err) {
+    log.warn('llm: error tracking write failed', { err: String(err) });
+    return false;
+  }
+
+  if (count < FALLBACK_ERROR_THRESHOLD) return false;
+
+  // Check if flag already set (avoid duplicate modmail).
+  const flagKey = K.llmFallbackActive(slug);
+  const existing = await redis.get(flagKey).catch(() => null);
+  if (existing) return false; // already triggered
+
+  // Set the sticky flag.
+  try {
+    await redis.set(flagKey, reason, {
+      expiration: new Date(Date.now() + FALLBACK_FLAG_TTL_SEC * 1000),
+    });
+  } catch (err) {
+    log.warn('llm: fallback flag write failed', { err: String(err) });
+    return false;
+  }
+
+  log.warn('llm: auto-fallback activated', { slug, count, reason, fallbackTo: DEFAULT_MODEL });
+
+  // Attempt modmail — non-fatal if it fails.
+  try {
+    await reddit.modMail.createConversation({
+      subredditName: null as unknown as string, // platform fills in from installation context
+      to: null,
+      subject: 'RedLattice: AI model auto-switched',
+      body: [
+        `RedLattice auto-switched your AI model from **${slug}** to **${DEFAULT_MODEL}** because of repeated errors (${FALLBACK_ERROR_THRESHOLD}+ in 24h).`,
+        '',
+        `Last error reason: ${reason}`,
+        '',
+        'Visit **Settings → AI** in the RedLattice dashboard to fix the setting or accept the default.',
+      ].join('\n'),
+    });
+  } catch (mailErr) {
+    log.warn('llm: modmail send failed after fallback activation', { err: String(mailErr) });
+  }
+
+  return true;
+}
 
 // ---------------------------------------------------------------------------
 // Public API
@@ -109,7 +230,7 @@ export async function llmObject<S extends ZodTypeAny>(args: {
     return { ok: false, reason: 'cost-cap-exceeded' };
   }
 
-  // Cache lookup
+  // Cache lookup (use effective model for cache key so fallback hits a different bucket)
   const cacheKey = makeCacheKey(args.name, cfg.model, args.system, args.prompt);
   const cached = await readCache<z.infer<S>>(cacheKey);
   if (cached) {
@@ -136,6 +257,9 @@ export async function llmObject<S extends ZodTypeAny>(args: {
 
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort('timeout'), TIMEOUT_MS);
+
+  // Track the originally-configured slug (before fallback) for error accounting.
+  const configuredSlug = cfg.originalSlug;
 
   try {
     const result = await pRetry(
@@ -178,6 +302,7 @@ export async function llmObject<S extends ZodTypeAny>(args: {
     log.info('llm: call ok', {
       name: args.name,
       model: cfg.model,
+      isFallback: cfg.isFallback,
       tokensIn,
       tokensOut,
       costCents: Number(costCents.toFixed(4)),
@@ -197,6 +322,10 @@ export async function llmObject<S extends ZodTypeAny>(args: {
       reason,
       err: err instanceof Error ? err.message : String(err),
     });
+    // Track errors against the originally-configured slug, not the fallback slug.
+    if (configuredSlug) {
+      void trackModelError(configuredSlug, reason);
+    }
     return { ok: false, reason, error: err instanceof Error ? err.message : String(err) };
   } finally {
     clearTimeout(timer);
@@ -228,15 +357,23 @@ export async function readMonthlyTokens(): Promise<{ tokensIn: number; tokensOut
 
 async function readSettings(): Promise<LLMSettings> {
   // openrouter-api-key is global+secret — never override via Redis.
-  const [apiKey, model, capCents] = await Promise.all([
+  const [apiKey, capCents, { model, isFallback }] = await Promise.all([
     settings.get('openrouter-api-key').catch(() => undefined),
-    readEffectiveSetting<string>('llm-model'),
     readEffectiveSetting<number>('llm-monthly-cost-cap-cents'),
+    getEffectiveModel(),
   ]);
+  const configuredRaw = await readEffectiveSetting<string>('llm-model');
+  const configured =
+    typeof configuredRaw === 'string' && configuredRaw.trim()
+      ? configuredRaw.trim()
+      : DEFAULT_MODEL;
+
   return {
     apiKey: typeof apiKey === 'string' ? apiKey : '',
-    model: typeof model === 'string' && model.trim() ? model.trim() : DEFAULT_MODEL,
+    model,
     capCents: typeof capCents === 'number' && capCents > 0 ? capCents : DEFAULT_CAP_CENTS,
+    isFallback,
+    originalSlug: isFallback ? configured : null,
   };
 }
 
