@@ -17,7 +17,11 @@ import { log } from '@shared/log.js';
 import { isUserMod, requireMod } from '@shared/permissions.js';
 import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import {
+  addToSentimentLabelIndex,
   ensureCommentMeta,
+  getPostIdsByLabel,
+  getPostMetaMany,
+  getPostTag,
   getSentimentRollup,
   getSentimentScore,
   incrSentimentRollup,
@@ -158,6 +162,74 @@ export const sentimentModule: RedLatticeModule = {
       const score = await getSentimentScore(c.req.param('contentId'));
       return c.json({ score });
     });
+
+    /**
+     * GET /api/sentiment/posts?label=positive|neutral|negative&days=30&limit=50
+     *
+     * Returns posts whose stored sentiment label matches. Most recent first.
+     * Mod-only. Filters by `days` param to exclude posts older than N days.
+     */
+    app.get('/api/sentiment/posts', async (c) => {
+      if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+      const labelParam = c.req.query('label');
+      const labelSchema = z.enum(['positive', 'neutral', 'negative']);
+      const labelParsed = labelSchema.safeParse(labelParam);
+      if (!labelParsed.success) {
+        return c.json({ error: 'label must be positive, neutral, or negative' }, 400);
+      }
+      const label = labelParsed.data;
+
+      const days = Math.min(
+        Math.max(Number.parseInt(c.req.query('days') ?? '30', 10) || 30, 1),
+        90,
+      );
+      const limit = Math.min(
+        Math.max(Number.parseInt(c.req.query('limit') ?? '50', 10) || 50, 1),
+        100,
+      );
+
+      const cutoffMs = Date.now() - days * 24 * 60 * 60 * 1000;
+
+      const postIds = await getPostIdsByLabel(label, limit + 20); // over-fetch to account for age filter
+      const [metas, tags, sents] = await Promise.all([
+        getPostMetaMany(postIds),
+        Promise.all(postIds.map((id) => getPostTag(id))),
+        Promise.all(postIds.map((id) => getSentimentScore(id))),
+      ]);
+
+      const tagById = new Map(
+        tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
+      );
+      const sentById = new Map(
+        sents.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.contentId, s]),
+      );
+
+      const posts = metas
+        .filter((m) => m.createdAt >= cutoffMs)
+        .slice(0, limit)
+        .map((m) => {
+          const t = tagById.get(m.postId);
+          const s = sentById.get(m.postId);
+          return {
+            postId: m.postId,
+            title: m.title,
+            authorName: m.authorName,
+            url: m.url,
+            createdAt: m.createdAt,
+            driverId: t?.driverId ?? null,
+            taggedBy: t?.taggedBy ?? null,
+            confidence: t?.confidence ?? null,
+            reasoning: t?.reasoning ?? null,
+            status: t?.status ?? null,
+            sentimentLabel: s?.label ?? label,
+            sentimentScore: s?.score ?? null,
+            sentimentScoredBy: s?.scoredBy ?? null,
+          };
+        });
+
+      return c.json({ label, count: posts.length, posts });
+    });
   },
 };
 
@@ -221,6 +293,11 @@ async function persistScore(args: {
   };
   await setSentimentScore(record);
   await incrSentimentRollup(args.label, args.score);
+
+  // Update per-label post index (posts only — comments don't belong in the drill-through list)
+  if (args.contentType === 'post') {
+    await addToSentimentLabelIndex(args.contentId, args.label, Date.now());
+  }
 
   // Forward to Studio (best-effort — never blocks the handler).
   void forwardToStudio('sentiment-score', {
