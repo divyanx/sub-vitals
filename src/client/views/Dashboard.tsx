@@ -17,10 +17,17 @@ import {
   type AuditEntry,
   api,
   type DriverPost,
+  formatDriverPath,
   type PostStatus,
   type RecentPost,
   type TaxonomyNode,
 } from '../lib/api.ts';
+import {
+  DriversToastContainer,
+  RoutingConfigSection,
+  TaxonomyConfigSection,
+  useDriversToast,
+} from './DriversConfig.tsx';
 import { Onboarding } from './Onboarding.tsx';
 
 // Lazy-load heavy tabs — each is code-split into its own async chunk so the
@@ -464,7 +471,7 @@ function Inbox() {
                       {p.driverId ? (
                         <>
                           <span>·</span>
-                          <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
+                          <DriverBadge id={p.driverId} taggedBy={p.taggedBy} taxonomy={[]} />
                         </>
                       ) : null}
                       {p.sentimentLabel ? (
@@ -1459,7 +1466,7 @@ function ActivityTicker({ items }: { items: RecentPost[] }) {
             {p.driverId ? (
               <>
                 <span>·</span>
-                <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
+                <DriverBadge id={p.driverId} taggedBy={p.taggedBy} taxonomy={[]} />
               </>
             ) : null}
             {p.sentimentLabel ? (
@@ -1482,20 +1489,23 @@ function ActivityTicker({ items }: { items: RecentPost[] }) {
 function DriverBadge({
   id,
   taggedBy,
+  taxonomy,
 }: {
   id: string;
   taggedBy: 'manual' | 'auto' | 'ai' | null | undefined;
+  taxonomy: TaxonomyNode[];
 }) {
-  const style =
+  const label = formatDriverPath(id, taxonomy);
+  const color =
     taggedBy === 'ai'
-      ? 'border-violet-700 bg-violet-900/40 text-violet-200'
-      : taggedBy === 'manual'
-        ? 'border-blue-700 bg-blue-900/40 text-blue-200'
-        : 'border-neutral-700 bg-neutral-800 text-neutral-300';
+      ? 'text-violet-300'
+      : taggedBy === 'auto'
+        ? 'text-blue-300'
+        : 'text-neutral-400';
   return (
-    <span className={`rounded-full border px-2 py-0.5 ${style}`}>
-      {id}
-      {taggedBy === 'ai' ? ' · ai' : taggedBy === 'manual' ? ' · mod' : ''}
+    <span className={`font-medium ${color}`} title={`ID: ${id}`}>
+      {label}
+      {taggedBy ? <span className="ml-1 text-neutral-500">({taggedBy})</span> : null}
     </span>
   );
 }
@@ -1531,8 +1541,12 @@ function SentimentBadge({
 function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
   const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy });
   const volumeQ = useQuery({ queryKey: ['drivers-volume'], queryFn: api.driverVolume });
+  const settingsQ = useQuery({ queryKey: ['settings'], queryFn: api.settings.get });
+  const qc = useQueryClient();
   const [openDriver, setOpenDriver] = useState<string | null>(initialDriver ?? null);
   const [driverFilter, setDriverFilter] = useState<string>('');
+  const [configOpen, setConfigOpen] = useState(false);
+  const { toasts, toast } = useDriversToast();
 
   if (taxonomyQ.isPending || volumeQ.isPending) return <SkeletonGrid />;
   if (taxonomyQ.isError || volumeQ.isError)
@@ -1553,13 +1567,26 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
       totals[id] = (totals[id] ?? 0) + count;
     }
   }
+
   const sorted = taxonomy
     .map((t) => ({ ...t, count: totals[t.id] ?? 0 }))
     .sort((a, b) => b.count - a.count);
   const max = Math.max(1, ...sorted.map((s) => s.count));
 
+  const rawSettings: Record<string, unknown> = settingsQ.data ?? {};
+  const taxonomyJson =
+    typeof rawSettings['taxonomy-json'] === 'string' ? rawSettings['taxonomy-json'] : '';
+  const routingJson =
+    typeof rawSettings['routing-json'] === 'string' ? rawSettings['routing-json'] : '';
+
+  const invalidateAll = () => {
+    void qc.invalidateQueries({ queryKey: ['taxonomy'] });
+    void qc.invalidateQueries({ queryKey: ['settings'] });
+  };
+
   return (
     <section className="space-y-6">
+      <DriversToastContainer toasts={toasts} />
       <SavedViewsStrip
         tab="drivers"
         onApply={(params) => {
@@ -1571,6 +1598,44 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
           ...(driverFilter ? { driverFilter } : {}),
         }}
       />
+
+      {/* Configure taxonomy accordion */}
+      <div className="rounded-lg border border-neutral-800 bg-neutral-900/40">
+        <button
+          type="button"
+          onClick={() => setConfigOpen((v) => !v)}
+          aria-expanded={configOpen}
+          data-testid="drivers-config-toggle"
+          className="flex w-full items-center justify-between px-5 py-3 text-left"
+        >
+          <span className="text-sm font-medium text-neutral-200">Configure taxonomy</span>
+          <span className="text-xs text-neutral-400">{configOpen ? '▲ collapse' : '▼ expand'}</span>
+        </button>
+        {configOpen ? (
+          <div
+            className="space-y-4 border-t border-neutral-800 px-5 pb-5 pt-4"
+            data-testid="drivers-config-panel"
+          >
+            {settingsQ.isPending ? (
+              <div className="h-24 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />
+            ) : (
+              <>
+                <TaxonomyConfigSection
+                  taxonomyJson={taxonomyJson}
+                  toast={toast}
+                  onSaved={invalidateAll}
+                />
+                <RoutingConfigSection
+                  routingJson={routingJson}
+                  toast={toast}
+                  onSaved={invalidateAll}
+                />
+              </>
+            )}
+          </div>
+        ) : null}
+      </div>
+
       <div>
         <h2 className="mb-4 text-sm uppercase tracking-wide text-neutral-400">
           Contact drivers · last 30 days · click to see posts
@@ -1593,7 +1658,9 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
                     className="block h-2 w-2 shrink-0 rounded-full"
                     style={{ background: d.color }}
                   />
-                  <span className="truncate text-sm text-neutral-200">{d.label}</span>
+                  <span className="truncate text-sm text-neutral-200">
+                    {formatDriverPath(d.id, taxonomy)}
+                  </span>
                 </span>
                 <span className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-900">
                   <span
@@ -1610,7 +1677,7 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
               </button>
               {openDriver === d.id ? (
                 <div className="mt-2 ml-4">
-                  <DriverPostsPanel driver={d} />
+                  <DriverPostsPanel driver={d} taxonomy={taxonomy} />
                 </div>
               ) : null}
             </li>
@@ -1629,10 +1696,20 @@ const STATUS_FILTERS: { id: 'all' | PostStatus; label: string }[] = [
   { id: 'resolved', label: 'Resolved' },
 ];
 
-function DriverPostsPanel({ driver }: { driver: TaxonomyNode }) {
+function DriverPostsPanel({
+  driver,
+  taxonomy,
+}: {
+  driver: TaxonomyNode;
+  taxonomy: TaxonomyNode[];
+}) {
   const [filter, setFilter] = useState<'all' | PostStatus>('open');
+  const [includeSubDrivers, setIncludeSubDrivers] = useState(false);
+
+  const hasChildren = taxonomy.some((t) => t.parentId === driver.id);
+
   const q = useQuery({
-    queryKey: ['driver-posts', driver.id, filter],
+    queryKey: ['driver-posts', driver.id, filter, includeSubDrivers],
     queryFn: () =>
       api.driverPosts(
         driver.id,
@@ -1657,6 +1734,18 @@ function DriverPostsPanel({ driver }: { driver: TaxonomyNode }) {
             {f.label}
           </button>
         ))}
+        {hasChildren ? (
+          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-neutral-400">
+            <input
+              type="checkbox"
+              checked={includeSubDrivers}
+              onChange={(e) => setIncludeSubDrivers(e.target.checked)}
+              data-testid="include-sub-drivers-toggle"
+              className="rounded border-neutral-700 bg-neutral-800 accent-orange-500"
+            />
+            Include sub-drivers
+          </label>
+        ) : null}
       </div>
       {q.isPending ? (
         <SkeletonList />
@@ -1664,16 +1753,24 @@ function DriverPostsPanel({ driver }: { driver: TaxonomyNode }) {
         <ErrorMsg msg="Couldn't load posts." retry={() => q.refetch()} />
       ) : q.data.posts.length === 0 ? (
         <EmptyHint>
-          No posts in "{driver.label}" matching filter "{filter}".
+          No posts in &ldquo;{driver.label}&rdquo; matching filter &ldquo;{filter}&rdquo;.
         </EmptyHint>
       ) : (
-        <DriverPostList posts={q.data.posts} driverId={driver.id} />
+        <DriverPostList posts={q.data.posts} driverId={driver.id} taxonomy={taxonomy} />
       )}
     </div>
   );
 }
 
-function DriverPostList({ posts, driverId }: { posts: DriverPost[]; driverId: string }) {
+function DriverPostList({
+  posts,
+  driverId,
+  taxonomy,
+}: {
+  posts: DriverPost[];
+  driverId: string;
+  taxonomy: TaxonomyNode[];
+}) {
   const qc = useQueryClient();
   const [openThread, setOpenThread] = useState<string | null>(null);
   const mutate = async (postId: string, status: PostStatus) => {
@@ -1703,7 +1800,7 @@ function DriverPostList({ posts, driverId }: { posts: DriverPost[]; driverId: st
             {p.taggedBy ? (
               <>
                 <span>·</span>
-                <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
+                <DriverBadge id={p.driverId} taggedBy={p.taggedBy} taxonomy={taxonomy} />
               </>
             ) : null}
             {p.confidence != null ? (
