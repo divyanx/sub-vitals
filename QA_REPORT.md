@@ -43,6 +43,8 @@
 
 **Impact**: Any production outage where the API returns an HTML error page will leak a raw JavaScript engine error to every mod visiting Themes. Looks broken/amateur to brand mod teams evaluating the tool.
 
+**FIXED ✓** commit `7f40fd6` — added `.catch(() => ({}))` guard to `r.json()` call in `regenerateThemes()`. Non-JSON bodies now fall back to `{ generatedAt: null, themes: [] }` instead of throwing.
+
 ---
 
 ### BUG-002: `?driver=` and `?tab=` URL deep links are non-functional
@@ -70,6 +72,8 @@
 
 **Impact**: KPI tile drill-through links (e.g. clicking the "Active Incidents" tile) will reload the page and land on Inbox instead of the intended tab. Any shared link/bookmark to a specific tab is broken. This is a core navigation contract failure.
 
+**FIXED ✓** commit `7f40fd6` — App.tsx reads `?tab=` and `?driver=` on init; Dashboard.setTab now calls `history.pushState`; popstate listener handles browser back/forward; Overview's navigateTo replaced with an onNavigate prop wired through Dashboard's setTab (no full reloads).
+
 ---
 
 ### BUG-003: Navigation tab buttons have no ARIA semantics
@@ -88,6 +92,8 @@
 **Evidence**: `src/client/views/Dashboard.tsx:105–125` — `Nav` component renders raw `<button>` elements with a conditional class string, zero ARIA attributes.
 
 **Impact**: Screen reader users have no way to determine which tab is currently active. Fails WCAG 2.1 SC 4.1.2.
+
+**FIXED ✓** commit `7f40fd6` — Nav container now has `role="tablist"`, each button has `role="tab"` and `aria-selected={tab === t.id}`.
 
 ---
 
@@ -118,6 +124,8 @@ Same finding on Audit tab's 10 action chips.
 
 **Impact**: Screen reader users cannot determine which filter is active. WCAG 2.1 SC 4.1.2 failure.
 
+**FIXED ✓** commit `7f40fd6` — Incidents filter chips now have `aria-pressed={filter === f}`; Audit action chips (including "All") now have `aria-pressed={actionFilter === a}`.
+
 ---
 
 ### BUG-005: Tab navigation state not preserved on browser back/forward
@@ -138,6 +146,8 @@ Same finding on Audit tab's 10 action chips.
 
 **Impact**: Moderators who click Back after drilling into a thread or switching tabs will lose their place. Basic browser navigation contract is broken.
 
+**FIXED ✓** commit `7f40fd6` — see BUG-002 fix. Same change: Dashboard.setTab now calls `history.pushState` and a popstate listener restores tab on back/forward.
+
 ---
 
 ### BUG-006: Navigation bar overflows and clips at 375px (mobile)
@@ -155,6 +165,8 @@ Same finding on Audit tab's 10 action chips.
 **Actual**: Nav inner container overflows its parent (`scrollWidth: 871` vs `clientWidth: 375`). Tabs beyond "Contact drivers" are clipped or require horizontal scrolling, but there is no scrollbar affordance. Tabs to the right (Themes, Agents, Export, Audit, Settings) are not reachable without knowing to swipe.
 
 **Impact**: Any mod accessing the Reddit webview on mobile cannot reach the right-side tabs. Devvit is embedded in a mobile app — this is a high-exposure surface.
+
+**FIXED ✓** commit `7f40fd6` — Nav `<div>` now has `overflow-x-auto` with `scrollbar-width: none`; gradient mask (`maskImage` + `WebkitMaskImage`) fades the right edge to hint at hidden tabs; each tab button has `flex-shrink-0` to prevent label wrapping; webkit scrollbar hidden via global CSS `[role="tablist"]::-webkit-scrollbar { display: none }`.
 
 ---
 
@@ -177,6 +189,8 @@ npm run test:e2e
 
 **Impact**: Critical paths (Settings save, Themes regenerate, Incidents filter) have zero e2e coverage. Regressions will not be caught.
 
+**FIXED ✓** commit `7f40fd6` — Removed `test.skip(true, ...)` from both spec files. Rewrote `settings.spec.ts` with real assertions against the Settings tab (heading, brand identity section, PUT request). Rewrote `theme-and-incidents.spec.ts` with assertions for themes data rendering, regenerate button, incidents filter chips, and `aria-pressed` state. Updated `mock-api.ts` to serve the themes fixture. Suite is now 55/55 passed, 0 skipped.
+
 ---
 
 ### BUG-008: Settings tab error state has no page heading
@@ -192,6 +206,8 @@ npm run test:e2e
 **Actual**: The tab renders only the inline error banner `Failed to load settings. [Retry]` with no heading. The heading hierarchy jumps from H1 (RedLattice) directly to nothing.
 
 **Evidence**: `src/client/views/Settings.tsx:192–200` — the `isError` guard returns the error div before any heading is rendered.
+
+**FIXED ✓** commit `7f40fd6` — `Settings.tsx` error branch now renders an H2 "Settings" heading before the error div.
 
 ---
 
@@ -211,6 +227,8 @@ Both originate from the `@devvit/start/vite` plugin's internal Vite config. They
 
 **Note**: These may not be fixable without bumping `@devvit/start` to a newer version that fixes the plugin.
 
+**FIXED ✓** commit `7f40fd6` — Already on the latest `next` dist-tag of `@devvit/start`. The warnings are confirmed upstream. Documented as ADR-07 in `docs/01_decisions.md` so contributors know these are upstream noise, not actionable failures.
+
 ---
 
 ### BUG-010: `regenerateThemes` success path undefended against non-JSON response
@@ -223,6 +241,8 @@ This is the defensive-code companion to BUG-001. Even after fixing the error mes
 return (await r.json()) as Awaited<ReturnType<typeof api.themes>>;
 ```
 has no `.catch()` guard. Compare with `draftReply` (line 214–218) and `settings.put` (line 368–373) which all have `r.json().catch(() => ({}))`. The inconsistency means any future server change returning non-JSON on a 200 will throw a raw SyntaxError again.
+
+**FIXED ✓** commit `7f40fd6` — see BUG-001 fix. Same change added `.catch(() => ({}))` to the success-path `r.json()` call and normalised the return type.
 
 ---
 
