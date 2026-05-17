@@ -14,6 +14,8 @@ import {
   Area,
   AreaChart,
   CartesianGrid,
+  Line,
+  LineChart,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -22,7 +24,6 @@ import {
 import {
   type Agent,
   api,
-  type DashboardSummary,
   type DriverPost,
   type PostStatus,
   type RecentPost,
@@ -590,116 +591,623 @@ function DraftReplyPanel({ postId }: { postId: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Overview (renamed to "Pulse" in nav) — executive summary cards + recent feed
+// Overview (renamed to "Pulse" in nav) — dense enterprise analytics surface
 // ---------------------------------------------------------------------------
 
-function Overview() {
-  const summary = useQuery({ queryKey: ['summary'], queryFn: api.summary });
-  const recent = useQuery({ queryKey: ['recent-posts'], queryFn: () => api.recentPosts(15) });
+/** Navigate to a different tab programmatically via query string. */
+function navigateTo(tab: Tab, extra?: Record<string, string>) {
+  const params = new URLSearchParams({ tab, ...extra });
+  window.location.search = params.toString();
+}
 
-  if (summary.isPending) return <SkeletonGrid />;
-  if (summary.isError)
-    return <ErrorMsg msg="Couldn't load summary." retry={() => summary.refetch()} />;
+// --- KPI strip helpers ----------------------------------------------------
+
+interface KpiTileProps {
+  label: string;
+  value: string;
+  sub?: string | undefined;
+  delta?: string | undefined;
+  deltaPositive?: boolean | undefined;
+  tone?: 'positive' | 'negative' | 'neutral' | 'warn' | undefined;
+  onClick?: (() => void) | undefined;
+}
+
+function KpiTile({
+  label,
+  value,
+  sub,
+  delta,
+  deltaPositive,
+  tone = 'neutral',
+  onClick,
+}: KpiTileProps) {
+  const valueColor =
+    tone === 'positive'
+      ? 'text-emerald-400'
+      : tone === 'negative'
+        ? 'text-rose-400'
+        : tone === 'warn'
+          ? 'text-amber-400'
+          : 'text-neutral-100';
+  const deltaColor = deltaPositive ? 'text-emerald-400' : 'text-rose-400';
+
+  const inner = (
+    <>
+      <div className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</div>
+      <div
+        className={`mt-1.5 truncate text-xl font-semibold tabular-nums leading-none ${valueColor}`}
+      >
+        {value}
+      </div>
+      <div className="mt-1 flex items-center gap-2">
+        {sub ? <span className="text-[11px] text-neutral-500">{sub}</span> : null}
+        {delta ? (
+          <span className={`ml-auto text-[11px] tabular-nums ${deltaColor}`}>{delta}</span>
+        ) : null}
+      </div>
+    </>
+  );
+
+  if (onClick) {
+    return (
+      <article
+        className="rounded-lg border border-neutral-800 bg-neutral-900 p-3.5 transition hover:border-neutral-700 hover:bg-neutral-800/60"
+        aria-label={`${label}: ${value}`}
+      >
+        <button
+          type="button"
+          className="block w-full cursor-pointer text-left"
+          onClick={onClick}
+          aria-label={`${label}: ${value}. Click for details.`}
+        >
+          {inner}
+        </button>
+      </article>
+    );
+  }
   return (
-    <div className="space-y-8">
-      <OverviewCards data={summary.data} />
-      <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">Recent activity</h2>
-        {recent.isPending ? (
-          <SkeletonList />
-        ) : recent.isError ? (
-          <ErrorMsg msg="Couldn't load recent posts." retry={() => recent.refetch()} />
-        ) : recent.data.items.length === 0 ? (
-          <EmptyHint>
-            No posts processed yet — submit a post in the subreddit and it'll appear here within a
-            second.
-          </EmptyHint>
-        ) : (
-          <RecentList items={recent.data.items} />
-        )}
+    <article
+      className="rounded-lg border border-neutral-800 bg-neutral-900 p-3.5"
+      aria-label={`${label}: ${value}`}
+    >
+      {inner}
+    </article>
+  );
+}
+
+// --- Sparkline helpers -----------------------------------------------------
+
+interface SparklineProps {
+  data: number[];
+  color: string;
+  width?: number | `${number}%`;
+  height?: number;
+}
+
+function Sparkline({ data, color, width = 80, height = 28 }: SparklineProps) {
+  const chartData = data.map((v, i) => ({ i, v }));
+  return (
+    <ResponsiveContainer width={width} height={height}>
+      <LineChart data={chartData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
+        <Line
+          type="monotone"
+          dataKey="v"
+          stroke={color}
+          strokeWidth={1.5}
+          dot={false}
+          isAnimationActive={false}
+        />
+      </LineChart>
+    </ResponsiveContainer>
+  );
+}
+
+// --- Heatmap helpers -------------------------------------------------------
+
+const DOW_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+const HOUR_LABELS = ['00', '06', '12', '18'];
+// Stable hour keys for heatmap — avoids array-index-as-key lint rule
+const HOURS_0_23 = [
+  'h00',
+  'h01',
+  'h02',
+  'h03',
+  'h04',
+  'h05',
+  'h06',
+  'h07',
+  'h08',
+  'h09',
+  'h10',
+  'h11',
+  'h12',
+  'h13',
+  'h14',
+  'h15',
+  'h16',
+  'h17',
+  'h18',
+  'h19',
+  'h20',
+  'h21',
+  'h22',
+  'h23',
+] as const;
+
+function HeatmapCell({ count, max, label }: { count: number; max: number; label: string }) {
+  const intensity = max > 0 ? count / max : 0;
+  // interpolate from neutral-900 (background) toward orange-500 using opacity
+  const opacity = Math.round(intensity * 100);
+  return (
+    <div
+      className={`h-4 w-full rounded-[2px] border border-neutral-800/40 bg-orange-500/${opacity}`}
+      title={label}
+    />
+  );
+}
+
+// --- Main Overview ---------------------------------------------------------
+
+function Overview() {
+  // --- data queries (all independent, staleTime 60s) ---
+  const summaryQ = useQuery({ queryKey: ['summary'], queryFn: api.summary, staleTime: 60_000 });
+  const recentQ = useQuery({
+    queryKey: ['recent-posts-500'],
+    queryFn: () => api.recentPosts(500),
+    staleTime: 60_000,
+  });
+  const volumeQ = useQuery({
+    queryKey: ['drivers-volume'],
+    queryFn: api.driverVolume,
+    staleTime: 60_000,
+  });
+  const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy, staleTime: 300_000 });
+  const sentimentQ = useQuery({
+    queryKey: ['sentiment-rollup'],
+    queryFn: api.sentimentRollup,
+    staleTime: 60_000,
+  });
+  const incidentsQ = useQuery({
+    queryKey: ['incidents', 'active'],
+    queryFn: () => api.incidents('active'),
+    staleTime: 30_000,
+  });
+  const leaderboardQ = useQuery({
+    queryKey: ['agent-leaderboard-7'],
+    queryFn: () => api.agentLeaderboard(7),
+    staleTime: 120_000,
+  });
+  const themesQ = useQuery({ queryKey: ['themes'], queryFn: api.themes, staleTime: 300_000 });
+
+  // --- KPI computations ---
+  const kpis = useMemo(() => {
+    if (!summaryQ.data || !volumeQ.data || !sentimentQ.data) return null;
+    const summary = summaryQ.data;
+
+    // Posts today + delta vs 7d avg
+    const today = summary.drivers.today?.totalPosts ?? 0;
+    const last7 = volumeQ.data.series.slice(-8, -1); // previous 7 days (not today)
+    const avg7 = last7.length > 0 ? last7.reduce((s, d) => s + d.totalPosts, 0) / last7.length : 0;
+    const postsDelta = avg7 > 0 ? ((today - avg7) / avg7) * 100 : 0;
+
+    // Negative share today + delta vs 7d avg
+    const negShare =
+      summary.sentiment && summary.sentiment.total > 0
+        ? summary.sentiment.negative / summary.sentiment.total
+        : 0;
+    const last7Sent = sentimentQ.data.series.slice(-8, -1);
+    const avg7negShare =
+      last7Sent.length > 0
+        ? last7Sent.reduce((s, d) => s + (d.total > 0 ? d.negative / d.total : 0), 0) /
+          last7Sent.length
+        : 0;
+    const negDelta = avg7negShare > 0 ? ((negShare - avg7negShare) / avg7negShare) * 100 : 0;
+
+    // Avg first-response latency from 7d leaderboard
+    let avgLatencyMs: number | null = null;
+    if (leaderboardQ.data && leaderboardQ.data.rows.length > 0) {
+      const withLatency = leaderboardQ.data.rows.filter((r) => r.avgLatencyMs !== null);
+      if (withLatency.length > 0) {
+        avgLatencyMs =
+          withLatency.reduce((s, r) => s + (r.avgLatencyMs ?? 0), 0) / withLatency.length;
+      }
+    }
+
+    return {
+      today,
+      postsDelta,
+      negShare,
+      negDelta,
+      topDriver: summary.drivers.topDriverLabel ?? '—',
+      topDriverCount: summary.drivers.topDriverCount,
+      activeIncidents: incidentsQ.data?.count ?? 0,
+      avgLatencyMs,
+      llmSpend: summary.llm.monthCents,
+    };
+  }, [summaryQ.data, volumeQ.data, sentimentQ.data, incidentsQ.data, leaderboardQ.data]);
+
+  // --- Sparklines data (14-day window per driver) ---
+  const sparklines = useMemo(() => {
+    if (!volumeQ.data || !taxonomyQ.data) return null;
+    const series = volumeQ.data.series.slice(-14); // last 14 days
+    return taxonomyQ.data.taxonomy.map((node) => {
+      const values = series.map((d) => d.counts[node.id] ?? 0);
+      const current = values.at(-1) ?? 0;
+      return { node, values, current };
+    });
+  }, [volumeQ.data, taxonomyQ.data]);
+
+  // --- Heatmap data: bin recentPosts by day-of-week (0=Mon) x hour ---
+  const heatmap = useMemo(() => {
+    if (!recentQ.data) return null;
+    // grid[dow][hour] where dow 0=Mon..6=Sun
+    const grid: number[][] = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
+    for (const post of recentQ.data.items) {
+      const d = new Date(post.createdAt);
+      // getDay: 0=Sun,1=Mon..6=Sat → convert to 0=Mon..6=Sun
+      const jsDay = d.getDay();
+      const dow = jsDay === 0 ? 6 : jsDay - 1;
+      const hour = d.getHours();
+      const row = grid[dow];
+      if (row) row[hour] = (row[hour] ?? 0) + 1;
+    }
+    const max = Math.max(1, ...grid.flat());
+    return { grid, max };
+  }, [recentQ.data]);
+
+  // --- Active incidents banner data ---
+  const firstIncident = incidentsQ.data?.incidents?.[0] ?? null;
+  const hasIncidents = (incidentsQ.data?.count ?? 0) > 0;
+
+  return (
+    <div className="space-y-6">
+      {/* ── Active incidents banner ───────────────────────────────────────── */}
+      {hasIncidents && firstIncident ? (
+        <div
+          role="alert"
+          className="flex items-center justify-between rounded-lg border border-rose-700 bg-rose-950/60 px-4 py-3 text-sm"
+        >
+          <div className="flex items-center gap-3">
+            <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" aria-hidden="true" />
+            <span className="font-medium text-rose-200">Active incident:</span>
+            <span className="text-rose-300">{firstIncident.reason}</span>
+            {(incidentsQ.data?.count ?? 0) > 1 ? (
+              <span className="text-rose-400/70">+{(incidentsQ.data?.count ?? 0) - 1} more</span>
+            ) : null}
+          </div>
+          <button
+            type="button"
+            onClick={() => navigateTo('incidents')}
+            className="rounded-md border border-rose-700 px-3 py-1 text-xs text-rose-200 transition hover:bg-rose-900/40"
+          >
+            View incidents →
+          </button>
+        </div>
+      ) : null}
+
+      {/* ── KPI strip ────────────────────────────────────────────────────── */}
+      <section aria-label="Key performance indicators">
+        <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+          Pulse — today at a glance
+        </h2>
+        {summaryQ.isPending ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6" aria-busy="true">
+            {[0, 1, 2, 3, 4, 5].map((i) => (
+              <div
+                key={i}
+                className="h-20 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+              />
+            ))}
+          </div>
+        ) : summaryQ.isError ? (
+          <ErrorMsg msg="Couldn't load summary." retry={() => summaryQ.refetch()} />
+        ) : kpis ? (
+          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+            <KpiTile
+              label="Posts today"
+              value={String(kpis.today)}
+              sub="auto-tagged"
+              delta={
+                kpis.postsDelta !== 0
+                  ? `${kpis.postsDelta > 0 ? '+' : ''}${kpis.postsDelta.toFixed(0)}% vs 7d`
+                  : undefined
+              }
+              deltaPositive={kpis.postsDelta >= 0}
+            />
+            <KpiTile
+              label="Negative share"
+              value={`${Math.round(kpis.negShare * 100)}%`}
+              sub="of today's posts"
+              delta={
+                kpis.negDelta !== 0
+                  ? `${kpis.negDelta > 0 ? '+' : ''}${kpis.negDelta.toFixed(0)}% vs 7d`
+                  : undefined
+              }
+              deltaPositive={kpis.negDelta <= 0}
+              tone={kpis.negShare > 0.4 ? 'negative' : kpis.negShare > 0.25 ? 'warn' : 'neutral'}
+            />
+            <KpiTile
+              label="Top driver"
+              value={kpis.topDriver}
+              sub={`${kpis.topDriverCount} post${kpis.topDriverCount === 1 ? '' : 's'}`}
+              onClick={() => navigateTo('drivers')}
+            />
+            <KpiTile
+              label="Active incidents"
+              value={String(kpis.activeIncidents)}
+              sub={kpis.activeIncidents > 0 ? 'needs attention' : 'all clear'}
+              tone={kpis.activeIncidents > 0 ? 'negative' : 'positive'}
+              onClick={kpis.activeIncidents > 0 ? () => navigateTo('incidents') : undefined}
+            />
+            <KpiTile
+              label="Avg first-response"
+              value={kpis.avgLatencyMs !== null ? formatLatency(kpis.avgLatencyMs) : '—'}
+              sub="last 7 days · agents"
+              onClick={() => navigateTo('agents')}
+            />
+            <KpiTile
+              label="LLM spend (MTD)"
+              value={`$${(kpis.llmSpend / 100).toFixed(3)}`}
+              sub={
+                summaryQ.data
+                  ? `${((summaryQ.data.llm.monthTokensIn + summaryQ.data.llm.monthTokensOut) / 1000).toFixed(0)}k tokens`
+                  : ''
+              }
+              tone={kpis.llmSpend > 500 ? 'warn' : 'neutral'}
+            />
+          </div>
+        ) : null}
       </section>
+
+      {/* ── Main content: sparklines + heatmap (left) + ticker (right) ───── */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+        <div className="min-w-0 space-y-6">
+          {/* ── Per-driver sparklines ───────────────────────────────────── */}
+          <section aria-label="Driver volume sparklines">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+              Contact drivers · 14-day trend
+            </h2>
+            {volumeQ.isPending || taxonomyQ.isPending ? (
+              <SkeletonGrid />
+            ) : volumeQ.isError || taxonomyQ.isError ? (
+              <ErrorMsg
+                msg="Couldn't load driver trends."
+                retry={() => {
+                  volumeQ.refetch();
+                  taxonomyQ.refetch();
+                }}
+              />
+            ) : sparklines && sparklines.length > 0 ? (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 xl:grid-cols-4">
+                {sparklines.map(({ node, values, current }) => (
+                  <button
+                    key={node.id}
+                    type="button"
+                    onClick={() => navigateTo('drivers', { driver: node.id })}
+                    className="group flex flex-col gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900 p-3 text-left transition hover:border-neutral-700 hover:bg-neutral-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+                    aria-label={`${node.label}: ${current} posts today. Click to view driver.`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span
+                        className="truncate text-xs font-medium text-neutral-200 group-hover:text-white"
+                        style={{ color: node.color }}
+                      >
+                        {node.label}
+                      </span>
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-100">
+                        {current}
+                      </span>
+                    </div>
+                    <div className="w-full overflow-hidden">
+                      <Sparkline
+                        data={values}
+                        color={node.color ?? '#f97316'}
+                        width={`100%` as `${number}%`}
+                        height={28}
+                      />
+                    </div>
+                    <div className="text-[10px] text-neutral-600">14d trend · click to drill</div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <EmptyHint>No driver data yet.</EmptyHint>
+            )}
+          </section>
+
+          {/* ── Hour-of-day heatmap ─────────────────────────────────────── */}
+          <section aria-label="Posts by day and hour of week">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+              Activity heatmap · day × hour
+            </h2>
+            {recentQ.isPending ? (
+              <div className="h-36 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />
+            ) : recentQ.isError ? (
+              <ErrorMsg msg="Couldn't load heatmap data." retry={() => recentQ.refetch()} />
+            ) : heatmap ? (
+              <div className="overflow-x-auto rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+                {/* Hour column labels */}
+                <div
+                  className="mb-1 ml-10 grid"
+                  style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}
+                >
+                  {[
+                    '0',
+                    '1',
+                    '2',
+                    '3',
+                    '4',
+                    '5',
+                    '6',
+                    '7',
+                    '8',
+                    '9',
+                    '10',
+                    '11',
+                    '12',
+                    '13',
+                    '14',
+                    '15',
+                    '16',
+                    '17',
+                    '18',
+                    '19',
+                    '20',
+                    '21',
+                    '22',
+                    '23',
+                  ].map((h) => (
+                    <div key={h} className="text-center text-[9px] text-neutral-600">
+                      {HOUR_LABELS.includes(h.padStart(2, '0')) ? h.padStart(2, '0') : ''}
+                    </div>
+                  ))}
+                </div>
+                {/* Rows */}
+                <div className="space-y-0.5">
+                  {DOW_LABELS.map((day, dow) => (
+                    <div key={day} className="flex items-center gap-2">
+                      <span className="w-8 shrink-0 text-right text-[10px] text-neutral-500">
+                        {day}
+                      </span>
+                      <div
+                        className="grid flex-1 gap-0.5"
+                        style={{ gridTemplateColumns: 'repeat(24, minmax(0, 1fr))' }}
+                      >
+                        {HOURS_0_23.map((hKey, hIdx) => {
+                          const count = heatmap.grid[dow]?.[hIdx] ?? 0;
+                          return (
+                            <HeatmapCell
+                              key={`${day}-${hKey}`}
+                              count={count}
+                              max={heatmap.max}
+                              label={`${day} ${hKey.slice(1)}:00 — ${count} post${count === 1 ? '' : 's'}`}
+                            />
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-600">
+                  <span>fewer</span>
+                  <div className="flex gap-0.5">
+                    {[0, 20, 40, 60, 80, 100].map((op) => (
+                      <div
+                        key={op}
+                        className={`h-3 w-4 rounded-[2px] bg-orange-500/${op} border border-neutral-700/30`}
+                      />
+                    ))}
+                  </div>
+                  <span>more</span>
+                </div>
+              </div>
+            ) : null}
+          </section>
+
+          {/* ── Top themes ──────────────────────────────────────────────── */}
+          <section aria-label="Emerging themes">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+              Emerging themes
+            </h2>
+            {themesQ.isPending ? (
+              <SkeletonList />
+            ) : themesQ.isError ? (
+              <ErrorMsg msg="Couldn't load themes." retry={() => themesQ.refetch()} />
+            ) : themesQ.data.themes.length === 0 ? (
+              <div className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-500">
+                <span>No themes generated yet.</span>
+                <button
+                  type="button"
+                  onClick={() => navigateTo('themes')}
+                  className="text-xs text-orange-400 hover:underline"
+                >
+                  Generate in Themes tab →
+                </button>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {themesQ.data.themes.slice(0, 5).map((t) => (
+                  <div
+                    key={t.name}
+                    className="rounded-lg border border-neutral-800 bg-neutral-900 p-3"
+                  >
+                    <div className="flex items-baseline justify-between gap-2">
+                      <h3 className="truncate text-sm font-medium text-neutral-100">{t.name}</h3>
+                      <span
+                        className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] tabular-nums ${
+                          t.avgSentiment < -0.2
+                            ? 'border-rose-700 bg-rose-900/40 text-rose-200'
+                            : t.avgSentiment > 0.2
+                              ? 'border-emerald-700 bg-emerald-900/40 text-emerald-200'
+                              : 'border-neutral-700 bg-neutral-800 text-neutral-400'
+                        }`}
+                      >
+                        {t.avgSentiment > 0 ? '+' : ''}
+                        {t.avgSentiment.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-[10px] text-neutral-500">
+                      {t.postCount} post{t.postCount === 1 ? '' : 's'}
+                    </div>
+                    <p className="mt-1.5 line-clamp-2 text-xs text-neutral-400">{t.summary}</p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </section>
+        </div>
+
+        {/* ── Activity ticker (sidebar on lg+) ─────────────────────────── */}
+        <aside aria-label="Recent activity">
+          <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+            Recent activity
+          </h2>
+          {recentQ.isPending ? (
+            <SkeletonList />
+          ) : recentQ.isError ? (
+            <ErrorMsg msg="Couldn't load recent posts." retry={() => recentQ.refetch()} />
+          ) : recentQ.data.items.length === 0 ? (
+            <EmptyHint>No posts yet — submit something in the subreddit to see it here.</EmptyHint>
+          ) : (
+            <ActivityTicker items={recentQ.data.items.slice(0, 20)} />
+          )}
+        </aside>
+      </div>
     </div>
   );
 }
 
-function OverviewCards({ data }: { data: DashboardSummary }) {
+function ActivityTicker({ items }: { items: RecentPost[] }) {
   return (
-    <section className="grid grid-cols-1 gap-4 sm:grid-cols-4">
-      <Card
-        label="Top driver today"
-        value={data.drivers.topDriverLabel ?? '—'}
-        sub={`${data.drivers.topDriverCount} posts`}
-      />
-      <Card
-        label="Posts today"
-        value={String(data.drivers.today?.totalPosts ?? 0)}
-        sub="auto-tagged"
-      />
-      <Card
-        label="Avg sentiment"
-        value={data.sentiment ? data.sentiment.averageScore.toFixed(2) : '—'}
-        sub={
-          data.sentiment
-            ? `${data.sentiment.negative} neg / ${data.sentiment.total} total`
-            : 'no scores yet'
-        }
-        tone={
-          data.sentiment
-            ? data.sentiment.averageScore > 0.05
-              ? 'positive'
-              : data.sentiment.averageScore < -0.05
-                ? 'negative'
-                : 'neutral'
-            : 'neutral'
-        }
-      />
-      <Card
-        label="AI spend this month"
-        value={`$${(data.llm.monthCents / 100).toFixed(3)}`}
-        sub={`${(data.llm.monthTokensIn + data.llm.monthTokensOut).toLocaleString()} tokens`}
-      />
-    </section>
-  );
-}
-
-function RecentList({ items }: { items: RecentPost[] }) {
-  return (
-    <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-900">
+    <ul className="divide-y divide-neutral-800/70 rounded-lg border border-neutral-800 bg-neutral-900/60">
       {items.map((p) => (
-        <li key={p.postId} className="flex items-start gap-3 px-4 py-3">
-          <div className="min-w-0 flex-1">
-            <a
-              href={p.url}
-              target="_top"
-              rel="noopener noreferrer"
-              className="block truncate text-sm font-medium text-neutral-100 hover:underline"
-              title={p.title}
-            >
-              {p.title || '(no title)'}
-            </a>
-            <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-              <span>u/{p.authorName}</span>
-              <span>·</span>
-              <span>{relativeTime(p.createdAt)}</span>
-              {p.driverId ? (
-                <>
-                  <span>·</span>
-                  <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
-                </>
-              ) : null}
-              {p.sentimentLabel ? (
-                <>
-                  <span>·</span>
-                  <SentimentBadge
-                    label={p.sentimentLabel}
-                    score={p.sentimentScore}
-                    by={p.sentimentScoredBy}
-                  />
-                </>
-              ) : null}
-            </div>
-            {p.reasoning ? (
-              <div className="mt-1 text-xs italic text-neutral-500">"{p.reasoning}"</div>
+        <li key={p.postId} className="px-3 py-2.5">
+          <a
+            href={p.url}
+            target="_top"
+            rel="noopener noreferrer"
+            className="block truncate text-xs font-medium text-neutral-200 hover:text-orange-300 hover:underline"
+            title={p.title}
+          >
+            {p.title || '(no title)'}
+          </a>
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-neutral-600">
+            <span>{relativeTime(p.createdAt)}</span>
+            {p.driverId ? (
+              <>
+                <span>·</span>
+                <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
+              </>
+            ) : null}
+            {p.sentimentLabel ? (
+              <>
+                <span>·</span>
+                <SentimentBadge
+                  label={p.sentimentLabel}
+                  score={p.sentimentScore}
+                  by={p.sentimentScoredBy}
+                />
+              </>
             ) : null}
           </div>
         </li>

@@ -1,0 +1,26 @@
+{
+  "generatedAt": 1747440000000,
+  "themes": [
+    {
+      "name": "Checkout crash wave",
+      "summary": "Multiple users reporting the app crashing specifically during the checkout flow after the latest update.",
+      "samplePostIds": ["post_001", "post_005"],
+      "postCount": 8,
+      "avgSentiment": -0.65
+    },
+    {
+      "name": "Pricing backlash",
+      "summary": "Users expressing frustration over the recent subscription price increase without perceived value improvements.",
+      "samplePostIds": ["post_003"],
+      "postCount": 4,
+      "avgSentiment": -0.48
+    },
+    {
+      "name": "UI redesign praise",
+      "summary": "A vocal group of users are appreciating the new interface redesign and improved mobile experience.",
+      "samplePostIds": ["post_002"],
+      "postCount": 3,
+      "avgSentiment": 0.72
+    }
+  ]
+}
