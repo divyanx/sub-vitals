@@ -1,115 +1,114 @@
-# RedLattice
+# RedLattice — native Reddit CX analytics
 
-> Native CX analytics for Reddit brand communities. AI-augmented contact-driver tagging, hybrid lexicon + LLM sentiment, verified-agent identity, live pinned dashboard, CSV export for warehouse / Sprinklr-style consumers. Built on Devvit Web.
+[![hackathon](https://img.shields.io/badge/devvit-hackathon%202026-orange)]()
+[![tests](https://img.shields.io/badge/tests-59%20passing-brightgreen)]()
+[![license](https://img.shields.io/badge/license-BSD--3--Clause-blue)]()
 
-**Hackathon target:** Best New Mod Tool · Reddit Devvit · May 27, 2026.
+> Real-time sentiment, contact-driver tagging, agent identity verification, crisis detection, and weekly digests — all inside Reddit's Devvit platform. Built for brand subreddits like r/Sonos, r/OpenPhone, and r/Fidelity.
 
----
+![Pulse tab showing today's top contact driver, post volume, and sentiment score](docs/screenshots/pulse.png)
 
-## What's actually live right now
+## What it does
 
-| | What it does | How a mod sees it |
+- **Contact-driver tagging** — Every new post gets a keyword scan; ambiguous posts escalate to an LLM (OpenRouter, default Claude Haiku) that picks a category from your taxonomy and explains why. Mods see driver badges + AI reasoning directly in the activity feed.
+- **Hybrid sentiment scoring** — AFINN-165 lexicon scores every post and comment in milliseconds. When the score lands in an ambiguous band, an LLM judge breaks the tie. 30-day trend chart in the Sentiment tab.
+- **Verified-agent identity** — Mods mark brand employees via the comment `…` menu. Agent flair syncs automatically to Reddit user flair so everyone in the sub can tell who's official.
+- **Crisis detection + modmail escalation** — When a thread accumulates too many negative comments, mods get a modmail alert with a 4-hour cooldown. Incidents surface in the Incidents tab for tracking and resolution.
+- **Weekly digest** — Automated Monday morning summary modmail with top contact drivers, sentiment trend, and SLA breach count for the prior week.
+- **Live analytics dashboard** — Pinned Reddit post that opens to a full React SPA: Inbox, Drivers, Sentiment, Incidents, Themes, Agents, Export, Audit, Settings.
+- **CSV export** — One-click download or `GET /api/export/posts.csv` for warehouse / Sprinklr / Khoros ingestion.
+
+## The 30-second demo
+
+Install RedLattice on a brand subreddit. A pinned "Today's Pulse" post appears automatically. When users post issues, RedLattice tags them as "Billing", "Bug", "Feature request", etc. — with AI reasoning — and scores the sentiment. Mods open the dashboard from the pinned post to see the Inbox (queue of open issues), the Drivers bar chart (what customers are complaining about), and the Sentiment timeline (is the community mood getting worse?). When a thread goes negative, they get a modmail alert and can respond before it escalates.
+
+**Demo video:** [youtube.com/watch?v=TODO](https://youtube.com/watch?v=TODO) *(will be recorded before submission)*
+
+## Architecture
+
+| Layer | Technology | Role |
 |---|---|---|
-| **Contact-driver tagging** | Lexicon keyword pass on every new post. If confidence < 0.6 or no match, escalates to an LLM (OpenRouter, default `claude-haiku-4.5`) which picks a category from the configured taxonomy and explains why. | Pinned RedLattice dashboard post → Overview tab → recent activity feed shows `driverId` + `· ai` badge + reasoning, OR Drivers tab → click any bar → list of posts tagged that way with deep links back to the actual Reddit post. |
-| **Sentiment scoring** | AFINN-165 lexicon on every post + comment. When the lexicon score is in the ambiguous band (`|score| < 0.15`), escalates to an LLM judge. | Dashboard Overview shows daily breakdown; Sentiment tab has a 30-day stacked Area chart. Each entry in the activity feed has a `· positive 0.42` style badge with `· ai` if LLM-judged. |
-| **Agent verification** | Mod can mark a comment author as a verified company agent via comment menu; whitelist seeds on install. | Agents tab on the dashboard lists verified users with role + verification date. Comment `…` menu has Mark / Remove verified agent items. |
-| **Auto-pinned dashboard** | On `AppInstall` and every `AppUpgrade`, ensures exactly one pinned RedLattice post exists in the subreddit. Idempotent via `rl:pulse:postId`. | Pinned at position 2 in the subreddit feed. The post itself is the React iframe — opens to the full dashboard. |
-| **CSV export** | `GET /api/export/posts.csv?limit=N` joins post metadata + driver tags + sentiment in one CSV. | Export tab on the dashboard has one-click download buttons. The endpoint is the integration point for Sprinklr / Khoros / a customer's warehouse. |
-| **Cost-capped AI** | Token-based monthly spend tracking with a hard cap per installation (default $5/mo). Above cap → auto-fallback to lexicon. | AI spend card on the Overview tab. Cap is configurable via Devvit global setting `llm-monthly-cost-cap-cents`. |
-| **Structured JSON logging** | Every request and module decision emits a single JSON line via `console.*`. Devvit's log stream picks it up. | `npx devvit logs r/<sub>` shows real-time, machine-parseable activity. |
-| **Modmail escalation** | When a comment thread accumulates ≥ threshold negative comments within the sample window, a modmail alert fires with a 4h cooldown. | Modmail inbox. Threshold configurable per-subreddit. |
+| Platform | [Devvit Web](https://developers.reddit.com) | Triggers, menus, forms, scheduler, settings |
+| Server | [Hono](https://hono.dev) on Devvit's Node runtime | `/api/*` + `/internal/*` HTTP handlers |
+| Storage | Devvit Redis (scoped per installation) | All state; atomic HASH rollups; no SQL |
+| Client | React 19 + Vite + Tailwind 4 | Full dashboard SPA in an iframe |
+| AI | [OpenRouter](https://openrouter.ai) via Vercel AI SDK | Contact-driver classification + sentiment judgment |
+| Module bus | Central dispatcher (`src/shared/dispatcher.ts`) | Fan-out with failure isolation; one module crash can't break others |
 
-## Start here (newcomer onboarding)
+Full architecture spec: [`docs/05_architecture.md`](docs/05_architecture.md)
 
-1. **[`docs/00_start_here.md`](docs/00_start_here.md)** — 10-min orientation
-2. **[`docs/01_decisions.md`](docs/01_decisions.md)** — every architectural decision and *why* (10 ADRs)
-3. **[`docs/02_stack.md`](docs/02_stack.md)** — every dependency, role, version
-4. **[`docs/03_devvit_web_primer.md`](docs/03_devvit_web_primer.md)** — Devvit Web concepts
-5. **[`docs/04_local_dev.md`](docs/04_local_dev.md)** — running, testing, deploying
-6. **[`docs/05_architecture.md`](docs/05_architecture.md)** — module contract, event flow, Redis schema
+## Tech stack
 
-Reference docs from the original research phase live in [`docs/legacy/`](docs/legacy/). They use the old project name "BrandPulse" — same project, renamed before any code was written.
+- **Runtime**: Devvit Web (`@devvit/web`) — Reddit's native app platform
+- **Server**: Hono 4 + gzip compress middleware
+- **Client**: React 19, Vite 8, Tailwind CSS 4, TanStack Query 5
+- **AI**: Vercel AI SDK + OpenRouter (model-agnostic; default `claude-haiku-4.5`)
+- **Storage**: Devvit Redis (no Drizzle, no Postgres — Redis only by platform constraint)
+- **Testing**: Vitest (59 unit tests), Playwright (e2e)
+- **Lint/format**: Biome
 
-## Quick commands
+## Quick start
 
 ```bash
-npm install         # install deps
-npm run type-check  # tsc strict, server + client
-npm run lint        # Biome
-npm run test        # Vitest — currently 37 passing across 5 files
-npm run dev         # devvit playtest — live-reload on the configured test subreddit
-npm run build       # production bundle to dist/
-npm run deploy      # devvit upload (private app directory)
-npm run launch      # devvit publish (post-hackathon)
+npm install
+npx devvit login          # authenticate to Reddit
+npm run dev               # devvit playtest — live reload on r/redlattice_divyanx_
 ```
 
-## Project layout
+## Project structure
 
 ```
 redlattice/
-├── devvit.json                       # Devvit Web manifest (v1) — triggers, menu, scheduler, settings
-├── package.json
-├── tsconfig.{base,server,client}.json
-├── vite.config.ts                    # @devvit/start plugin orchestrates client + server builds
-├── biome.json                        # lint + format
+├── devvit.json                       # Devvit Web manifest — triggers, menu, settings, scheduler
+├── vite.config.ts                    # @devvit/start/vite plugin (client + server in one pass)
 ├── src/
-│   ├── server/index.ts               # Hono server, /internal/* + /api/* routes
-│   ├── client/                       # React 19 SPA — Daily Pulse + Dashboard
-│   │   ├── App.tsx, main.tsx, index.html, styles.css
-│   │   ├── lib/api.ts                # typed fetch helpers
-│   │   └── views/{Pulse,Dashboard}.tsx
+│   ├── server/index.ts               # Hono app, all /api/* + /internal/* routes
+│   ├── client/                       # React 19 SPA
+│   │   ├── views/
+│   │   │   ├── Dashboard.tsx         # Multi-tab analytics surface (lazy-split by tab)
+│   │   │   ├── Pulse.tsx             # Daily Pulse glanceable view (?view=pulse)
+│   │   │   ├── Settings.tsx          # Settings tab (lazy chunk)
+│   │   │   └── SentimentChart.tsx    # Recharts area chart (lazy chunk — deferred from first paint)
+│   │   └── lib/api.ts                # Typed fetch client
 │   ├── modules/
-│   │   ├── agent-verification/       # whitelist, mark/unmark, API routes
-│   │   ├── contact-drivers/          # keyword + LLM hybrid tagging
+│   │   ├── agent-verification/       # Verified-agent whitelist + flair sync
+│   │   ├── contact-drivers/          # Keyword + LLM hybrid tagging
 │   │   ├── sentiment/                # AFINN + LLM hybrid scoring + modmail escalation
-│   │   └── dashboard-orchestrator/   # auto-pin Daily Pulse on install/upgrade
+│   │   ├── crisis-detection/         # Thread-level incident grouping
+│   │   ├── theme-clustering/         # LLM-assisted topic clustering
+│   │   ├── agent-metrics/            # Response latency + SLA breach tracking
+│   │   ├── audit-log/                # Append-only mod action log
+│   │   ├── dashboard-orchestrator/   # Auto-pin Daily Pulse on install/upgrade
+│   │   └── studio-bridge/            # Outbound webhook to studio.redlattice.app
 │   └── shared/
-│       ├── types.ts                  # module contract + domain models
-│       ├── keys.ts                   # Redis key namespace under rl:
-│       ├── log.ts                    # JSON console logger with redaction
-│       ├── validation.ts             # Zod schemas at every boundary
-│       ├── permissions.ts            # requireMod() with 5-min cache, fail-closed
-│       ├── ratelimit.ts              # Redis token bucket
-│       ├── idempotency.ts            # hSetNX + TTL claim-once
-│       ├── storage.ts                # typed Redis accessors; HASH-based atomic rollups
-│       ├── llm.ts                    # OpenRouter + Vercel AI SDK, cost-capped + cached + retried
-│       └── dispatcher.ts             # module event fan-out with failure isolation
-├── tests/                            # Vitest pure-logic tests
-└── docs/                             # ADRs, primers, architecture
+│       ├── dispatcher.ts             # Module event fan-out with failure isolation
+│       ├── keys.ts                   # Redis key namespace (rl:*)
+│       ├── llm.ts                    # OpenRouter; cost-capped, response-cached, retried
+│       ├── permissions.ts            # requireMod() — fail-closed, 5-min cache
+│       ├── ratelimit.ts              # Redis token bucket per installation
+│       ├── idempotency.ts            # hSetNX claim-once guard
+│       └── storage.ts                # Typed Redis accessors; HASH-based atomic rollups
+├── scripts/
+│   └── check-bundle-size.js          # CI guard: initial JS must stay under 150 KB gzipped
+├── tests/                            # Vitest unit tests + Playwright e2e
+└── docs/                             # ADRs, primers, architecture spec
 ```
 
-## REST endpoints (mod-only)
+## Contributing — adding a new pipeline module
 
-```
-GET  /api/health
-GET  /api/admin/debug                          state inspection
-GET  /api/dashboard/summary                    counters + AI spend
-GET  /api/dashboard/recent-posts?limit=N
-GET  /api/drivers/taxonomy
-GET  /api/drivers/volume?from=&to=
-GET  /api/drivers/:driverId/posts?limit=N
-POST /api/drivers/tag                          { postId, driverId }
-GET  /api/sentiment/rollup?from=&to=
-GET  /api/sentiment/:contentId
-GET  /api/agents
-GET  /api/agents/:username
-POST /api/agents                               { usernames: [...] }
-GET  /api/export/posts.csv?limit=N
-```
+1. Create `src/modules/<name>/index.ts` and export a `BrandPulseModule` object (see `src/shared/types.ts`).
+2. Register it in `src/server/index.ts` with `registerModule(yourModule)`.
+3. Optionally add `/api/<name>/*` routes via `mod.apiRoutes(app)`.
+4. Add Vitest tests in `tests/<name>.test.ts`.
 
-## Devvit settings
+Full module contract: [`docs/05_architecture.md`](docs/05_architecture.md)
 
-**Global (developer-set, encrypted):**
-- `openrouter-api-key` — OpenRouter API key (already set)
-- `llm-model` — model slug (default `anthropic/claude-haiku-4.5`)
-- `llm-monthly-cost-cap-cents` — hard cap, default 500 = $5
+## Roadmap
 
-**Subreddit (mod-configurable per install):**
-- `agent-whitelist` — newline-separated usernames pre-seeded on install
-- `taxonomy-json` — optional custom taxonomy
-- `sentiment-threshold` — negative-comment count before escalation (default 5)
-- `sla-minutes` — first-response SLA, Phase 2 wiring (default 120)
+**Phase 1 (Hackathon — May 27, 2026):** Contact drivers, sentiment, agent verification, crisis detection, weekly digest, full analytics dashboard.
 
----
+**Phase 2 (post-hackathon):** Studio webapp at [studio.redlattice.app](https://studio.redlattice.app) for multi-sub cross-community analytics, PII guardian, AI-generated content detection, bearer-token REST API for Sprinklr / Khoros integrations.
 
-License: BSD-3-Clause.
+## License
+
+BSD-3-Clause
