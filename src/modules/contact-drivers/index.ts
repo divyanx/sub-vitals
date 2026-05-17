@@ -15,6 +15,7 @@
  */
 
 import { context, reddit, redis } from '@devvit/web/server';
+import { recordAudit } from '@modules/audit-log/index.js';
 import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, K, today } from '@shared/keys.js';
 import { llmObject } from '@shared/llm.js';
@@ -285,6 +286,7 @@ export const contactDriversModule: RedLatticeModule = {
       }
       const updated = await setPostStatus(postId, status, context.username ?? 'api');
       if (!updated) return c.json({ error: 'post not tagged' }, 404);
+      void recordAudit(status === 'resolved' ? 'mark-resolved' : 'mark-open', postId, { status });
       return c.json({ ok: true, tag: updated });
     });
   },
@@ -338,6 +340,8 @@ async function handleStatusMenu(
   if (!updated) {
     return c.json({ showToast: 'Post is not tagged with a driver yet.' });
   }
+  const action = status === 'resolved' ? ('mark-resolved' as const) : ('mark-open' as const);
+  void recordAudit(action, body.data.targetId, { status });
   return c.json({ showToast: { text: toastText, appearance: 'success' } });
 }
 
@@ -372,6 +376,7 @@ export async function handleTagIssueFormSubmit(c: Context): Promise<Response> {
   };
   await setPostTag(tag);
   await incrDriverRollup(driverId);
+  void recordAudit('tag-issue', postId, { driverId });
   return c.json({ showToast: { text: `✓ Tagged as ${driverId}`, appearance: 'success' } });
 }
 

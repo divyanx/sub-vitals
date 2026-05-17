@@ -16,6 +16,7 @@
  */
 
 import { context, reddit, redis } from '@devvit/web/server';
+import { recordAudit } from '@modules/audit-log/index.js';
 import { scoreText } from '@modules/sentiment/index.js';
 import { currentHourSlot, K } from '@shared/keys.js';
 import { log } from '@shared/log.js';
@@ -166,6 +167,7 @@ export const crisisDetectionModule: RedLatticeModule = {
       if (activeId === id) await clearActiveIncident();
 
       log.info('crisis: incident resolved manually', { id, by: resolved.resolvedBy });
+      void recordAudit('incident-resolve', id, { resolvedBy: resolved.resolvedBy });
       return c.json({ incident: resolved });
     });
   },

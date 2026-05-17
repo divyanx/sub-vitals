@@ -61,6 +61,9 @@ export const K = {
   modPermCache: (username: string) => `rl:perm:mod:${username.toLowerCase()}`,
   llmCache: (hash: string) => `rl:llm:cache:${hash}`,
   llmCostMonth: (yyyymm: string) => `rl:cost:${yyyymm}`,
+
+  // audit-log
+  auditLog: () => 'rl:audit:log',
 } as const;
 
 // ---------------------------------------------------------------------------

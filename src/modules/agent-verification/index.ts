@@ -12,6 +12,7 @@
  */
 
 import { context, settings as devvitSettings, reddit } from '@devvit/web/server';
+import { recordAudit } from '@modules/audit-log/index.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import { readEffectiveSetting } from '@shared/settings-overrides.js';
@@ -118,6 +119,7 @@ export async function handleMarkAgentMenu(c: Context): Promise<Response> {
   // Best-effort: apply a Reddit user flair so the verification is visible
   // to everyone reading the sub, not just in our dashboard.
   await applyVerifiedFlair(username);
+  void recordAudit('mark-agent', body.data.targetId, { username });
 
   return c.json({
     showToast: { text: `✓ Marked u/${username} as verified agent.`, appearance: 'success' },
@@ -145,6 +147,7 @@ export async function handleUnmarkAgentMenu(c: Context): Promise<Response> {
   await setAgent({ ...existing, role: 'removed' });
   // Clear the visible Reddit flair when revoking verification.
   await clearVerifiedFlair(username);
+  void recordAudit('unmark-agent', body.data.targetId, { username });
   return c.json({
     showToast: { text: `Removed agent status for u/${username}.`, appearance: 'success' },
   });

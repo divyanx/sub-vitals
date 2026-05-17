@@ -10,6 +10,7 @@
  */
 
 import { context } from '@devvit/web/server';
+import { recordAudit } from '@modules/audit-log/index.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
@@ -81,6 +82,7 @@ export const themeClusteringModule: RedLatticeModule = {
       if (!snapshot) {
         return c.json({ error: 'regeneration failed — check LLM settings or logs' }, 503);
       }
+      void recordAudit('theme-regenerate', null, { themeCount: snapshot.themes.length });
       return c.json(snapshot);
     });
   },

@@ -24,6 +24,7 @@ import {
   handleMarkAgentMenu,
   handleUnmarkAgentMenu,
 } from '@modules/agent-verification/index.js';
+import { auditLogModule, recordAudit } from '@modules/audit-log/index.js';
 import {
   contactDriversModule,
   handleMarkOpenMenu,
@@ -64,6 +65,7 @@ import {
   getTaxonomy,
   getUserPostIds,
   setLastDigestSentAt,
+  setPostStatus,
   setTaxonomy,
 } from '@shared/storage.js';
 import {
@@ -87,6 +89,7 @@ registerModule(impostorDetectionModule);
 registerModule(crisisDetectionModule);
 registerModule(themeClusteringModule);
 registerModule(agentMetricsModule);
+registerModule(auditLogModule);
 
 // ---------------------------------------------------------------------------
 // App
@@ -630,9 +633,77 @@ for (const mod of [
   crisisDetectionModule,
   themeClusteringModule,
   agentMetricsModule,
+  auditLogModule,
 ]) {
   mod.apiRoutes?.(app);
 }
+
+// ---------------------------------------------------------------------------
+// Bulk post-status mutation
+// ---------------------------------------------------------------------------
+
+const bulkStatusBodySchema = z.object({
+  postIds: z.array(z.string().min(1)).min(1).max(50),
+  status: z.enum(['open', 'in-progress', 'responded', 'resolved']),
+});
+
+/**
+ * POST /api/posts/bulk-status
+ *
+ * Updates the workflow status of multiple posts in a single call. Mod-only.
+ * Uses the same underlying setPostStatus used by the single-post route.
+ * Returns a per-postId result so the client can display partial-success info.
+ *
+ * Body:  { postIds: string[], status: PostStatus }
+ * Limit: max 50 postIds per call.
+ */
+app.post('/api/posts/bulk-status', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
+
+  const parsed = bulkStatusBodySchema.safeParse(rawBody);
+  if (!parsed.success) {
+    if (parsed.error.issues.some((i) => i.path[0] === 'postIds' && i.code === 'too_big')) {
+      return c.json({ error: 'postIds exceeds maximum of 50' }, 400);
+    }
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+  }
+
+  const { postIds, status } = parsed.data;
+  const actor = context.username ?? 'api';
+
+  const settledResults = await Promise.allSettled(
+    postIds.map(async (postId) => {
+      const updated = await setPostStatus(postId, status, actor);
+      if (!updated) throw new Error('post not tagged');
+      return updated;
+    }),
+  );
+
+  const results = postIds.map((postId, i) => {
+    const r = settledResults[i];
+    if (!r) return { postId, ok: false as const, error: 'unknown' };
+    if (r.status === 'fulfilled') return { postId, ok: true as const };
+    return {
+      postId,
+      ok: false as const,
+      error: r.reason instanceof Error ? r.reason.message : String(r.reason),
+    };
+  });
+
+  const succeeded = results.filter((r) => r.ok).length;
+  const failed = results.length - succeeded;
+
+  void recordAudit('bulk-status', null, { count: postIds.length, status, postIds });
+
+  return c.json({ ok: failed === 0, results, succeeded, failed });
+});
 
 // ---------------------------------------------------------------------------
 // Triggers — Reddit POSTs the trigger payload as JSON to these endpoints
@@ -880,6 +951,7 @@ app.put('/api/settings', async (c) => {
 
   const updated = await readAllEffectiveSettings();
   const openrouterKeyRaw = await settings.get('openrouter-api-key').catch(() => undefined);
+  void recordAudit('settings-update', null, { keys: Object.keys(updates) });
   return c.json({
     ...updated,
     openrouterKeyConfigured: typeof openrouterKeyRaw === 'string' && openrouterKeyRaw.length > 0,
