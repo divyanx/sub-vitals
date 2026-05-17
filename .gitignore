@@ -14,3 +14,7 @@ coverage/
 .idea/
 .cache/
 .devvit/
+
+playwright-report/
+test-results/
+
