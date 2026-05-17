@@ -535,6 +535,44 @@ export const api = {
       return (await r.json()) as { ok: boolean };
     },
   },
+  ai: {
+    status: () =>
+      getJson<{
+        effectiveModel: string;
+        isFallback: boolean;
+        originalSlug: string | null;
+        defaultModel: string;
+        catalog: Array<{
+          slug: string;
+          label: string;
+          provider: string;
+          tier: string;
+          pricePer1kTaggingCalls: number;
+          supportsStructuredOutput: boolean;
+          notes?: string;
+        }>;
+      }>('/api/ai/status'),
+    validateModel: async (slug: string) => {
+      const r = await fetch('/api/ai/validate-model', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      return (await r.json()) as {
+        valid: boolean;
+        supportsStructuredOutput: boolean;
+        inCatalog?: boolean;
+        estimatedCostCents?: number | null;
+        error?: string;
+        hint?: string;
+      };
+    },
+    clearFallback: async () => {
+      const r = await fetch('/api/ai/clear-fallback', { method: 'POST' });
+      if (!r.ok) throw new Error(`clear-fallback failed: HTTP ${r.status}`);
+      return (await r.json()) as { ok: boolean; slug?: string; message?: string };
+    },
+  },
   adminDebug: () =>
     getJson<{
       server: { ts: number; uptimeSec: number };
@@ -671,7 +709,149 @@ export const api = {
       if (!r.ok) throw new Error(`delete failed: HTTP ${r.status}`);
     },
   },
+
+  // ---------------------------------------------------------------------------
+  // Content Browser
+  // ---------------------------------------------------------------------------
+
+  contentSearch: async (params: ContentSearchParams): Promise<ContentSearchResult> => {
+    const q = new URLSearchParams();
+    if (params.q) q.set('q', params.q);
+    if (params.driver) q.set('driver', params.driver);
+    if (params.sentiment) q.set('sentiment', params.sentiment);
+    if (params.status) q.set('status', params.status);
+    if (params.author) q.set('author', params.author);
+    if (params.hasAgent) q.set('hasAgent', params.hasAgent);
+    if (params.from) q.set('from', params.from);
+    if (params.to) q.set('to', params.to);
+    if (params.type) q.set('type', params.type);
+    if (params.sort) q.set('sort', params.sort);
+    q.set('limit', String(params.limit ?? 50));
+    q.set('offset', String(params.offset ?? 0));
+    const raw = await getJson<ContentSearchResult>(`/api/content/search?${q.toString()}`);
+    return { ...raw, items: arr<ContentItem>(raw.items) };
+  },
+
+  postReply: async (postId: string, body: string): Promise<{ commentId: string }> => {
+    const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/reply`, {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ body }),
+    });
+    if (!r.ok) {
+      const errBody = await r.json().catch(() => ({}));
+      throw new Error((errBody as { error?: string }).error ?? `HTTP ${r.status}`);
+    }
+    return (await r.json()) as { commentId: string };
+  },
+
+  taxonomyTemplates: {
+    list: async () => {
+      const raw = await getJson<{
+        templates: Array<{
+          id: string;
+          name: string;
+          description: string;
+          driverCount: number;
+          deepestDepth: number;
+        }>;
+      }>('/api/taxonomy/templates');
+      return { templates: arr<(typeof raw.templates)[number]>(raw.templates) };
+    },
+    apply: async (
+      templateId: 'ecommerce' | 'saas' | 'hardware' | 'gaming' | 'finance' | 'media',
+      mode: 'replace' | 'merge',
+    ) => {
+      const r = await fetch('/api/taxonomy/apply-template', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ templateId, mode }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { taxonomy: TaxonomyNode[]; driverCount: number };
+    },
+  },
+
+  bulkTag: async (
+    postIds: string[],
+    driverId: string,
+  ): Promise<{ succeeded: number; failed: number }> => {
+    const r = await fetch('/api/posts/bulk-tag', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ postIds, driverId }),
+    });
+    if (!r.ok) {
+      const errBody = await r.json().catch(() => ({}));
+      throw new Error((errBody as { error?: string }).error ?? `HTTP ${r.status}`);
+    }
+    return (await r.json()) as { succeeded: number; failed: number };
+  },
 };
+
+// ---------------------------------------------------------------------------
+// Content Browser types
+// ---------------------------------------------------------------------------
+
+export type ContentType = 'post' | 'comment' | 'both';
+export type ContentSort =
+  | 'priority_desc'
+  | 'createdAt_desc'
+  | 'createdAt_asc'
+  | 'sentimentScore_asc'
+  | 'sentimentScore_desc'
+  | 'responseTime_asc';
+
+export interface ContentItem {
+  id: string;
+  type: 'post' | 'comment';
+  /** For posts: post title. For comments: first 200 chars of body. */
+  title: string;
+  /** Full body text (used for search and expand preview) */
+  body: string | null;
+  authorName: string;
+  url: string;
+  createdAt: number;
+  driverId: string | null;
+  taggedBy: 'manual' | 'auto' | 'ai' | null;
+  sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
+  sentimentScore: number | null;
+  status: PostStatus | null;
+  /** postId — for comments this is their parent post. Used for threading. */
+  postId: string;
+  /** Only set for comments */
+  hasAgentReply: boolean | null;
+  replyCount: number | null;
+  /** First-response latency in ms, if applicable */
+  responseLatencyMs: number | null;
+  /** Which agent replied, if any */
+  agentUsername: string | null;
+}
+
+export interface ContentSearchParams {
+  q?: string;
+  driver?: string;
+  sentiment?: string;
+  status?: string;
+  author?: string;
+  hasAgent?: string;
+  from?: string;
+  to?: string;
+  type?: ContentType;
+  sort?: ContentSort;
+  limit?: number;
+  offset?: number;
+}
+
+export interface ContentSearchResult {
+  items: ContentItem[];
+  total: number;
+  offset: number;
+  limit: number;
+}
 
 // ---------------------------------------------------------------------------
 // Taxonomy display helpers

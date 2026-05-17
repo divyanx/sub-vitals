@@ -42,10 +42,23 @@ import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/in
 import { studioBridgeModule } from '@modules/studio-bridge/index.js';
 import { regenerateThemes, themeClusteringModule } from '@modules/theme-clustering/index.js';
 import * as Sentry from '@sentry/core';
+import {
+  CURATED_MODELS,
+  DEFAULT_MODEL,
+  findModel,
+  isStructuredOutputCapable,
+} from '@shared/ai-models.js';
 import { buildWeeklyDigest, gatherDigestStats } from '@shared/digest.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
 import { K, today, yyyymm } from '@shared/keys.js';
-import { llmObject, readMonthlyCents, readMonthlyTokens } from '@shared/llm.js';
+import {
+  clearFallback,
+  getEffectiveModel,
+  getFallbackOriginalSlug,
+  llmObject,
+  readMonthlyCents,
+  readMonthlyTokens,
+} from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import {
@@ -81,9 +94,16 @@ import {
   listIncidentIds,
   setLastDigestSentAt,
   setPostStatus,
+  setPostTag,
   setTaxonomy,
 } from '@shared/storage.js';
 import { forwardToStudio } from '@shared/studio-bridge.js';
+import ecommerceTemplate from '@shared/taxonomy-templates/ecommerce.json';
+import financeTemplate from '@shared/taxonomy-templates/finance.json';
+import gamingTemplate from '@shared/taxonomy-templates/gaming.json';
+import hardwareTemplate from '@shared/taxonomy-templates/hardware.json';
+import mediaTemplate from '@shared/taxonomy-templates/media.json';
+import saasTemplate from '@shared/taxonomy-templates/saas.json';
 import {
   routingRulesSchema,
   settingsUpdateSchema,
@@ -1092,6 +1112,266 @@ app.post('/api/posts/bulk-status', async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// Content Browser — unified post + comment search surface
+// ---------------------------------------------------------------------------
+
+const contentSearchQuerySchema = z.object({
+  q: z.string().optional(),
+  driver: z.string().optional(),
+  sentiment: z.string().optional(),
+  status: z.string().optional(),
+  author: z.string().optional(),
+  hasAgent: z.enum(['yes', 'no', 'any']).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  type: z.enum(['post', 'comment', 'both']).optional().default('both'),
+  sort: z
+    .enum([
+      'priority_desc',
+      'createdAt_desc',
+      'createdAt_asc',
+      'sentimentScore_asc',
+      'sentimentScore_desc',
+      'responseTime_asc',
+    ])
+    .optional()
+    .default('priority_desc'),
+  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+  offset: z.coerce.number().int().min(0).optional().default(0),
+});
+
+app.get('/api/content/search', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  const parsed = contentSearchQuerySchema.safeParse(c.req.query());
+  if (!parsed.success) {
+    return c.json({ error: 'invalid query params', issues: parsed.error.issues }, 400);
+  }
+
+  const {
+    q,
+    driver,
+    sentiment,
+    status: statusFilter,
+    author,
+    from,
+    to,
+    type,
+    sort,
+    limit,
+    offset,
+  } = parsed.data;
+
+  const fromMs = from ? Date.parse(from) : null;
+  const toMs = to ? Date.parse(to) + 86_400_000 : null; // inclusive end-of-day
+
+  const [rawIds, dashboardPostId] = await Promise.all([
+    getRecentPostIds(500),
+    redis.get(K.pulsePostId()),
+  ]);
+  const ids = rawIds.filter((id) => id !== dashboardPostId);
+
+  const [metas, tags, sents] = await Promise.all([
+    getPostMetaMany(ids),
+    Promise.all(ids.map((id) => getPostTag(id))),
+    Promise.all(ids.map((id) => getSentimentScore(id))),
+  ]);
+
+  const tagById = new Map(
+    tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
+  );
+  const sentById = new Map(
+    sents.filter((s): s is NonNullable<typeof s> => !!s).map((s) => [s.contentId, s]),
+  );
+
+  const lcQ = q?.toLowerCase() ?? null;
+
+  type ContentItem = {
+    id: string;
+    type: 'post' | 'comment';
+    title: string;
+    body: string | null;
+    authorName: string;
+    url: string;
+    createdAt: number;
+    driverId: string | null;
+    taggedBy: 'manual' | 'auto' | 'ai' | null;
+    sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
+    sentimentScore: number | null;
+    status: string | null;
+    postId: string;
+    hasAgentReply: boolean | null;
+    replyCount: number | null;
+    responseLatencyMs: number | null;
+    agentUsername: string | null;
+  };
+
+  const allItems: ContentItem[] = [];
+
+  if (type === 'post' || type === 'both') {
+    for (const m of metas) {
+      const t = tagById.get(m.postId);
+      const s = sentById.get(m.postId);
+      const itemStatus = t?.status ?? null;
+      const itemDriver = t?.driverId ?? null;
+      const itemSentLabel = s?.label ?? null;
+
+      // Text search against title
+      if (lcQ && !m.title.toLowerCase().includes(lcQ)) continue;
+      // Driver filter
+      if (driver && driver !== 'untagged' && itemDriver !== driver) continue;
+      if (driver === 'untagged' && itemDriver !== null) continue;
+      // Sentiment filter
+      if (sentiment) {
+        const labels = sentiment.split(',');
+        if (itemSentLabel === null && !labels.includes('unscored')) continue;
+        if (itemSentLabel !== null && !labels.includes(itemSentLabel)) continue;
+      }
+      // Status filter
+      if (statusFilter) {
+        const statuses = statusFilter.split(',');
+        const effective = itemStatus ?? 'open';
+        if (!statuses.includes(effective)) continue;
+      }
+      // Author filter
+      if (author && !m.authorName.toLowerCase().includes(author.toLowerCase())) continue;
+      // Date range
+      if (fromMs !== null && m.createdAt < fromMs) continue;
+      if (toMs !== null && m.createdAt > toMs) continue;
+
+      allItems.push({
+        id: m.postId,
+        type: 'post',
+        title: m.title,
+        body: null,
+        authorName: m.authorName,
+        url: m.url,
+        createdAt: m.createdAt,
+        driverId: itemDriver,
+        taggedBy: t?.taggedBy ?? null,
+        sentimentLabel: itemSentLabel,
+        sentimentScore: s?.score ?? null,
+        status: itemStatus,
+        postId: m.postId,
+        hasAgentReply: null,
+        replyCount: null,
+        responseLatencyMs: null,
+        agentUsername: null,
+      });
+    }
+  }
+
+  // Sort
+  const now = Date.now();
+  allItems.sort((a, b) => {
+    switch (sort) {
+      case 'createdAt_desc':
+        return b.createdAt - a.createdAt;
+      case 'createdAt_asc':
+        return a.createdAt - b.createdAt;
+      case 'sentimentScore_asc':
+        return (a.sentimentScore ?? 0) - (b.sentimentScore ?? 0);
+      case 'sentimentScore_desc':
+        return (b.sentimentScore ?? 0) - (a.sentimentScore ?? 0);
+      default: {
+        // priority_desc — mirror triage queue scoring
+        const getPriority = (item: ContentItem) => {
+          const driverWeight = item.driverId ? 0.8 : 0.4;
+          const sentMag =
+            typeof item.sentimentScore === 'number'
+              ? Math.max(0, -item.sentimentScore) + Math.abs(item.sentimentScore) * 0.3
+              : 0.2;
+          const ageHours = (now - item.createdAt) / (1000 * 60 * 60);
+          return driverWeight * (1 + sentMag) * Math.exp(-ageHours / 48);
+        };
+        return getPriority(b) - getPriority(a);
+      }
+    }
+  });
+
+  const total = allItems.length;
+  const page = allItems.slice(offset, offset + limit);
+
+  return c.json({ items: page, total, offset, limit });
+});
+
+const postReplyBodySchema = z.object({ body: z.string().min(1).max(10000) });
+
+app.post('/api/posts/:postId/reply', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const postId = c.req.param('postId');
+
+  let rawReplyBody: unknown;
+  try {
+    rawReplyBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
+
+  const parsedReply = postReplyBodySchema.safeParse(rawReplyBody);
+  if (!parsedReply.success) {
+    return c.json({ error: 'validation failed', issues: parsedReply.error.issues }, 400);
+  }
+
+  try {
+    const comment = await reddit.submitComment({
+      id: `t3_${postId}`,
+      text: parsedReply.data.body,
+    });
+    return c.json({ commentId: comment.id });
+  } catch (err) {
+    log.error('post-reply-failed', { postId, err: String(err) });
+    return c.json({ error: 'failed to submit comment', hint: String(err) }, 500);
+  }
+});
+
+const bulkTagBodySchema = z.object({
+  postIds: z.array(z.string()).min(1).max(50),
+  driverId: z.string().min(1),
+});
+
+app.post('/api/posts/bulk-tag', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  let rawTagBody: unknown;
+  try {
+    rawTagBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
+
+  const parsedTag = bulkTagBodySchema.safeParse(rawTagBody);
+  if (!parsedTag.success) {
+    return c.json({ error: 'validation failed', issues: parsedTag.error.issues }, 400);
+  }
+
+  const { postIds, driverId } = parsedTag.data;
+  const actor = context.username ?? 'api';
+  const taggedAt = Date.now();
+
+  const settledResults = await Promise.allSettled(
+    postIds.map(async (postId) => {
+      const existing = await getPostTag(postId);
+      await setPostTag({
+        postId,
+        driverId,
+        taggedBy: 'manual',
+        taggedByUser: actor,
+        taggedAt,
+        status: existing?.status ?? 'open',
+      });
+    }),
+  );
+
+  const succeeded = settledResults.filter((r) => r.status === 'fulfilled').length;
+  const failed = settledResults.length - succeeded;
+
+  void recordAudit('tag-issue', null, { count: postIds.length, driverId, postIds });
+
+  return c.json({ ok: failed === 0, succeeded, failed });
+});
+
+// ---------------------------------------------------------------------------
 // Triggers — Reddit POSTs the trigger payload as JSON to these endpoints
 // ---------------------------------------------------------------------------
 
@@ -1284,6 +1564,144 @@ app.post('/internal/scheduler/weekly-digest', async (c) => {
     });
     return c.json({ ok: false, reason: 'error' }, 500);
   }
+});
+
+// ---------------------------------------------------------------------------
+// Taxonomy template routes — mod-only.
+// ---------------------------------------------------------------------------
+
+type TemplateId = 'ecommerce' | 'saas' | 'hardware' | 'gaming' | 'finance' | 'media';
+
+const TAXONOMY_TEMPLATES: Record<
+  TemplateId,
+  { id: TemplateId; name: string; description: string; nodes: unknown[] }
+> = {
+  ecommerce: {
+    id: 'ecommerce',
+    name: 'E-Commerce',
+    description:
+      'Orders, returns, products, account, pricing, and feedback for online retail brands.',
+    nodes: ecommerceTemplate as unknown[],
+  },
+  saas: {
+    id: 'saas',
+    name: 'SaaS / Software',
+    description:
+      'Bugs, feature requests, billing, integrations, and onboarding for software products.',
+    nodes: saasTemplate as unknown[],
+  },
+  hardware: {
+    id: 'hardware',
+    name: 'Hardware / Devices',
+    description: 'Defects, setup, compatibility, warranty, and repair for physical products.',
+    nodes: hardwareTemplate as unknown[],
+  },
+  gaming: {
+    id: 'gaming',
+    name: 'Gaming',
+    description: 'Bugs, balance, cheating, account issues, and feature requests for games.',
+    nodes: gamingTemplate as unknown[],
+  },
+  finance: {
+    id: 'finance',
+    name: 'Finance / FinTech',
+    description:
+      'Transactions, security, fees, withdrawals, and compliance for financial services.',
+    nodes: financeTemplate as unknown[],
+  },
+  media: {
+    id: 'media',
+    name: 'Media & Streaming',
+    description:
+      'Content, subscriptions, streaming issues, recommendations, and moderation for media platforms.',
+    nodes: mediaTemplate as unknown[],
+  },
+};
+
+function computeDeepestDepth(nodes: unknown[]): number {
+  const arr = nodes as Array<{ id: string; parentId?: string | null }>;
+  const childrenOf = new Map<string | null, string[]>();
+  for (const n of arr) {
+    const pid = n.parentId ?? null;
+    if (!childrenOf.has(pid)) childrenOf.set(pid, []);
+    childrenOf.get(pid)?.push(n.id);
+  }
+  let maxDepth = 0;
+  function walk(id: string | null, depth: number) {
+    if (depth > maxDepth) maxDepth = depth;
+    for (const child of childrenOf.get(id) ?? []) walk(child, depth + 1);
+  }
+  walk(null, 0);
+  return maxDepth;
+}
+
+/** GET /api/taxonomy/templates — list all available templates */
+app.get('/api/taxonomy/templates', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const list = Object.values(TAXONOMY_TEMPLATES).map((t) => ({
+    id: t.id,
+    name: t.name,
+    description: t.description,
+    driverCount: t.nodes.length,
+    deepestDepth: computeDeepestDepth(t.nodes),
+  }));
+  return c.json({ templates: list });
+});
+
+const applyTemplateBodySchema = z.object({
+  templateId: z.enum(['ecommerce', 'saas', 'hardware', 'gaming', 'finance', 'media']),
+  mode: z.enum(['replace', 'merge']),
+});
+
+/** POST /api/taxonomy/apply-template — apply a pre-built taxonomy template */
+app.post('/api/taxonomy/apply-template', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
+
+  const parsed = applyTemplateBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+  }
+
+  const { templateId, mode } = parsed.data;
+  const template = TAXONOMY_TEMPLATES[templateId];
+
+  let candidateNodes: unknown[];
+  if (mode === 'replace') {
+    candidateNodes = template.nodes;
+  } else {
+    // merge: keep existing; add template nodes whose IDs don't conflict
+    const existing = await getTaxonomy();
+    const existingIds = new Set(existing.map((n) => n.id));
+    const newNodes = (template.nodes as Array<{ id: string }>).filter(
+      (n) => !existingIds.has(n.id),
+    );
+    candidateNodes = [...existing, ...newNodes];
+  }
+
+  const validated = taxonomyArraySchema.safeParse(candidateNodes);
+  if (!validated.success) {
+    return c.json(
+      { error: 'template produced invalid taxonomy', issues: validated.error.issues },
+      422,
+    );
+  }
+
+  await setTaxonomy(validated.data);
+  await writeOverrideSetting('taxonomy-json', JSON.stringify(validated.data));
+  void recordAudit('settings-update', null, {
+    templateId,
+    mode,
+    driverCount: validated.data.length,
+  });
+
+  return c.json({ taxonomy: validated.data, driverCount: validated.data.length });
 });
 
 // ---------------------------------------------------------------------------
@@ -1576,6 +1994,141 @@ app.post('/api/onboarding/reset', async (c) => {
   const userId = context.username ?? 'unknown';
   await redis.del(ONBOARDED_KEY(userId));
   return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// AI model validation + fallback management
+// ---------------------------------------------------------------------------
+
+const validateModelBodySchema = z.object({
+  slug: z.string().min(1).max(200),
+});
+
+app.post('/api/ai/validate-model', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
+
+  const parsed = validateModelBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+  }
+
+  const { slug } = parsed.data;
+  const catalog = findModel(slug);
+  const inCatalog = catalog !== null;
+  const supportsStructuredOutput = isStructuredOutputCapable(slug);
+
+  // Estimate cost in cents for 1 tagging call (500 in + 200 out tokens).
+  const rate = CURATED_MODELS.find((m) => m.slug === slug);
+  const estimatedCostCents = rate ? Math.round(rate.pricePer1kTaggingCalls * 1000) / 100 : null;
+
+  // Quick structured-output probe using the existing llmObject infrastructure.
+  // We temporarily override model by calling the provider directly to avoid
+  // writing to the shared cost tracker for a probe call.
+  const probeSchema = z.object({ ok: z.boolean() });
+  const apiKeyRaw = await settings.get('openrouter-api-key').catch(() => undefined);
+  if (typeof apiKeyRaw !== 'string' || !apiKeyRaw) {
+    return c.json({
+      valid: false,
+      supportsStructuredOutput,
+      error: 'no-api-key',
+      hint: 'Set openrouter-api-key first.',
+    });
+  }
+
+  const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
+  const { generateObject: go, NoObjectGeneratedError: NOGE } = await import('ai');
+
+  const openrouter = createOpenAICompatible({
+    name: 'openrouter',
+    apiKey: apiKeyRaw,
+    baseURL: 'https://openrouter.ai/api/v1',
+    headers: {
+      'HTTP-Referer': 'https://github.com/devvit/redlattice',
+      'X-Title': 'RedLattice',
+    },
+  });
+
+  const ac = new AbortController();
+  const timer = setTimeout(() => ac.abort('timeout'), 8_000);
+
+  try {
+    await go({
+      model: openrouter(slug),
+      schema: probeSchema,
+      prompt: 'Respond with ok: true.',
+      maxOutputTokens: 50,
+      temperature: 0,
+      abortSignal: ac.signal,
+    });
+    clearTimeout(timer);
+    return c.json({
+      valid: true,
+      supportsStructuredOutput: true,
+      inCatalog,
+      estimatedCostCents,
+      hint: inCatalog ? undefined : 'Model not in curated catalog — use at your own risk.',
+    });
+  } catch (err) {
+    clearTimeout(timer);
+    const isNoObject = err instanceof NOGE;
+    const isTimeout = ac.signal.aborted;
+    const errMsg = err instanceof Error ? err.message : String(err);
+
+    if (isNoObject) {
+      return c.json({
+        valid: true,
+        supportsStructuredOutput: false,
+        inCatalog,
+        estimatedCostCents,
+        hint: 'Model responded but does not support structured output. Tagging pipelines may fail.',
+      });
+    }
+
+    return c.json({
+      valid: false,
+      supportsStructuredOutput: false,
+      inCatalog,
+      estimatedCostCents,
+      error: isTimeout ? 'Request timed out (8s).' : errMsg,
+      hint: isTimeout
+        ? 'Model may be overloaded or the slug is wrong.'
+        : `Verify the slug at openrouter.ai. Detail: ${errMsg}`,
+    });
+  }
+});
+
+app.post('/api/ai/clear-fallback', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  const originalSlug = await getFallbackOriginalSlug();
+  if (!originalSlug) {
+    return c.json({ ok: true, message: 'No fallback active.' });
+  }
+
+  await clearFallback(originalSlug);
+  log.info('llm: fallback cleared by mod', { slug: originalSlug });
+  return c.json({ ok: true, slug: originalSlug });
+});
+
+/** Returns the current AI model state: effective model, whether fallback is active, original slug. */
+app.get('/api/ai/status', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const { model, isFallback } = await getEffectiveModel();
+  const originalSlug = isFallback ? await getFallbackOriginalSlug() : null;
+  return c.json({
+    effectiveModel: model,
+    isFallback,
+    originalSlug,
+    defaultModel: DEFAULT_MODEL,
+    catalog: CURATED_MODELS,
+  });
 });
 
 // ---------------------------------------------------------------------------
