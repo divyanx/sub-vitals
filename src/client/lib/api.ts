@@ -206,4 +206,49 @@ export const api = {
   agents: () => getJson<{ agents: Agent[] }>('/api/agents'),
   sentimentRollup: () =>
     getJson<{ from: string; to: string; series: SentimentRollup[] }>('/api/sentiment/rollup'),
+  settings: {
+    get: () =>
+      getJson<Record<string, unknown> & { openrouterKeyConfigured: boolean }>('/api/settings'),
+    put: async (body: Record<string, unknown>) => {
+      const r = await fetch('/api/settings', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as Record<string, unknown> & {
+        openrouterKeyConfigured: boolean;
+      };
+    },
+    testDraft: async () => {
+      const r = await fetch('/api/settings/test-draft', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error(
+          (err as { hint?: string; error?: string }).hint ??
+            (err as { error?: string }).error ??
+            `HTTP ${r.status}`,
+        );
+      }
+      return (await r.json()) as {
+        postId: string;
+        postTitle: string;
+        candidates: Array<{
+          tone: 'empathetic' | 'direct' | 'concise' | 'investigative';
+          rationale: string;
+          reply: string;
+        }>;
+        tokensIn: number;
+        tokensOut: number;
+        costCents: number;
+        cached: boolean;
+      };
+    },
+  },
 };

@@ -1,0 +1,24 @@
+{
+  "postId": "post_001",
+  "cached": false,
+  "tokensIn": 1240,
+  "tokensOut": 380,
+  "costCents": 3,
+  "candidates": [
+    {
+      "tone": "empathetic",
+      "rationale": "User is frustrated; leading with acknowledgement builds trust before moving to troubleshooting.",
+      "reply": "Hi u/frustrated_frank — I'm really sorry you're experiencing this. A checkout crash is genuinely disruptive and we want to get you unblocked ASAP.\n\nOur mobile team has been alerted. In the meantime, could you try clearing the app cache (Settings > Storage > Clear Cache) and attempt checkout again? If the crash persists, please share your app version (Settings > About) and we'll escalate this directly.\n\nThank you for the detailed repro steps — it helps us fix this faster for everyone."
+    },
+    {
+      "tone": "direct",
+      "rationale": "Some users prefer a no-nonsense response with clear action items over warm language.",
+      "reply": "Thanks for the report. Checkout crash on iOS 18.4 is now tracked as P1 on our side.\n\nQuick mitigation: try Settings > Storage > Clear Cache, then retry. If that doesn't resolve it, reply with your app version (Settings > About) so we can correlate against the build log.\n\nWe'll post an update here once the fix is deployed."
+    },
+    {
+      "tone": "investigative",
+      "rationale": "Thread also has a commenter who found a cart-size correlation — worth gathering more data points.",
+      "reply": "Thanks for reporting this — and I see u/pixel_pete noted it may relate to cart size (3+ items). That's a valuable clue.\n\nCould you let us know: how many items were in your cart when it crashed? Also, app version from Settings > About would help.\n\nWe're investigating a possible memory issue in the cart rendering path on certain iOS 18 builds."
+    }
+  ]
+}

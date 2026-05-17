@@ -1,0 +1,45 @@
+{
+  "username": "frustrated_frank",
+  "items": [
+    {
+      "postId": "post_001",
+      "title": "App crashes every time I try to checkout",
+      "authorName": "frustrated_frank",
+      "url": "https://reddit.com/r/brand/comments/post_001",
+      "createdAt": 1747440000000,
+      "driverId": "bug",
+      "status": "open",
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.72
+    },
+    {
+      "postId": "post_old_01",
+      "title": "Why does the app lag so much on iOS?",
+      "authorName": "frustrated_frank",
+      "url": "https://reddit.com/r/brand/comments/post_old_01",
+      "createdAt": 1745000000000,
+      "driverId": "bug",
+      "status": "resolved",
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.55
+    },
+    {
+      "postId": "post_old_02",
+      "title": "Billing page shows wrong amount",
+      "authorName": "frustrated_frank",
+      "url": "https://reddit.com/r/brand/comments/post_old_02",
+      "createdAt": 1743000000000,
+      "driverId": "billing",
+      "status": "responded",
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.48
+    }
+  ],
+  "aggregate": {
+    "totalPosts": 3,
+    "totalScored": 3,
+    "averageScore": -0.58,
+    "negativeShare": 1.0,
+    "topDrivers": [{ "id": "bug", "count": 2 }, { "id": "billing", "count": 1 }]
+  }
+}

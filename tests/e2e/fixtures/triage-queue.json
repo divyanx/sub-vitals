@@ -1,0 +1,54 @@
+{
+  "items": [
+    {
+      "postId": "post_001",
+      "title": "App crashes every time I try to checkout",
+      "authorName": "frustrated_frank",
+      "url": "https://reddit.com/r/brand/comments/post_001",
+      "createdAt": 1747440000000,
+      "driverId": "bug",
+      "taggedBy": "ai",
+      "confidence": 0.93,
+      "reasoning": "User describes a repeatable crash during checkout flow",
+      "status": "open",
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.72,
+      "sentimentScoredBy": "ai",
+      "priority": 1.12
+    },
+    {
+      "postId": "post_005",
+      "title": "Login 2FA stopped working after the update",
+      "authorName": "locked_out_larry",
+      "url": "https://reddit.com/r/brand/comments/post_005",
+      "createdAt": 1747425600000,
+      "driverId": "bug",
+      "taggedBy": "ai",
+      "confidence": 0.95,
+      "reasoning": "Authentication regression following product update",
+      "status": "open",
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.61,
+      "sentimentScoredBy": "ai",
+      "priority": 0.98
+    },
+    {
+      "postId": "post_004",
+      "title": "Feature request: dark mode for mobile",
+      "authorName": "devrel_diana",
+      "url": "https://reddit.com/r/brand/comments/post_004",
+      "createdAt": 1747429200000,
+      "driverId": "feature-request",
+      "taggedBy": "ai",
+      "confidence": 0.79,
+      "reasoning": "User is requesting a specific UI feature",
+      "status": "open",
+      "sentimentLabel": "neutral",
+      "sentimentScore": 0.02,
+      "sentimentScoredBy": "lexicon",
+      "priority": 0.31
+    }
+  ],
+  "count": 3,
+  "generatedAt": 1747440600000
+}

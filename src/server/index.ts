@@ -30,18 +30,30 @@ import {
   handleTagIssueFormSubmit,
   handleTagIssueMenu,
 } from '@modules/contact-drivers/index.js';
+import {
+  autoResolveQuietIncidents,
+  crisisDetectionModule,
+} from '@modules/crisis-detection/index.js';
 import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/index.js';
 import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
+import { regenerateThemes, themeClusteringModule } from '@modules/theme-clustering/index.js';
+import { buildWeeklyDigest, gatherDigestStats } from '@shared/digest.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
 import { K, today, yyyymm } from '@shared/keys.js';
 import { llmObject, readMonthlyCents, readMonthlyTokens } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import {
+  readAllEffectiveSettings,
+  readEffectiveSetting,
+  writeOverrideSetting,
+} from '@shared/settings-overrides.js';
+import {
   getCommentIdsForPost,
   getCommentMeta,
   getDriverRollup,
+  getLastDigestSentAt,
   getPostMeta,
   getPostMetaMany,
   getPostTag,
@@ -50,7 +62,14 @@ import {
   getSentimentScore,
   getTaxonomy,
   getUserPostIds,
+  setLastDigestSentAt,
+  setTaxonomy,
 } from '@shared/storage.js';
+import {
+  routingRulesSchema,
+  settingsUpdateSchema,
+  taxonomyArraySchema,
+} from '@shared/validation.js';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { z } from 'zod';
@@ -64,6 +83,8 @@ registerModule(contactDriversModule);
 registerModule(sentimentModule);
 registerModule(dashboardOrchestratorModule);
 registerModule(impostorDetectionModule);
+registerModule(crisisDetectionModule);
+registerModule(themeClusteringModule);
 
 // ---------------------------------------------------------------------------
 // App
@@ -351,7 +372,7 @@ app.post('/api/posts/:postId/draft-reply', async (c) => {
     getPostTag(postId),
     getSentimentScore(postId),
     getCommentIdsForPost(postId),
-    settings.get('brand-voice').catch(() => undefined),
+    readEffectiveSetting<string>('brand-voice'),
   ]);
   if (!postMeta) return c.json({ error: 'post not in index' }, 404);
 
@@ -604,6 +625,8 @@ for (const mod of [
   sentimentModule,
   dashboardOrchestratorModule,
   impostorDetectionModule,
+  crisisDetectionModule,
+  themeClusteringModule,
 ]) {
   mod.apiRoutes?.(app);
 }
@@ -705,14 +728,267 @@ app.post('/internal/forms/tag-issue', handleTagIssueFormSubmit);
 // Scheduler — Phase 1 stubs; modules can grow into these as needed
 // ---------------------------------------------------------------------------
 
-app.post('/internal/scheduler/daily-aggregate', (c) => {
+// ---------------------------------------------------------------------------
+// Scheduler — daily-aggregate
+// ---------------------------------------------------------------------------
+
+app.post('/internal/scheduler/daily-aggregate', async (c) => {
   log.info('scheduler: daily-aggregate fired');
+  // Auto-resolve any open incidents that have gone quiet
+  try {
+    await autoResolveQuietIncidents();
+  } catch (err) {
+    log.warn('daily-aggregate: autoResolveQuietIncidents failed', { err: String(err) });
+  }
+  // Regenerate theme clusters from yesterday's negative posts
+  try {
+    const snapshot = await regenerateThemes();
+    log.info('daily-aggregate: theme clustering done', {
+      themeCount: snapshot?.themes.length ?? 0,
+    });
+  } catch (err) {
+    log.warn('daily-aggregate: regenerateThemes failed', { err: String(err) });
+  }
   return c.json({ ok: true });
 });
 
-app.post('/internal/scheduler/weekly-digest', (c) => {
+// ---------------------------------------------------------------------------
+// Scheduler — weekly-digest
+// ---------------------------------------------------------------------------
+
+const DIGEST_MIN_INTERVAL_MS = 6 * 24 * 60 * 60 * 1000; // 6 days
+
+app.post('/internal/scheduler/weekly-digest', async (c) => {
   log.info('scheduler: weekly-digest fired');
-  return c.json({ ok: true });
+  const subredditName = context.subredditName;
+  if (!subredditName) {
+    log.warn('weekly-digest: no subredditName in context, skipping');
+    return c.json({ ok: false, reason: 'no-subreddit' });
+  }
+
+  // De-dup: skip if last digest was within 6 days
+  const lastSent = await getLastDigestSentAt();
+  if (lastSent && Date.now() - lastSent < DIGEST_MIN_INTERVAL_MS) {
+    log.info('weekly-digest: skipping, last digest too recent', {
+      lastSent: new Date(lastSent).toISOString(),
+    });
+    return c.json({ ok: false, reason: 'too-soon' });
+  }
+
+  try {
+    const stats = await gatherDigestStats();
+    const body = buildWeeklyDigest(stats, subredditName);
+    await reddit.modMail.createConversation({
+      subredditName,
+      to: null,
+      subject: `[RedLattice] Weekly Digest — ${stats.weekDates[0]} to ${stats.weekDates[stats.weekDates.length - 1]}`,
+      body,
+    });
+    await setLastDigestSentAt(Date.now());
+    log.info('weekly-digest: sent', {
+      subredditName,
+      period: `${stats.weekDates[0]}..${stats.weekDates[stats.weekDates.length - 1]}`,
+      totalPosts: stats.totalPosts,
+    });
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('weekly-digest: failed', {
+      err: err instanceof Error ? err.message : String(err),
+      subredditName,
+    });
+    return c.json({ ok: false, reason: 'error' }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Settings CRUD — mod-only. Reads/writes Redis overrides for user-editable
+// settings. openrouter-api-key is never surfaced here (global+secret).
+// ---------------------------------------------------------------------------
+
+app.get('/api/settings', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const [effective, openrouterKeyRaw] = await Promise.all([
+    readAllEffectiveSettings(),
+    settings.get('openrouter-api-key').catch(() => undefined),
+  ]);
+  return c.json({
+    ...effective,
+    openrouterKeyConfigured: typeof openrouterKeyRaw === 'string' && openrouterKeyRaw.length > 0,
+  });
+});
+
+app.put('/api/settings', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
+
+  const parsed = settingsUpdateSchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+  }
+
+  const updates = parsed.data;
+
+  // Deep-validate routing-json if provided
+  if (typeof updates['routing-json'] === 'string') {
+    let routingParsed: unknown;
+    try {
+      routingParsed = JSON.parse(updates['routing-json']);
+    } catch {
+      return c.json({ error: 'routing-json is not valid JSON' }, 400);
+    }
+    const routingCheck = routingRulesSchema.safeParse(routingParsed);
+    if (!routingCheck.success) {
+      return c.json(
+        { error: 'routing-json schema invalid', issues: routingCheck.error.issues },
+        400,
+      );
+    }
+  }
+
+  // Deep-validate taxonomy-json if provided, and sync to the primary taxonomy store
+  if (typeof updates['taxonomy-json'] === 'string') {
+    let taxParsed: unknown;
+    try {
+      taxParsed = JSON.parse(updates['taxonomy-json']);
+    } catch {
+      return c.json({ error: 'taxonomy-json is not valid JSON' }, 400);
+    }
+    const taxCheck = taxonomyArraySchema.safeParse(taxParsed);
+    if (!taxCheck.success) {
+      return c.json({ error: 'taxonomy-json schema invalid', issues: taxCheck.error.issues }, 400);
+    }
+    // Also write to primary taxonomy store so existing readers see it immediately.
+    await setTaxonomy(taxCheck.data);
+  }
+
+  // Write all provided values to Redis overrides
+  await Promise.all(
+    Object.entries(updates).map(([k, v]) => {
+      if (v === undefined) return Promise.resolve();
+      return writeOverrideSetting(k, v as string | number | boolean);
+    }),
+  );
+
+  const updated = await readAllEffectiveSettings();
+  const openrouterKeyRaw = await settings.get('openrouter-api-key').catch(() => undefined);
+  return c.json({
+    ...updated,
+    openrouterKeyConfigured: typeof openrouterKeyRaw === 'string' && openrouterKeyRaw.length > 0,
+  });
+});
+
+app.post('/api/settings/test-draft', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  const recentIds = await getRecentPostIds(1);
+  const postId = recentIds[0];
+  if (!postId) {
+    return c.json(
+      { error: 'no-posts', hint: 'No posts in the index yet. Submit a post in the sub first.' },
+      404,
+    );
+  }
+
+  const [postMeta, postTag, postSent, commentIds, brandVoiceOverride] = await Promise.all([
+    getPostMeta(postId),
+    getPostTag(postId),
+    getSentimentScore(postId),
+    getCommentIdsForPost(postId),
+    readEffectiveSetting<string>('brand-voice'),
+  ]);
+
+  if (!postMeta) return c.json({ error: 'post not in index', postId }, 404);
+
+  const recentCommentIds = commentIds.slice(-10);
+  const recentComments = await Promise.all(recentCommentIds.map((id) => getCommentMeta(id)));
+  const recentSents = await Promise.all(recentCommentIds.map((id) => getSentimentScore(id)));
+  const commentLines = recentComments
+    .map((cm, i) => {
+      if (!cm) return null;
+      const s = recentSents[i];
+      const tag = cm.isAgent ? '[AGENT]' : '[USER]';
+      const sent = s ? ` (${s.label} ${s.score.toFixed(2)})` : '';
+      const body = cm.body.length > 280 ? `${cm.body.slice(0, 280)}…` : cm.body;
+      return `${tag} u/${cm.authorName}${sent}: ${body}`;
+    })
+    .filter((x): x is string => x !== null);
+
+  const brandVoice =
+    typeof brandVoiceOverride === 'string' && brandVoiceOverride.trim().length > 0
+      ? brandVoiceOverride.trim()
+      : "Warm and professional. Acknowledge the user, be specific, avoid generic corporate phrases. Never make commitments you can't back up.";
+
+  const testDraftSchema = z.object({
+    candidates: z
+      .array(
+        z.object({
+          tone: z.enum(['empathetic', 'direct', 'concise', 'investigative']),
+          rationale: z.string().max(200),
+          reply: z.string().min(10).max(1500),
+        }),
+      )
+      .min(1)
+      .max(4),
+  });
+
+  const prompt = [
+    `Brand voice:\n${brandVoice}`,
+    '',
+    `Post by u/${postMeta.authorName}:`,
+    `Title: ${postMeta.title}`,
+    postTag?.driverId ? `Detected contact driver: ${postTag.driverId}` : null,
+    postSent ? `Detected sentiment: ${postSent.label} (${postSent.score.toFixed(2)})` : null,
+    '',
+    commentLines.length > 0
+      ? `Recent comments on the thread (oldest → newest):\n${commentLines.join('\n')}`
+      : '(no comments yet)',
+    '',
+    'Produce 2-3 candidate replies for the brand to post as a Reddit comment. Distinct tones (empathetic, direct, concise, investigative). Brief rationale + the reply. Keep replies under ~150 words.',
+  ]
+    .filter((x): x is string => typeof x === 'string')
+    .join('\n');
+
+  const result = await llmObject({
+    name: 'draft-reply',
+    schema: testDraftSchema,
+    system:
+      'You are an experienced brand customer-experience writer drafting candidate Reddit comment replies for a brand support team to choose from and refine before posting.',
+    prompt,
+    maxTokens: 900,
+    temperature: 0.6,
+  });
+
+  if (!result.ok) {
+    return c.json(
+      {
+        error: 'llm-unavailable',
+        reason: result.reason,
+        hint:
+          result.reason === 'no-api-key'
+            ? 'Set the openrouter-api-key global setting first.'
+            : result.reason === 'cost-cap-exceeded'
+              ? 'Monthly LLM cost cap reached.'
+              : 'Try again or check logs.',
+      },
+      503,
+    );
+  }
+
+  return c.json({
+    postId,
+    postTitle: postMeta.title,
+    candidates: result.data.candidates,
+    tokensIn: result.tokensIn,
+    tokensOut: result.tokensOut,
+    costCents: Number(result.costCents.toFixed(4)),
+    cached: result.cached,
+  });
 });
 
 // ---------------------------------------------------------------------------

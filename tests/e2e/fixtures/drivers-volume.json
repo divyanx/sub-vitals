@@ -1,0 +1,93 @@
+{
+  "from": "2026-04-17",
+  "to": "2026-05-17",
+  "series": [
+    { "date": "2026-04-17", "totalPosts": 4, "counts": { "bug": 2, "praise": 1, "billing": 1 } },
+    {
+      "date": "2026-04-18",
+      "totalPosts": 6,
+      "counts": { "bug": 3, "praise": 2, "feature-request": 1 }
+    },
+    { "date": "2026-04-19", "totalPosts": 3, "counts": { "praise": 2, "onboarding": 1 } },
+    {
+      "date": "2026-04-20",
+      "totalPosts": 8,
+      "counts": { "bug": 5, "billing": 2, "feature-request": 1 }
+    },
+    { "date": "2026-04-21", "totalPosts": 5, "counts": { "bug": 2, "praise": 2, "onboarding": 1 } },
+    {
+      "date": "2026-04-22",
+      "totalPosts": 7,
+      "counts": { "bug": 4, "feature-request": 2, "billing": 1 }
+    },
+    { "date": "2026-04-23", "totalPosts": 9, "counts": { "bug": 6, "praise": 3 } },
+    { "date": "2026-04-24", "totalPosts": 4, "counts": { "feature-request": 3, "onboarding": 1 } },
+    { "date": "2026-04-25", "totalPosts": 6, "counts": { "bug": 3, "praise": 2, "billing": 1 } },
+    { "date": "2026-04-26", "totalPosts": 5, "counts": { "bug": 3, "feature-request": 2 } },
+    { "date": "2026-04-27", "totalPosts": 3, "counts": { "praise": 2, "onboarding": 1 } },
+    { "date": "2026-04-28", "totalPosts": 7, "counts": { "bug": 4, "billing": 2, "praise": 1 } },
+    {
+      "date": "2026-04-29",
+      "totalPosts": 8,
+      "counts": { "bug": 5, "feature-request": 2, "billing": 1 }
+    },
+    { "date": "2026-04-30", "totalPosts": 6, "counts": { "bug": 3, "praise": 2, "onboarding": 1 } },
+    {
+      "date": "2026-05-01",
+      "totalPosts": 10,
+      "counts": { "bug": 6, "feature-request": 3, "billing": 1 }
+    },
+    { "date": "2026-05-02", "totalPosts": 5, "counts": { "praise": 4, "onboarding": 1 } },
+    {
+      "date": "2026-05-03",
+      "totalPosts": 7,
+      "counts": { "bug": 4, "feature-request": 2, "billing": 1 }
+    },
+    { "date": "2026-05-04", "totalPosts": 4, "counts": { "bug": 2, "praise": 2 } },
+    {
+      "date": "2026-05-05",
+      "totalPosts": 9,
+      "counts": { "bug": 5, "billing": 3, "onboarding": 1 }
+    },
+    {
+      "date": "2026-05-06",
+      "totalPosts": 6,
+      "counts": { "bug": 3, "praise": 2, "feature-request": 1 }
+    },
+    {
+      "date": "2026-05-07",
+      "totalPosts": 8,
+      "counts": { "bug": 4, "feature-request": 3, "praise": 1 }
+    },
+    { "date": "2026-05-08", "totalPosts": 5, "counts": { "bug": 3, "billing": 2 } },
+    { "date": "2026-05-09", "totalPosts": 7, "counts": { "bug": 4, "praise": 2, "onboarding": 1 } },
+    {
+      "date": "2026-05-10",
+      "totalPosts": 6,
+      "counts": { "bug": 3, "feature-request": 2, "billing": 1 }
+    },
+    { "date": "2026-05-11", "totalPosts": 4, "counts": { "praise": 3, "onboarding": 1 } },
+    {
+      "date": "2026-05-12",
+      "totalPosts": 9,
+      "counts": { "bug": 5, "billing": 3, "feature-request": 1 }
+    },
+    { "date": "2026-05-13", "totalPosts": 7, "counts": { "bug": 4, "praise": 2, "onboarding": 1 } },
+    {
+      "date": "2026-05-14",
+      "totalPosts": 8,
+      "counts": { "bug": 5, "feature-request": 2, "billing": 1 }
+    },
+    { "date": "2026-05-15", "totalPosts": 6, "counts": { "bug": 3, "praise": 2, "billing": 1 } },
+    {
+      "date": "2026-05-16",
+      "totalPosts": 11,
+      "counts": { "bug": 7, "feature-request": 3, "praise": 1 }
+    },
+    {
+      "date": "2026-05-17",
+      "totalPosts": 14,
+      "counts": { "bug": 6, "praise": 4, "feature-request": 3, "billing": 1 }
+    }
+  ]
+}

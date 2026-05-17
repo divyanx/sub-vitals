@@ -1,0 +1,42 @@
+{
+  "driverId": "bug",
+  "posts": [
+    {
+      "postId": "post_001",
+      "title": "App crashes every time I try to checkout",
+      "authorName": "frustrated_frank",
+      "url": "https://reddit.com/r/brand/comments/post_001",
+      "createdAt": 1747440000000,
+      "driverId": "bug",
+      "taggedBy": "ai",
+      "confidence": 0.93,
+      "reasoning": "User describes a repeatable crash during checkout flow",
+      "status": "open"
+    },
+    {
+      "postId": "post_005",
+      "title": "Login 2FA stopped working after the update",
+      "authorName": "locked_out_larry",
+      "url": "https://reddit.com/r/brand/comments/post_005",
+      "createdAt": 1747425600000,
+      "driverId": "bug",
+      "taggedBy": "ai",
+      "confidence": 0.95,
+      "reasoning": "Authentication regression following product update",
+      "status": "open"
+    },
+    {
+      "postId": "post_b03",
+      "title": "Images not loading on the product page",
+      "authorName": "pixel_pete",
+      "url": "https://reddit.com/r/brand/comments/post_b03",
+      "createdAt": 1747400000000,
+      "driverId": "bug",
+      "taggedBy": "auto",
+      "confidence": 0.75,
+      "reasoning": "Asset loading failure on key product page",
+      "status": "in-progress"
+    }
+  ],
+  "count": 3
+}

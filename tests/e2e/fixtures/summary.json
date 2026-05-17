@@ -1,0 +1,32 @@
+{
+  "today": "2026-05-17",
+  "month": "2026-05",
+  "drivers": {
+    "today": {
+      "date": "2026-05-17",
+      "totalPosts": 14,
+      "counts": {
+        "bug": 6,
+        "praise": 4,
+        "feature-request": 3,
+        "billing": 1
+      }
+    },
+    "topDriverId": "bug",
+    "topDriverLabel": "Bug / broken experience",
+    "topDriverCount": 6
+  },
+  "sentiment": {
+    "date": "2026-05-17",
+    "positive": 3,
+    "neutral": 5,
+    "negative": 6,
+    "total": 14,
+    "averageScore": -0.18
+  },
+  "llm": {
+    "monthCents": 42,
+    "monthTokensIn": 180000,
+    "monthTokensOut": 22000
+  }
+}

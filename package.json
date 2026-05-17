@@ -20,6 +20,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:cov": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "deploy": "devvit upload",
     "launch": "devvit publish",
     "prepare": "simple-git-hooks"
@@ -41,6 +43,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.4.1",
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/vite": "4.3.0",
     "@types/node": "25.8.0",
     "@types/react": "19.2.14",
@@ -48,6 +51,8 @@
     "@types/sentiment": "5.0.4",
     "@vitejs/plugin-react": "6.0.2",
     "devvit": "0.12.24-next-2026-05-14-23-46-48-630b04b92.0",
+    "playwright": "^1.60.0",
+    "serve": "^14.2.6",
     "simple-git-hooks": "2.13.1",
     "tailwindcss": "4.3.0",
     "typescript": "6.0.3",

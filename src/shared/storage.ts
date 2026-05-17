@@ -12,6 +12,7 @@ import type {
   AgentRecord,
   CommentMeta,
   DriverRollup,
+  Incident,
   PostMeta,
   PostStatus,
   PostTag,
@@ -19,6 +20,7 @@ import type {
   SentimentRollup,
   SentimentScore,
   TaxonomyNode,
+  ThemeSnapshot,
 } from './types.js';
 import { taxonomyArraySchema } from './validation.js';
 
@@ -344,4 +346,91 @@ export async function getSentimentRollup(date: string): Promise<SentimentRollup 
     total,
     averageScore: total > 0 ? scoreSum / total : 0,
   };
+}
+
+// ---------------------------------------------------------------------------
+// Crisis detection — incidents
+// ---------------------------------------------------------------------------
+
+const INCIDENT_ACTIVE_TTL_SEC = 30 * 60; // 30 min auto-expire if quiet
+const INCIDENT_DETAIL_TTL_SEC = 30 * 24 * 60 * 60; // 30 days
+
+export async function getIncident(id: string): Promise<Incident | null> {
+  const raw = await redis.get(K.incident(id));
+  return raw ? (JSON.parse(raw) as Incident) : null;
+}
+
+export async function saveIncident(incident: Incident): Promise<void> {
+  await redis.set(K.incident(incident.id), JSON.stringify(incident), {
+    expiration: new Date(Date.now() + INCIDENT_DETAIL_TTL_SEC * 1000),
+  });
+  await redis.zAdd(K.incidentList(), { score: incident.startedAt, member: incident.id });
+}
+
+/**
+ * Atomically claim the "active incident" slot for this hour.
+ * Returns true only on first claim (caller should open a new incident).
+ * Uses hSetNX so concurrent triggers don't race.
+ */
+export async function claimActiveIncident(incidentId: string): Promise<boolean> {
+  const claimed = await redis.hSetNX(K.incidentActive(), 'id', incidentId);
+  if (claimed === 1) {
+    await redis.expire(K.incidentActive(), INCIDENT_ACTIVE_TTL_SEC);
+    return true;
+  }
+  return false;
+}
+
+export async function getActiveIncidentId(): Promise<string | null> {
+  const id = await redis.hGet(K.incidentActive(), 'id');
+  return id ?? null;
+}
+
+/** Touch the active-incident TTL so it doesn't auto-expire while comments keep flowing. */
+export async function refreshActiveIncidentTTL(): Promise<void> {
+  await redis.expire(K.incidentActive(), INCIDENT_ACTIVE_TTL_SEC);
+}
+
+export async function clearActiveIncident(): Promise<void> {
+  await redis.del(K.incidentActive());
+}
+
+export async function listIncidentIds(limit = 50): Promise<string[]> {
+  const members = await redis.zRange(K.incidentList(), 0, limit - 1, {
+    reverse: true,
+    by: 'rank',
+  });
+  return members.map((m) => m.member);
+}
+
+// ---------------------------------------------------------------------------
+// Theme clustering
+// ---------------------------------------------------------------------------
+
+const THEMES_TTL_SEC = 7 * 24 * 60 * 60; // 7 days
+
+export async function getThemeSnapshot(): Promise<ThemeSnapshot | null> {
+  const raw = await redis.get(K.themesLatest());
+  return raw ? (JSON.parse(raw) as ThemeSnapshot) : null;
+}
+
+export async function saveThemeSnapshot(snapshot: ThemeSnapshot): Promise<void> {
+  await redis.set(K.themesLatest(), JSON.stringify(snapshot), {
+    expiration: new Date(Date.now() + THEMES_TTL_SEC * 1000),
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Weekly digest — last-sent de-dup
+// ---------------------------------------------------------------------------
+
+export async function getLastDigestSentAt(): Promise<number | null> {
+  const raw = await redis.get(K.digestLast());
+  if (!raw) return null;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+export async function setLastDigestSentAt(ts: number): Promise<void> {
+  await redis.set(K.digestLast(), String(ts));
 }

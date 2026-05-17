@@ -23,11 +23,12 @@
  *   - 24h cooldown per author to prevent flood
  */
 
-import { context, reddit, redis, settings } from '@devvit/web/server';
+import { context, reddit, redis } from '@devvit/web/server';
 import { processedOnce } from '@shared/idempotency.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { isUserMod } from '@shared/permissions.js';
+import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import { isAgent } from '@shared/storage.js';
 import type { OnCommentCreateRequest, RedLatticeModule } from '@shared/types.js';
 import { commentCreateMinimalSchema } from '@shared/validation.js';
@@ -197,7 +198,7 @@ export const impostorDetectionModule: RedLatticeModule = {
 
 async function readBrandName(): Promise<string> {
   try {
-    const v = await settings.get('brand-name');
+    const v = await readEffectiveSetting<string>('brand-name');
     return typeof v === 'string' ? v.trim() : '';
   } catch {
     return '';

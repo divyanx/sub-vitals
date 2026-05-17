@@ -1,0 +1,34 @@
+{
+  "taxonomy": [
+    {
+      "id": "bug",
+      "label": "Bug / broken experience",
+      "color": "#f43f5e",
+      "description": "Product defects, crashes, errors the user did not expect"
+    },
+    {
+      "id": "praise",
+      "label": "Praise / positive feedback",
+      "color": "#10b981",
+      "description": "Compliments and positive sentiment about the product"
+    },
+    {
+      "id": "feature-request",
+      "label": "Feature request",
+      "color": "#8b5cf6",
+      "description": "User asking for functionality that doesn't exist"
+    },
+    {
+      "id": "billing",
+      "label": "Billing / pricing",
+      "color": "#f59e0b",
+      "description": "Questions or complaints about cost and subscription"
+    },
+    {
+      "id": "onboarding",
+      "label": "Onboarding / setup",
+      "color": "#3b82f6",
+      "description": "Difficulty getting started with the product"
+    }
+  ]
+}

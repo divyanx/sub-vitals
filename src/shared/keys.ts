@@ -40,6 +40,21 @@ export const K = {
   sentimentRollup: (date: string) => `rl:sent:roll:${date}`,
   sentimentAlertCooldown: (postId: string) => `rl:sent:cd:${postId}`,
 
+  // crisis-detection — per-hour rolling counters (HASH: total, neg)
+  hourBucket: (hourSlot: string) => `rl:hr:cmt:${hourSlot}`,
+  // crisis-detection — active incident pointer (STRING: incident id)
+  incidentActive: () => 'rl:incident:active',
+  // crisis-detection — incident detail (STRING: JSON)
+  incident: (id: string) => `rl:incident:${id}`,
+  // crisis-detection — incident archive (ZSET: score = startedAt)
+  incidentList: () => 'rl:incident:list',
+
+  // theme-clustering — latest cluster snapshot (STRING: JSON)
+  themesLatest: () => 'rl:themes:latest',
+
+  // weekly-digest — de-dup sentinel (STRING: ISO timestamp)
+  digestLast: () => 'rl:digest:last',
+
   // shared infra
   processed: (handler: string, contentId: string) => `rl:proc:${handler}:${contentId}`,
   rateLimit: (name: string) => `rl:rl:${name}`,
@@ -54,6 +69,16 @@ export const K = {
 
 export function today(): string {
   return new Date().toISOString().slice(0, 10);
+}
+
+/** Current UTC hour slot for crisis-detection buckets: "YYYY-MM-DDTHH" */
+export function currentHourSlot(): string {
+  return new Date().toISOString().slice(0, 13);
+}
+
+/** Hour slot for an arbitrary timestamp (ms) */
+export function hourSlotOf(tsMs: number): string {
+  return new Date(tsMs).toISOString().slice(0, 13);
 }
 
 export function yyyymm(): string {

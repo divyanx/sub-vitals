@@ -14,12 +14,13 @@
  *   - LLM-based tagging when keyword confidence is low
  */
 
-import { context, reddit, redis, settings } from '@devvit/web/server';
+import { context, reddit, redis } from '@devvit/web/server';
 import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, K, today } from '@shared/keys.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
+import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import {
   DEFAULT_TAXONOMY,
   ensurePostMeta,
@@ -435,8 +436,7 @@ async function maybeRouteToTeam(args: {
   reasoning: string | null;
   subName: string;
 }): Promise<void> {
-  const rawJson =
-    ((await settings.get('routing-json').catch(() => undefined)) as string | undefined) ?? '';
+  const rawJson = (await readEffectiveSetting<string>('routing-json')) ?? '';
   if (!rawJson.trim()) return;
 
   let parsedJson: unknown;

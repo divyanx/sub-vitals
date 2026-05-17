@@ -9,12 +9,13 @@
  * Phase 2: LLM judge for ambiguous cases behind a feature flag.
  */
 
-import { context, reddit, redis, settings } from '@devvit/web/server';
+import { context, reddit, redis } from '@devvit/web/server';
 import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, K, today } from '@shared/keys.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { isUserMod, requireMod } from '@shared/permissions.js';
+import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import {
   ensureCommentMeta,
   getSentimentRollup,
@@ -343,9 +344,7 @@ async function detectAgent(args: {
   // 3. Flair pattern.
   if (args.flairText) {
     try {
-      const pattern = (await settings.get('agent-flair-pattern').catch(() => undefined)) as
-        | string
-        | undefined;
+      const pattern = await readEffectiveSetting<string>('agent-flair-pattern');
       if (typeof pattern === 'string' && pattern.trim().length > 0) {
         if (new RegExp(pattern, 'i').test(args.flairText)) {
           return { isAgent: true, source: 'flair' };
@@ -372,7 +371,7 @@ async function detectAgent(args: {
 
 async function getThreshold(): Promise<number> {
   try {
-    const v = await settings.get(SETTINGS.SENTIMENT_THRESHOLD);
+    const v = await readEffectiveSetting<number>(SETTINGS.SENTIMENT_THRESHOLD);
     const n = typeof v === 'number' ? v : Number(v);
     return Number.isFinite(n) && n > 0 ? n : DEFAULT_THRESHOLD;
   } catch {

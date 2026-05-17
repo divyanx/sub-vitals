@@ -139,3 +139,29 @@ export const tagPostBodySchema = z.object({
 export const agentBulkAddBodySchema = z.object({
   usernames: z.array(z.string().min(1)).min(1).max(200),
 });
+
+// ---------------------------------------------------------------------------
+// Settings update payload (dashboard Settings tab → PUT /api/settings)
+// ---------------------------------------------------------------------------
+
+export const settingsUpdateSchema = z
+  .object({
+    'brand-name': z.string().min(0).max(60).optional(),
+    'brand-voice': z.string().max(2000).optional(),
+    'agent-flair-pattern': z.string().max(200).optional(),
+    'agent-flair-text': z.string().max(40).optional(),
+    'agent-flair-color': z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/)
+      .optional(),
+    'sentiment-threshold': z.number().int().min(2).max(50).optional(),
+    'sla-minutes': z.number().int().min(15).max(1440).optional(),
+    'routing-json': z.string().max(10000).optional(),
+    'taxonomy-json': z.string().max(20000).optional(),
+    'agent-whitelist': z.string().max(10000).optional(),
+    'llm-model': z.string().max(120).optional(),
+    'llm-monthly-cost-cap-cents': z.number().int().min(0).max(100000).optional(),
+  })
+  .strict();
+
+export type SettingsUpdate = z.infer<typeof settingsUpdateSchema>;

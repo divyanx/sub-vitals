@@ -1,0 +1,57 @@
+{
+  "post": {
+    "postId": "post_001",
+    "title": "App crashes every time I try to checkout",
+    "authorName": "frustrated_frank",
+    "url": "https://reddit.com/r/brand/comments/post_001",
+    "createdAt": 1747440000000,
+    "driverId": "bug",
+    "taggedBy": "ai",
+    "status": "open",
+    "sentimentLabel": "negative",
+    "sentimentScore": -0.72
+  },
+  "comments": [
+    {
+      "commentId": "cmnt_001",
+      "parentId": null,
+      "authorName": "frustrated_frank",
+      "body": "Every single time I click checkout my app just freezes and then crashes. I've tried reinstalling three times. Running iPhone 15 Pro, iOS 18.4.",
+      "createdAt": 1747440300000,
+      "isAgent": false,
+      "agentSource": null,
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.68,
+      "sentimentScoredBy": "ai"
+    },
+    {
+      "commentId": "cmnt_002",
+      "parentId": "cmnt_001",
+      "authorName": "brand_agent_alice",
+      "body": "Hi Frank, really sorry to hear this. I've flagged this for our mobile team as a P1. Can you share your app version? You can find it in Settings > About. We'll get back to you within 24h.",
+      "createdAt": 1747441200000,
+      "isAgent": true,
+      "agentSource": "record",
+      "sentimentLabel": "neutral",
+      "sentimentScore": 0.05,
+      "sentimentScoredBy": "lexicon"
+    },
+    {
+      "commentId": "cmnt_003",
+      "parentId": "cmnt_001",
+      "authorName": "pixel_pete",
+      "body": "Same issue here. Version 4.2.1 on Android. Happens only when cart has more than 3 items.",
+      "createdAt": 1747442000000,
+      "isAgent": false,
+      "agentSource": null,
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.41,
+      "sentimentScoredBy": "lexicon"
+    }
+  ],
+  "heat": {
+    "sampleSize": 3,
+    "negativeShare": 0.67,
+    "isHot": true
+  }
+}

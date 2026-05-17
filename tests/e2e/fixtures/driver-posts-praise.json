@@ -1,0 +1,42 @@
+{
+  "driverId": "praise",
+  "posts": [
+    {
+      "postId": "post_002",
+      "title": "Love the new redesign, UI feels so clean",
+      "authorName": "happy_hana",
+      "url": "https://reddit.com/r/brand/comments/post_002",
+      "createdAt": 1747436400000,
+      "driverId": "praise",
+      "taggedBy": "ai",
+      "confidence": 0.88,
+      "reasoning": "Positive reaction to product UI update",
+      "status": "responded"
+    },
+    {
+      "postId": "post_p02",
+      "title": "Customer support team is absolutely top notch",
+      "authorName": "satisfied_sam",
+      "url": "https://reddit.com/r/brand/comments/post_p02",
+      "createdAt": 1747350000000,
+      "driverId": "praise",
+      "taggedBy": "ai",
+      "confidence": 0.91,
+      "reasoning": "High praise for support team interactions",
+      "status": "open"
+    },
+    {
+      "postId": "post_p03",
+      "title": "Been using this product for 3 years and it keeps getting better",
+      "authorName": "loyal_lucy",
+      "url": "https://reddit.com/r/brand/comments/post_p03",
+      "createdAt": 1747263600000,
+      "driverId": "praise",
+      "taggedBy": "manual",
+      "confidence": null,
+      "reasoning": null,
+      "status": "resolved"
+    }
+  ],
+  "count": 3
+}

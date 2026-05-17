@@ -27,6 +27,7 @@ import type { ZodTypeAny, z } from 'zod';
 import { K, yyyymm } from './keys.js';
 import { log } from './log.js';
 import { takeToken } from './ratelimit.js';
+import { readEffectiveSetting } from './settings-overrides.js';
 
 const DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
 const TIMEOUT_MS = 15_000;
@@ -226,10 +227,11 @@ export async function readMonthlyTokens(): Promise<{ tokensIn: number; tokensOut
 // ---------------------------------------------------------------------------
 
 async function readSettings(): Promise<LLMSettings> {
+  // openrouter-api-key is global+secret — never override via Redis.
   const [apiKey, model, capCents] = await Promise.all([
     settings.get('openrouter-api-key').catch(() => undefined),
-    settings.get('llm-model').catch(() => undefined),
-    settings.get('llm-monthly-cost-cap-cents').catch(() => undefined),
+    readEffectiveSetting<string>('llm-model'),
+    readEffectiveSetting<number>('llm-monthly-cost-cap-cents'),
   ]);
   return {
     apiKey: typeof apiKey === 'string' ? apiKey : '',

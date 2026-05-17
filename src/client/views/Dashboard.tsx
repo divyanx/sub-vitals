@@ -29,8 +29,9 @@ import {
   type SentimentRollup,
   type TaxonomyNode,
 } from '../lib/api.ts';
+import { Settings } from './Settings.tsx';
 
-type Tab = 'inbox' | 'overview' | 'drivers' | 'sentiment' | 'agents' | 'export';
+type Tab = 'inbox' | 'overview' | 'drivers' | 'sentiment' | 'agents' | 'export' | 'settings';
 
 export interface DashboardProps {
   initialTab?: Tab;
@@ -52,6 +53,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         {tab === 'sentiment' && <SentimentTab />}
         {tab === 'agents' && <Agents />}
         {tab === 'export' && <ExportTab />}
+        {tab === 'settings' && <Settings />}
       </main>
     </div>
   );
@@ -78,6 +80,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'sentiment', label: 'Sentiment' },
   { id: 'agents', label: 'Agents' },
   { id: 'export', label: 'Export' },
+  { id: 'settings', label: 'Settings' },
 ];
 
 function Nav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {

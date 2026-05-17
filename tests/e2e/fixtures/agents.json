@@ -1,0 +1,22 @@
+{
+  "agents": [
+    {
+      "username": "brand_agent_alice",
+      "role": "lead",
+      "verifiedAt": 1740000000000,
+      "verifiedBy": "mod_captain"
+    },
+    {
+      "username": "support_bot_beta",
+      "role": "verified",
+      "verifiedAt": 1742000000000,
+      "verifiedBy": "brand_agent_alice"
+    },
+    {
+      "username": "community_manager_charlie",
+      "role": "verified",
+      "verifiedAt": 1744000000000,
+      "verifiedBy": "mod_captain"
+    }
+  ]
+}

@@ -11,9 +11,10 @@
  *   3. (Phase 2) Subreddit moderator status
  */
 
-import { context, reddit, settings } from '@devvit/web/server';
+import { context, settings as devvitSettings, reddit } from '@devvit/web/server';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
+import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import { getAgent, listAgents, setAgent } from '@shared/storage.js';
 import { type OnAppInstallRequest, type RedLatticeModule, SETTINGS } from '@shared/types.js';
 import { agentBulkAddBodySchema, menuRequestSchema } from '@shared/validation.js';
@@ -30,7 +31,8 @@ export const agentVerificationModule: RedLatticeModule = {
   },
 
   async onAppInstall(_event: OnAppInstallRequest): Promise<void> {
-    const raw = ((await settings.get(SETTINGS.AGENT_WHITELIST)) as string | undefined) ?? '';
+    // agent-whitelist is install-time; read from Devvit settings directly.
+    const raw = ((await devvitSettings.get(SETTINGS.AGENT_WHITELIST)) as string | undefined) ?? '';
     const usernames = parseWhitelist(raw);
     if (usernames.length === 0) {
       log.info('agent-verification: no whitelist to seed');
@@ -158,8 +160,8 @@ async function applyVerifiedFlair(username: string): Promise<void> {
   let text = 'Verified Agent';
   let color = '#1e3a8a';
   try {
-    const cfgText = await settings.get('agent-flair-text').catch(() => undefined);
-    const cfgColor = await settings.get('agent-flair-color').catch(() => undefined);
+    const cfgText = await readEffectiveSetting<string>('agent-flair-text');
+    const cfgColor = await readEffectiveSetting<string>('agent-flair-color');
     if (typeof cfgText === 'string' && cfgText.trim().length > 0) text = cfgText.trim();
     if (typeof cfgColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cfgColor.trim())) {
       color = cfgColor.trim();

@@ -153,6 +153,40 @@ export interface DriverRollup {
 }
 
 // ---------------------------------------------------------------------------
+// Crisis detection
+// ---------------------------------------------------------------------------
+
+export type IncidentStatus = 'open' | 'resolved';
+
+export interface Incident {
+  id: string;
+  startedAt: number;
+  reason: string;
+  postIds: string[];
+  commentIds: string[];
+  status: IncidentStatus;
+  resolvedAt?: number | undefined;
+  resolvedBy?: string | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Theme clustering
+// ---------------------------------------------------------------------------
+
+export interface Theme {
+  name: string;
+  summary: string;
+  samplePostIds: string[];
+  postCount: number;
+  avgSentiment: number;
+}
+
+export interface ThemeSnapshot {
+  generatedAt: number;
+  themes: Theme[];
+}
+
+// ---------------------------------------------------------------------------
 // Settings keys (mirrors devvit.json settings declarations)
 // ---------------------------------------------------------------------------
 
