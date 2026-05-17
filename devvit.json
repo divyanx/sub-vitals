@@ -6,7 +6,12 @@
     "redis": true,
     "http": {
       "enable": true,
-      "domains": ["api.openai.com", "generativelanguage.googleapis.com", "openrouter.ai"]
+      "domains": [
+        "api.openai.com",
+        "generativelanguage.googleapis.com",
+        "openrouter.ai",
+        "studio.redlattice.app"
+      ]
     },
     "media": true
   },

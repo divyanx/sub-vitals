@@ -1,0 +1,181 @@
+/**
+ * Studio Bridge — outbound webhook helper.
+ *
+ * Exports `forwardToStudio(kind, payload)` which modules call after they
+ * successfully persist their own state. The function is a no-op when the
+ * studio-token setting is empty (most installs will not have Studio).
+ *
+ * HMAC signature scheme (matches Studio's /api/webhooks/devvit verifier):
+ *   Header: x-redlattice-signature: sha256=<hex>
+ *   Header: x-redlattice-timestamp: <unix-ms>
+ *   Sig = HMAC-SHA256(key = studio-token, msg = `${timestamp}.${rawBody}`)
+ *
+ * Rate-limited to 10 req/min per installation via the shared token bucket.
+ * 1 retry with exponential backoff (1s → 2s). Never throws to caller.
+ */
+
+import { context } from '@devvit/web/server';
+import pRetry from 'p-retry';
+import { log } from './log.js';
+import { takeToken } from './ratelimit.js';
+import { readEffectiveSetting } from './settings-overrides.js';
+
+// ---------------------------------------------------------------------------
+// Public event-kind type
+// ---------------------------------------------------------------------------
+
+export type StudioEventKind =
+  | 'post-create'
+  | 'comment-create'
+  | 'post-tag'
+  | 'sentiment-score'
+  | 'incident-open'
+  | 'incident-resolve'
+  | 'theme-regenerate'
+  | 'agent-mark'
+  | 'agent-unmark';
+
+export interface StudioEvent {
+  v: 1;
+  ts: number;
+  sub: string;
+  kind: StudioEventKind;
+  payload: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Rate-limit bucket config — 10 req/min per installation
+// ---------------------------------------------------------------------------
+
+const STUDIO_BUCKET = {
+  name: 'studio-bridge',
+  capacity: 10,
+  refillPerSec: 10 / 60, // 10 tokens per 60 seconds
+};
+
+// ---------------------------------------------------------------------------
+// HMAC signature using Web Crypto (available in Node ≥ 18 + Devvit sandbox)
+// ---------------------------------------------------------------------------
+
+async function sign(message: string, secret: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const key = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secret),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  const sig = await crypto.subtle.sign('HMAC', key, encoder.encode(message));
+  return Array.from(new Uint8Array(sig))
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+// ---------------------------------------------------------------------------
+// Core forward function
+// ---------------------------------------------------------------------------
+
+/**
+ * Post a StudioEvent to Studio's webhook endpoint.
+ * Returns silently on any failure — the bridge must never break callers.
+ */
+export async function forwardToStudio(
+  kind: StudioEventKind,
+  payload: Record<string, unknown>,
+): Promise<void> {
+  // Read settings; skip if token is absent.
+  const [token, studioUrl] = await Promise.all([
+    readEffectiveSetting<string>('studio-token'),
+    readEffectiveSetting<string>('studio-url', 'https://studio.redlattice.app'),
+  ]);
+
+  if (!token || typeof token !== 'string' || token.trim().length === 0) {
+    // Studio not configured — silent no-op.
+    return;
+  }
+
+  // Rate-limit check.
+  const allowed = await takeToken(STUDIO_BUCKET).catch(() => false);
+  if (!allowed) {
+    log.warn('studio-bridge: rate limit hit, skipping event', { kind });
+    return;
+  }
+
+  const sub = (() => {
+    try {
+      return context.subredditName ?? 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  })();
+
+  const ts = Date.now();
+  const event: StudioEvent = { v: 1, ts, sub, kind, payload };
+  const rawBody = JSON.stringify(event);
+
+  // Compute HMAC signature: sha256=<hex>
+  let hexSig: string;
+  try {
+    hexSig = await sign(`${ts}.${rawBody}`, token.trim());
+  } catch (err) {
+    log.error('studio-bridge: HMAC sign failed', {
+      kind,
+      err: err instanceof Error ? err.message : String(err),
+    });
+    return;
+  }
+
+  const endpoint = `${(studioUrl ?? 'https://studio.redlattice.app').replace(/\/$/, '')}/api/webhooks/devvit`;
+
+  try {
+    await pRetry(
+      async () => {
+        const ctrl = new AbortController();
+        const timer = setTimeout(() => ctrl.abort(), 10_000);
+        try {
+          const res = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+              'content-type': 'application/json',
+              'x-redlattice-signature': `sha256=${hexSig}`,
+              'x-redlattice-timestamp': String(ts),
+            },
+            body: rawBody,
+            signal: ctrl.signal,
+          });
+          if (res.status >= 500) {
+            // Trigger retry on 5xx
+            throw new Error(`studio-bridge: server error ${res.status}`);
+          }
+          if (!res.ok) {
+            // 4xx — don't retry, just log.
+            log.warn('studio-bridge: non-retryable HTTP error', { status: res.status, kind });
+            return; // exit the retry fn cleanly (no throw = success path)
+          }
+          log.info('studio-bridge: event forwarded', { kind, sub, status: res.status });
+        } finally {
+          clearTimeout(timer);
+        }
+      },
+      {
+        retries: 1,
+        minTimeout: 1_000,
+        maxTimeout: 2_000,
+        onFailedAttempt: (err) => {
+          log.warn('studio-bridge: retry attempt failed', {
+            kind,
+            attempt: err.attemptNumber,
+            err: err instanceof Error ? err.message : String(err),
+          });
+        },
+      },
+    );
+  } catch (err) {
+    // All retries exhausted — log and swallow. Never throw.
+    log.error('studio-bridge: all retries failed', {
+      kind,
+      err: err instanceof Error ? err.message : String(err),
+    });
+  }
+}

@@ -39,6 +39,7 @@ import {
 import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/index.js';
 import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
+import { studioBridgeModule } from '@modules/studio-bridge/index.js';
 import { regenerateThemes, themeClusteringModule } from '@modules/theme-clustering/index.js';
 import { buildWeeklyDigest, gatherDigestStats } from '@shared/digest.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
@@ -68,6 +69,7 @@ import {
   setPostStatus,
   setTaxonomy,
 } from '@shared/storage.js';
+import { forwardToStudio } from '@shared/studio-bridge.js';
 import {
   routingRulesSchema,
   settingsUpdateSchema,
@@ -90,6 +92,7 @@ registerModule(crisisDetectionModule);
 registerModule(themeClusteringModule);
 registerModule(agentMetricsModule);
 registerModule(auditLogModule);
+registerModule(studioBridgeModule);
 
 // ---------------------------------------------------------------------------
 // App
@@ -634,6 +637,7 @@ for (const mod of [
   themeClusteringModule,
   agentMetricsModule,
   auditLogModule,
+  studioBridgeModule,
 ]) {
   mod.apiRoutes?.(app);
 }
@@ -720,7 +724,20 @@ app.post('/internal/triggers/app-upgrade', async (c) => {
 });
 
 app.post('/internal/triggers/post-create', async (c) => {
-  await dispatch('onPostCreate', await c.req.json());
+  const body = await c.req.json();
+  await dispatch('onPostCreate', body);
+
+  // Forward post-create event to Studio (best-effort, after modules ran).
+  const post = (body as Record<string, unknown>).post as Record<string, unknown> | undefined;
+  if (post?.id) {
+    void forwardToStudio('post-create', {
+      postId: String(post.id),
+      authorName: typeof post.authorName === 'string' ? post.authorName : 'unknown',
+      title: typeof post.title === 'string' ? post.title : '',
+      createdAt: Date.now(),
+    });
+  }
+
   return c.json({ ok: true });
 });
 
@@ -730,7 +747,20 @@ app.post('/internal/triggers/post-update', async (c) => {
 });
 
 app.post('/internal/triggers/comment-create', async (c) => {
-  await dispatch('onCommentCreate', await c.req.json());
+  const body = await c.req.json();
+  await dispatch('onCommentCreate', body);
+
+  // Forward comment-create event to Studio (best-effort, after modules ran).
+  const comment = (body as Record<string, unknown>).comment as Record<string, unknown> | undefined;
+  if (comment?.id) {
+    void forwardToStudio('comment-create', {
+      commentId: String(comment.id),
+      postId: typeof comment.postId === 'string' ? comment.postId : null,
+      authorName: typeof comment.authorName === 'string' ? comment.authorName : 'unknown',
+      createdAt: Date.now(),
+    });
+  }
+
   return c.json({ ok: true });
 });
 

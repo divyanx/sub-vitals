@@ -244,6 +244,7 @@ export function Settings() {
       <IdentityTrustSection data={data} toast={toast} onSaved={invalidate} />
       <ThresholdsSection data={data} toast={toast} onSaved={invalidate} />
       <AISection data={data} toast={toast} onSaved={invalidate} />
+      <StudioSection data={data} toast={toast} onSaved={invalidate} />
     </div>
   );
 }
@@ -1368,6 +1369,191 @@ function AISection({
       </div>
       <FieldError msg={error} />
       <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// RedLattice Studio connection
+// ---------------------------------------------------------------------------
+
+interface StudioStatus {
+  connected: boolean;
+  studioUrl: string;
+  tokenConfigured: boolean;
+}
+
+interface StudioTestResult {
+  ok: boolean;
+  statusCode?: number;
+  error?: string;
+}
+
+function StudioSection({
+  data,
+  toast,
+  onSaved,
+}: {
+  data: Record<string, unknown> & { openrouterKeyConfigured: boolean };
+  toast: (type: 'success' | 'error', msg: string) => void;
+  onSaved: () => void;
+}) {
+  const [studioUrl, setStudioUrl] = useState(
+    String(data['studio-url'] ?? 'https://studio.redlattice.app'),
+  );
+  const [token, setToken] = useState(String(data['studio-token'] ?? ''));
+  const [testResult, setTestResult] = useState<StudioTestResult | null>(null);
+  const [testLoading, setTestLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const statusQ = useQuery({
+    queryKey: ['studio-status'],
+    queryFn: () => api.studio.status(),
+    retry: false,
+  });
+
+  const saveMut = useMutation({
+    mutationFn: () => api.studio.saveSettings({ 'studio-url': studioUrl, 'studio-token': token }),
+    onSuccess: () => {
+      setError(null);
+      toast('success', 'Studio settings saved.');
+      onSaved();
+      void statusQ.refetch();
+    },
+    onError: (err) => {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
+      toast('error', `Save failed: ${msg}`);
+    },
+  });
+
+  const disconnectMut = useMutation({
+    mutationFn: () => api.studio.disconnect(),
+    onSuccess: () => {
+      setToken('');
+      toast('success', 'Disconnected from Studio.');
+      onSaved();
+      void statusQ.refetch();
+    },
+    onError: (err) => {
+      toast('error', `Disconnect failed: ${err instanceof Error ? err.message : String(err)}`);
+    },
+  });
+
+  const testConnection = async () => {
+    setTestLoading(true);
+    setTestResult(null);
+    try {
+      const result = await api.studio.testConnection();
+      setTestResult(result);
+      toast(
+        result.ok ? 'success' : 'error',
+        result.ok
+          ? 'Connection test passed.'
+          : `Test failed: ${result.error ?? `HTTP ${result.statusCode}`}`,
+      );
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setTestResult({ ok: false, error: msg });
+      toast('error', `Test failed: ${msg}`);
+    } finally {
+      setTestLoading(false);
+    }
+  };
+
+  const status = statusQ.data as StudioStatus | undefined;
+  const connected = status?.connected ?? false;
+
+  return (
+    <Section
+      title="RedLattice Studio"
+      description="Connect this subreddit to RedLattice Studio for cross-sub analytics and custom pipelines."
+    >
+      {/* Connection status banner */}
+      <div
+        className={`mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
+          connected
+            ? 'border-emerald-800 bg-emerald-950/30 text-emerald-200'
+            : 'border-neutral-700 bg-neutral-900 text-neutral-400'
+        }`}
+        data-testid="studio-status-banner"
+      >
+        <span className="text-base">{connected ? '✓' : '○'}</span>
+        {connected ? (
+          <span>
+            Connected to{' '}
+            <span className="font-medium text-emerald-100">{status?.studioUrl ?? studioUrl}</span>
+          </span>
+        ) : (
+          <span>Not connected — enter a Studio URL and connection token below.</span>
+        )}
+      </div>
+
+      <div className="space-y-4">
+        <div>
+          <Label>Studio URL</Label>
+          <Input
+            value={studioUrl}
+            onChange={setStudioUrl}
+            placeholder="https://studio.redlattice.app"
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            Base URL of your RedLattice Studio instance.
+          </p>
+        </div>
+        <div>
+          <Label>Connection token</Label>
+          <Input
+            type="password"
+            value={token}
+            onChange={setToken}
+            placeholder="Paste the token from Studio > Settings > Connections"
+          />
+          <p className="mt-1 text-xs text-neutral-500">
+            Issued by Studio. Stored encrypted in Redis per installation.
+          </p>
+        </div>
+      </div>
+
+      {testResult ? (
+        <div
+          className={`mt-3 rounded border px-3 py-2 text-xs ${
+            testResult.ok
+              ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200'
+              : 'border-rose-700 bg-rose-950/40 text-rose-200'
+          }`}
+        >
+          {testResult.ok
+            ? `Connection test passed (HTTP ${testResult.statusCode ?? 200}).`
+            : `Connection test failed: ${testResult.error ?? `HTTP ${testResult.statusCode}`}`}
+        </div>
+      ) : null}
+
+      <FieldError msg={error} />
+
+      <div className="mt-4 flex flex-wrap gap-3">
+        <SaveButton onClick={() => saveMut.mutate()} loading={saveMut.isPending} />
+        <button
+          type="button"
+          onClick={testConnection}
+          disabled={testLoading || !token.trim()}
+          className="rounded-md border border-blue-700 bg-blue-900/20 px-4 py-1.5 text-sm font-medium text-blue-200 transition hover:bg-blue-900/40 disabled:opacity-50"
+          data-testid="studio-test-button"
+        >
+          {testLoading ? 'Testing…' : 'Test connection'}
+        </button>
+        {connected ? (
+          <button
+            type="button"
+            onClick={() => disconnectMut.mutate()}
+            disabled={disconnectMut.isPending}
+            className="rounded-md border border-rose-700 bg-rose-900/20 px-4 py-1.5 text-sm font-medium text-rose-200 transition hover:bg-rose-900/40 disabled:opacity-50"
+            data-testid="studio-disconnect-button"
+          >
+            {disconnectMut.isPending ? 'Disconnecting…' : 'Disconnect'}
+          </button>
+        ) : null}
+      </div>
     </Section>
   );
 }

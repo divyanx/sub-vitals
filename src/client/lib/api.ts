@@ -419,6 +419,39 @@ export const api = {
       if (!r.ok) throw new Error(`delete view failed: HTTP ${r.status}`);
     },
   },
+  studio: {
+    status: () =>
+      getJson<{ connected: boolean; studioUrl: string; tokenConfigured: boolean }>(
+        '/api/studio/status',
+      ),
+    saveSettings: async (body: { 'studio-url'?: string; 'studio-token'?: string }) => {
+      const r = await fetch('/api/studio/settings', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { ok: boolean };
+    },
+    testConnection: async () => {
+      const r = await fetch('/api/studio/test', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+      });
+      return (await r.json()) as { ok: boolean; statusCode?: number; error?: string };
+    },
+    disconnect: async () => {
+      const r = await fetch('/api/studio/settings', { method: 'DELETE' });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { ok: boolean };
+    },
+  },
   adminDebug: () =>
     getJson<{
       server: { ts: number; uptimeSec: number };

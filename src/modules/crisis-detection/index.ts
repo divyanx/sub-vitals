@@ -31,6 +31,7 @@ import {
   refreshActiveIncidentTTL,
   saveIncident,
 } from '@shared/storage.js';
+import { forwardToStudio } from '@shared/studio-bridge.js';
 import type { Incident, OnCommentCreateRequest, RedLatticeModule } from '@shared/types.js';
 import { commentCreateMinimalSchema } from '@shared/validation.js';
 import type { Hono } from 'hono';
@@ -168,6 +169,14 @@ export const crisisDetectionModule: RedLatticeModule = {
 
       log.info('crisis: incident resolved manually', { id, by: resolved.resolvedBy });
       void recordAudit('incident-resolve', id, { resolvedBy: resolved.resolvedBy });
+
+      // Forward to Studio (best-effort).
+      void forwardToStudio('incident-resolve', {
+        incidentId: resolved.id,
+        resolvedAt: resolved.resolvedAt,
+        resolvedBy: resolved.resolvedBy,
+      });
+
       return c.json({ incident: resolved });
     });
   },
@@ -283,6 +292,15 @@ async function handleSpike(args: {
     reason: args.reason,
     hourTotal: args.hourTotal,
     hourNeg: args.hourNeg,
+  });
+
+  // Forward to Studio (best-effort).
+  void forwardToStudio('incident-open', {
+    incidentId: incident.id,
+    reason: incident.reason,
+    postIds: incident.postIds,
+    commentIds: incident.commentIds,
+    startedAt: incident.startedAt,
   });
 
   await sendOpenModmail(incident);

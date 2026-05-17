@@ -27,6 +27,8 @@ export const OVERRIDABLE_KEYS = [
   'agent-whitelist',
   'llm-model',
   'llm-monthly-cost-cap-cents',
+  'studio-url',
+  'studio-token',
 ] as const;
 
 export type OverridableKey = (typeof OVERRIDABLE_KEYS)[number];

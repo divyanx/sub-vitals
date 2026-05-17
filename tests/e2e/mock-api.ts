@@ -174,6 +174,26 @@ export async function setupMocks(page: Page): Promise<void> {
       });
     }
 
+    // Studio Bridge
+    if (pathname === '/api/studio/status') {
+      return route.fulfill({
+        json: {
+          connected: false,
+          studioUrl: 'https://studio.redlattice.app',
+          tokenConfigured: false,
+        },
+      });
+    }
+    if (pathname === '/api/studio/test' && method === 'POST') {
+      return route.fulfill({ json: { ok: true, statusCode: 200 } });
+    }
+    if (pathname === '/api/studio/settings' && method === 'PUT') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname === '/api/studio/settings' && method === 'DELETE') {
+      return route.fulfill({ json: { ok: true } });
+    }
+
     // Saved views
     if (pathname === '/api/views' && method === 'GET') {
       return route.fulfill({ json: { views: [] } });

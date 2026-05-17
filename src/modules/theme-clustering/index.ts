@@ -21,6 +21,7 @@ import {
   getThemeSnapshot,
   saveThemeSnapshot,
 } from '@shared/storage.js';
+import { forwardToStudio } from '@shared/studio-bridge.js';
 import type { PostMeta, RedLatticeModule, Theme, ThemeSnapshot } from '@shared/types.js';
 import type { Hono } from 'hono';
 import { z } from 'zod';
@@ -83,6 +84,11 @@ export const themeClusteringModule: RedLatticeModule = {
         return c.json({ error: 'regeneration failed — check LLM settings or logs' }, 503);
       }
       void recordAudit('theme-regenerate', null, { themeCount: snapshot.themes.length });
+      // Forward to Studio (best-effort).
+      void forwardToStudio('theme-regenerate', {
+        generatedAt: snapshot.generatedAt,
+        themeCount: snapshot.themes.length,
+      });
       return c.json(snapshot);
     });
   },

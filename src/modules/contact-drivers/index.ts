@@ -34,6 +34,7 @@ import {
   setPostStatus,
   setPostTag,
 } from '@shared/storage.js';
+import { forwardToStudio } from '@shared/studio-bridge.js';
 import type {
   OnPostCreateRequest,
   PostStatus,
@@ -122,6 +123,15 @@ export const contactDriversModule: RedLatticeModule = {
     };
     await setPostTag(tag);
     await incrDriverRollup(final.id);
+
+    // Forward to Studio (best-effort — never blocks the handler).
+    void forwardToStudio('post-tag', {
+      postId: post.id,
+      driverId: final.id,
+      taggedBy: tag.taggedBy,
+      confidence: final.confidence,
+      reasoning: reasoning ?? null,
+    });
 
     // Apply Reddit post flair so teams can filter the sub by driver natively.
     const node = taxonomy.find((t) => t.id === final.id);
@@ -259,6 +269,13 @@ export const contactDriversModule: RedLatticeModule = {
       };
       await setPostTag(tag);
       await incrDriverRollup(body.data.driverId);
+      void forwardToStudio('post-tag', {
+        postId: tag.postId,
+        driverId: tag.driverId,
+        taggedBy: tag.taggedBy,
+        confidence: tag.confidence ?? null,
+        reasoning: tag.reasoning ?? null,
+      });
       return c.json({ ok: true, tag });
     });
 

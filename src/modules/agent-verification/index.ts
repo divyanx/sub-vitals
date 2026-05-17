@@ -17,6 +17,7 @@ import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import { getAgent, listAgents, setAgent } from '@shared/storage.js';
+import { forwardToStudio } from '@shared/studio-bridge.js';
 import { type OnAppInstallRequest, type RedLatticeModule, SETTINGS } from '@shared/types.js';
 import { agentBulkAddBodySchema, menuRequestSchema } from '@shared/validation.js';
 import type { Context, Hono } from 'hono';
@@ -116,6 +117,13 @@ export async function handleMarkAgentMenu(c: Context): Promise<Response> {
     verifiedBy: 'menu-action',
   });
 
+  // Forward to Studio (best-effort).
+  void forwardToStudio('agent-mark', {
+    username,
+    role: 'verified',
+    byUser: context.username ?? 'unknown',
+  });
+
   // Best-effort: apply a Reddit user flair so the verification is visible
   // to everyone reading the sub, not just in our dashboard.
   await applyVerifiedFlair(username);
@@ -145,6 +153,14 @@ export async function handleUnmarkAgentMenu(c: Context): Promise<Response> {
     return c.json({ showToast: `u/${username} is not currently verified.` });
   }
   await setAgent({ ...existing, role: 'removed' });
+
+  // Forward to Studio (best-effort).
+  void forwardToStudio('agent-unmark', {
+    username,
+    role: 'removed',
+    byUser: context.username ?? 'unknown',
+  });
+
   // Clear the visible Reddit flair when revoking verification.
   await clearVerifiedFlair(username);
   void recordAudit('unmark-agent', body.data.targetId, { username });

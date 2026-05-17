@@ -24,6 +24,7 @@ import {
   isAgent,
   setSentimentScore,
 } from '@shared/storage.js';
+import { forwardToStudio } from '@shared/studio-bridge.js';
 import {
   type CommentMeta,
   type OnCommentCreateRequest,
@@ -220,6 +221,15 @@ async function persistScore(args: {
   };
   await setSentimentScore(record);
   await incrSentimentRollup(args.label, args.score);
+
+  // Forward to Studio (best-effort — never blocks the handler).
+  void forwardToStudio('sentiment-score', {
+    id: args.contentId,
+    kind: args.contentType,
+    label: args.label,
+    score: args.score,
+    scoredBy: args.scoredBy,
+  });
 }
 
 // ---------------------------------------------------------------------------
