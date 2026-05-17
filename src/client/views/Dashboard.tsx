@@ -1979,6 +1979,8 @@ function StatusBadge({ status }: { status: PostStatus }) {
 
 function SentimentTab() {
   const sentQ = useQuery({ queryKey: ['sentiment-rollup'], queryFn: api.sentimentRollup });
+  const [openLabel, setOpenLabel] = useState<'positive' | 'neutral' | 'negative' | null>(null);
+
   if (sentQ.isPending) return <SkeletonGrid />;
   if (sentQ.isError)
     return <ErrorMsg msg="Couldn't load sentiment." retry={() => sentQ.refetch()} />;
@@ -1995,13 +1997,54 @@ function SentimentTab() {
     { positive: 0, neutral: 0, negative: 0, total: 0 },
   );
 
+  const toggleLabel = (label: 'positive' | 'neutral' | 'negative') => {
+    setOpenLabel((prev) => (prev === label ? null : label));
+  };
+
+  const CARDS: Array<{
+    label: 'positive' | 'neutral' | 'negative';
+    count: number;
+    tone: 'positive' | 'negative' | 'neutral';
+    ariaLabel: string;
+  }> = [
+    {
+      label: 'positive',
+      count: totals.positive,
+      tone: 'positive',
+      ariaLabel: `Positive sentiment: ${totals.positive} posts. Click to see contributing posts.`,
+    },
+    {
+      label: 'neutral',
+      count: totals.neutral,
+      tone: 'neutral',
+      ariaLabel: `Neutral sentiment: ${totals.neutral} posts. Click to see contributing posts.`,
+    },
+    {
+      label: 'negative',
+      count: totals.negative,
+      tone: 'negative',
+      ariaLabel: `Negative sentiment: ${totals.negative} posts. Click to see contributing posts.`,
+    },
+  ];
+
   return (
     <div className="space-y-8">
       <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
-        <Card label="Positive" value={String(totals.positive)} sub="last 30d" tone="positive" />
-        <Card label="Neutral" value={String(totals.neutral)} sub="last 30d" />
-        <Card label="Negative" value={String(totals.negative)} sub="last 30d" tone="negative" />
+        {CARDS.map(({ label, count, tone, ariaLabel }) => (
+          <SentimentDrillCard
+            key={label}
+            label={label}
+            count={count}
+            tone={tone}
+            ariaLabel={ariaLabel}
+            isOpen={openLabel === label}
+            onToggle={() => toggleLabel(label)}
+          />
+        ))}
       </section>
+
+      {openLabel ? <SentimentPostList label={openLabel} /> : null}
+
       <section>
         <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">
           Daily sentiment volume · 30 days
@@ -2015,6 +2058,132 @@ function SentimentTab() {
         </Suspense>
       </section>
     </div>
+  );
+}
+
+function SentimentDrillCard({
+  label,
+  count,
+  tone,
+  ariaLabel,
+  isOpen,
+  onToggle,
+}: {
+  label: 'positive' | 'neutral' | 'negative';
+  count: number;
+  tone: 'positive' | 'negative' | 'neutral';
+  ariaLabel: string;
+  isOpen: boolean;
+  onToggle: () => void;
+}) {
+  const accent =
+    tone === 'positive'
+      ? 'text-emerald-400'
+      : tone === 'negative'
+        ? 'text-rose-400'
+        : 'text-neutral-100';
+
+  const ringClass = isOpen
+    ? tone === 'positive'
+      ? 'ring-2 ring-emerald-600'
+      : tone === 'negative'
+        ? 'ring-2 ring-rose-600'
+        : 'ring-2 ring-neutral-500'
+    : '';
+
+  return (
+    <button
+      type="button"
+      aria-pressed={isOpen}
+      aria-label={ariaLabel}
+      data-testid={`sentiment-card-${label}`}
+      className={`w-full cursor-pointer rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-left transition hover:border-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${ringClass}`}
+      onClick={onToggle}
+    >
+      <div className="text-xs uppercase tracking-wide text-neutral-400">
+        {label.charAt(0).toUpperCase() + label.slice(1)}
+      </div>
+      <div className={`mt-2 truncate text-2xl font-semibold ${accent}`}>{count}</div>
+      <div className="mt-1 flex items-center gap-1 text-xs text-neutral-400">
+        <span>last 30d</span>
+        <span
+          aria-hidden="true"
+          className={`ml-auto transition-transform ${isOpen ? 'rotate-180' : ''}`}
+        >
+          ▾
+        </span>
+      </div>
+    </button>
+  );
+}
+
+function SentimentPostList({ label }: { label: 'positive' | 'neutral' | 'negative' }) {
+  const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy });
+  const q = useQuery({
+    queryKey: ['sentiment-posts', label],
+    queryFn: () => api.sentimentPosts(label, { days: 30, limit: 50 }),
+  });
+
+  const taxonomy = taxonomyQ.data?.taxonomy ?? [];
+
+  if (q.isPending) return <SkeletonList />;
+  if (q.isError)
+    return <ErrorMsg msg={`Couldn't load ${label} posts.`} retry={() => q.refetch()} />;
+
+  const posts = q.data.posts;
+
+  const labelTitle = label.charAt(0).toUpperCase() + label.slice(1);
+
+  if (posts.length === 0) {
+    return <EmptyHint>No {label} posts in the last 30 days.</EmptyHint>;
+  }
+
+  return (
+    <section
+      aria-label={`${labelTitle} posts`}
+      data-testid={`sentiment-posts-${label}`}
+      className="rounded-lg border border-neutral-800 bg-neutral-900"
+    >
+      <div className="border-b border-neutral-800 px-4 py-3">
+        <span className="text-sm font-medium text-neutral-200">
+          {labelTitle} posts · {posts.length} results
+        </span>
+      </div>
+      <ul className="divide-y divide-neutral-800">
+        {posts.map((p) => (
+          <li key={p.postId} className="flex flex-wrap items-start gap-3 px-4 py-3">
+            <div className="min-w-0 flex-1">
+              <a
+                href={p.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-medium text-neutral-100 hover:text-orange-300 hover:underline"
+              >
+                {p.title}
+              </a>
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+                <span>u/{p.authorName}</span>
+                <span>·</span>
+                <span>{relativeTime(p.createdAt)}</span>
+                {p.driverId ? (
+                  <>
+                    <span>·</span>
+                    <DriverBadge id={p.driverId} taggedBy={p.taggedBy} taxonomy={taxonomy} />
+                  </>
+                ) : null}
+              </div>
+            </div>
+            {p.sentimentLabel ? (
+              <SentimentBadge
+                label={p.sentimentLabel as 'positive' | 'neutral' | 'negative'}
+                score={p.sentimentScore}
+                by={p.sentimentScoredBy}
+              />
+            ) : null}
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -3093,7 +3262,7 @@ function ExportTab() {
 // Shared UI primitives
 // ---------------------------------------------------------------------------
 
-function Card({
+function _Card({
   label,
   value,
   sub,
