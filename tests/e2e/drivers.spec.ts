@@ -180,8 +180,8 @@ test.describe('Drivers tab — taxonomy config panel', () => {
 
     // Click the first "Move to…" button
     await page.getByText('Move to…').first().click();
-    // The dropdown should show "(Root — no parent)" option
-    await expect(page.getByText('(Root')).toBeVisible({ timeout: 3000 });
+    // The dropdown should show "Move to top level" as first action
+    await expect(page.getByText('Move to top level')).toBeVisible({ timeout: 3000 });
   });
 
   test('"Include sub-drivers" toggle appears for driver with children', async ({ page }) => {
@@ -217,5 +217,108 @@ test.describe('Drivers tab — breadcrumb labels', () => {
     ).toBeVisible({ timeout: 10000 });
     // bug.crash breadcrumb: "Bug / broken experience › Crash"
     await expect(page.getByText(/Crash/)).toBeVisible({ timeout: 5000 });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sprint 13 — new e2e tests for polished hierarchical drivers view
+// ---------------------------------------------------------------------------
+
+test.describe('Drivers taxonomy config — Sprint 13 polish', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
+    await page.getByTestId('drivers-config-toggle').click();
+    await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 5000 });
+  });
+
+  test('chevron collapse hides children of that parent only', async ({ page }) => {
+    // The fixture has bug.crash as a child of bug — find the bug row chevron
+    // First count visible rows
+    const listBefore = page.getByTestId('taxonomy-driver-list').locator('> div:visible');
+    const countBefore = await listBefore.count();
+    expect(countBefore).toBeGreaterThan(1);
+
+    // Find the first chevron button (▼) belonging to a row that has children
+    const chevrons = page.getByRole('button', { name: 'Collapse children' });
+    await expect(chevrons.first()).toBeVisible({ timeout: 4000 });
+
+    // Click to collapse
+    await chevrons.first().click();
+
+    // After collapse, fewer rows should be visible
+    const countAfter = await page
+      .getByTestId('taxonomy-driver-list')
+      .locator('> div:visible')
+      .count();
+    expect(countAfter).toBeLessThan(countBefore);
+
+    // Clicking again (now "Expand children") should restore the count
+    await page.getByRole('button', { name: 'Expand children' }).first().click();
+    const countRestored = await page
+      .getByTestId('taxonomy-driver-list')
+      .locator('> div:visible')
+      .count();
+    expect(countRestored).toBe(countBefore);
+  });
+
+  test('compact mode toggle switches all rows to compact summary view', async ({ page }) => {
+    const toggle = page.getByTestId('compact-mode-toggle');
+    await expect(toggle).toBeVisible({ timeout: 4000 });
+
+    // Default: full editor rows are visible (no compact-row test ids)
+    const compactRowsBefore = await page.getByTestId(/driver-compact-row-/).count();
+    // In expanded mode there should be no compact rows
+    expect(compactRowsBefore).toBe(0);
+
+    // Enable compact mode
+    await toggle.click();
+
+    // Now compact rows should appear
+    const compactRowsAfter = await page.getByTestId(/driver-compact-row-/).count();
+    expect(compactRowsAfter).toBeGreaterThan(0);
+
+    // Toggle back — compact rows should disappear
+    await toggle.click();
+    const compactRowsFinal = await page.getByTestId(/driver-compact-row-/).count();
+    expect(compactRowsFinal).toBe(0);
+  });
+
+  test('color preset click in popover updates the swatch color', async ({ page }) => {
+    // Open first color swatch popover
+    const swatchBtn = page.getByTestId('color-swatch-btn').first();
+    await expect(swatchBtn).toBeVisible({ timeout: 4000 });
+    await swatchBtn.click();
+
+    // Popover should be visible
+    await expect(page.getByTestId('color-picker-popover')).toBeVisible({ timeout: 3000 });
+
+    // Click the sky-500 preset (#0ea5e9)
+    await page.getByTestId('color-preset-sky-500').click();
+
+    // Popover should close
+    await expect(page.getByTestId('color-picker-popover')).not.toBeVisible({ timeout: 2000 });
+
+    // The swatch button should now have the sky-500 background color
+    const bgColor = await swatchBtn.evaluate((el) => (el as HTMLElement).style.backgroundColor);
+    // bg color is rendered as rgb(14, 165, 233) for #0ea5e9
+    expect(bgColor).toContain('14');
+  });
+
+  test('sticky breadcrumb appears when a row receives focus', async ({ page }) => {
+    // Breadcrumb should not be visible before any row is focused
+    await expect(page.getByTestId('sticky-breadcrumb')).not.toBeVisible();
+
+    // Focus an input inside the first driver row
+    const firstInput = page
+      .getByTestId('taxonomy-driver-list')
+      .locator('input[placeholder="bug"]')
+      .first();
+    await firstInput.focus();
+
+    // Sticky breadcrumb should now appear
+    await expect(page.getByTestId('sticky-breadcrumb')).toBeVisible({ timeout: 3000 });
   });
 });

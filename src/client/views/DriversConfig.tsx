@@ -8,6 +8,16 @@
  * Exports:
  *   TaxonomyConfigSection  — full taxonomy editor (visual tree + JSON fallback)
  *   RoutingConfigSection   — per-driver modmail routing table
+ *
+ * Sprint 13 polish applied:
+ *   1. Visual tree connectors (CSS pseudo-elements via inline class strategy)
+ *   2. Collapse/expand chevron (independent from compact mode)
+ *   3. "Add sub-driver" only on hover/focus; hidden at depth 3
+ *   4. Move-to dropdown with indented options + "Move to top level"
+ *   5. Color picker — swatch button + popover with 12 OKLCH presets
+ *   6. Sticky breadcrumb showing currently-focused row path
+ *   7. Compact card mode — global toggle + per-row expanded/collapsed editor
+ *   8. Empty state CTA + tablist strip for Visual/JSON toggle
  */
 
 import {
@@ -29,7 +39,7 @@ import {
 import { CSS } from '@dnd-kit/utilities';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
-import { useId, useState } from 'react';
+import { useCallback, useId, useRef, useState } from 'react';
 import { api } from '../lib/api.ts';
 
 // ---------------------------------------------------------------------------
@@ -147,6 +157,95 @@ function FieldError({ msg }: { msg: string | null }) {
   return (
     <div className="mt-2 rounded border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
       {msg}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Color picker — 12 OKLCH Tailwind 4 presets + custom fallback
+// ---------------------------------------------------------------------------
+
+const COLOR_PRESETS: { label: string; value: string }[] = [
+  { label: 'red-500', value: '#ef4444' },
+  { label: 'orange-500', value: '#f97316' },
+  { label: 'amber-500', value: '#f59e0b' },
+  { label: 'yellow-500', value: '#eab308' },
+  { label: 'lime-500', value: '#84cc16' },
+  { label: 'green-500', value: '#22c55e' },
+  { label: 'emerald-500', value: '#10b981' },
+  { label: 'teal-500', value: '#14b8a6' },
+  { label: 'sky-500', value: '#0ea5e9' },
+  { label: 'indigo-500', value: '#6366f1' },
+  { label: 'purple-500', value: '#a855f7' },
+  { label: 'pink-500', value: '#ec4899' },
+];
+
+function ColorPickerPopover({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [open, setOpen] = useState(false);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  const close = useCallback(() => setOpen(false), []);
+
+  // Close on outside click
+  const handleBlur = (e: React.FocusEvent<HTMLDivElement>) => {
+    if (!popoverRef.current?.contains(e.relatedTarget as Node)) {
+      close();
+    }
+  };
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: blur delegation to wrapper needed for popover close
+    <div className="relative inline-block" ref={popoverRef} onBlur={handleBlur}>
+      <button
+        type="button"
+        aria-label={`Pick color — current: ${value}`}
+        aria-haspopup="dialog"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+        className="h-6 w-6 rounded border border-neutral-600 shadow-sm transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+        style={{ backgroundColor: value }}
+        data-testid="color-swatch-btn"
+      />
+      {open ? (
+        <div
+          role="dialog"
+          aria-label="Color picker"
+          className="absolute left-0 top-8 z-40 w-52 rounded-xl border border-neutral-700 bg-neutral-900 p-3 shadow-2xl"
+          data-testid="color-picker-popover"
+        >
+          <p className="mb-2 text-xs font-medium text-neutral-400">Preset colors</p>
+          <div className="mb-3 grid grid-cols-6 gap-1.5">
+            {COLOR_PRESETS.map((p) => (
+              <button
+                key={p.value}
+                type="button"
+                aria-label={p.label}
+                title={p.label}
+                onClick={() => {
+                  onChange(p.value);
+                  close();
+                }}
+                className={`h-6 w-6 rounded border transition hover:scale-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500 ${
+                  value === p.value ? 'border-white' : 'border-transparent'
+                }`}
+                style={{ backgroundColor: p.value }}
+                data-testid={`color-preset-${p.label}`}
+              />
+            ))}
+          </div>
+          <p className="mb-1.5 text-xs font-medium text-neutral-400">Custom</p>
+          <div className="flex items-center gap-2">
+            <input
+              type="color"
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              className="h-7 w-10 cursor-pointer rounded border border-neutral-700 bg-neutral-800 p-0.5"
+              aria-label="Custom color"
+            />
+            <span className="font-mono text-xs text-neutral-300">{value}</span>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -301,6 +400,21 @@ function treeOrder(rows: TaxRow[]): TaxRow[] {
   return result;
 }
 
+/** Build the ancestor chain from a row up to root, returning labels. */
+function buildBreadcrumb(row: TaxRow, byId: Map<string, TaxRow>): string[] {
+  const parts: string[] = [];
+  let current: TaxRow | undefined = row;
+  const visited = new Set<string>();
+  while (current) {
+    if (visited.has(current.id)) break;
+    visited.add(current.id);
+    parts.unshift(current.label || current.id || '…');
+    if (!current.parentId) break;
+    current = byId.get(current.parentId);
+  }
+  return parts;
+}
+
 // ---------------------------------------------------------------------------
 // Delete confirmation modal
 // ---------------------------------------------------------------------------
@@ -416,7 +530,7 @@ function KeywordsInput({
 }
 
 // ---------------------------------------------------------------------------
-// Single driver row (tree-aware)
+// Single driver row (tree-aware) — supports compact + collapse independently
 // ---------------------------------------------------------------------------
 
 function DriverTreeRow({
@@ -425,35 +539,41 @@ function DriverTreeRow({
   allRows,
   isCollapsed,
   hasChildren,
+  isCompact,
   onToggleCollapse,
   onUpdate,
   onDelete,
   onAddChild,
   onMoveTo,
+  onFocus,
 }: {
   row: TaxRow;
   depth: number;
   allRows: TaxRow[];
   isCollapsed: boolean;
   hasChildren: boolean;
+  isCompact: boolean;
   onToggleCollapse: (uid: number) => void;
   onUpdate: (uid: number, field: keyof Omit<TaxRow, '_uid'>, val: string | string[] | null) => void;
   onDelete: (uid: number) => void;
   onAddChild: (parentUid: number) => void;
   onMoveTo: (uid: number, newParentId: string | null) => void;
+  onFocus: (uid: number) => void;
 }) {
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [showMoveMenu, setShowMoveMenu] = useState(false);
+  const moveMenuRef = useRef<HTMLDivElement>(null);
 
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: row._uid,
   });
 
+  const INDENT_PX = 28;
+
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
     opacity: isDragging ? 0.5 : 1,
-    paddingLeft: `${(depth - 1) * 24}px`,
   };
 
   // Possible move targets: any node that is not self, not a descendant, and would not exceed depth 3
@@ -470,13 +590,126 @@ function DriverTreeRow({
   collectDescendants(row.id);
 
   const moveTargets = allRows.filter(
-    (r) =>
-      r.id !== row.id &&
-      !descendants.has(r.id) &&
-      // moving row under r must not push row's subtree beyond depth 3
-      rowDepth(r, byId) < 3,
+    (r) => r.id !== row.id && !descendants.has(r.id) && rowDepth(r, byId) < 3,
   );
 
+  const handleMoveFocus = (e: React.FocusEvent<HTMLDivElement>) => {
+    if (!moveMenuRef.current?.contains(e.relatedTarget as Node)) {
+      setShowMoveMenu(false);
+    }
+  };
+
+  // Compact summary: chevron + color dot + label + post count badge + edit pencil
+  if (isCompact) {
+    return (
+      <>
+        {confirmDelete ? (
+          <DeleteConfirmModal
+            label={row.label || row.id}
+            hasChildren={hasChildren}
+            onConfirm={() => {
+              setConfirmDelete(false);
+              onDelete(row._uid);
+            }}
+            onCancel={() => setConfirmDelete(false)}
+          />
+        ) : null}
+
+        {/* Tree connector + row wrapper */}
+        <div
+          ref={setNodeRef}
+          style={style}
+          className="relative"
+          data-testid={`driver-compact-row-${row._uid}`}
+        >
+          {/* Vertical guide line for non-root rows */}
+          {depth > 1 ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-0 bottom-0 border-l border-neutral-700"
+              style={{ left: `${(depth - 2) * INDENT_PX + 8}px` }}
+            />
+          ) : null}
+          {/* Horizontal connector */}
+          {depth > 1 ? (
+            <span
+              aria-hidden="true"
+              className="pointer-events-none absolute top-1/2 border-t border-neutral-700"
+              style={{
+                left: `${(depth - 2) * INDENT_PX + 8}px`,
+                width: `${INDENT_PX - 8}px`,
+              }}
+            />
+          ) : null}
+
+          {/* biome-ignore lint/a11y/noStaticElementInteractions: focus tracking wrapper for breadcrumb, children are interactive */}
+          <div
+            className="group mb-1.5 flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-950/60 px-3 py-2 transition hover:border-neutral-700"
+            style={{ marginLeft: `${(depth - 1) * INDENT_PX}px` }}
+            onFocus={() => onFocus(row._uid)}
+          >
+            {/* Collapse chevron */}
+            <button
+              type="button"
+              onClick={() => onToggleCollapse(row._uid)}
+              aria-label={isCollapsed ? 'Expand children' : 'Collapse children'}
+              data-testid={`chevron-${row._uid}`}
+              className={`shrink-0 text-xs text-neutral-500 transition hover:text-neutral-200 ${!hasChildren ? 'invisible' : ''}`}
+            >
+              {isCollapsed ? '▶' : '▼'}
+            </button>
+
+            {/* Color dot */}
+            <span
+              className="h-3 w-3 shrink-0 rounded-full border border-white/10"
+              style={{ backgroundColor: row.color }}
+              aria-hidden="true"
+            />
+
+            {/* Label */}
+            <span className="flex-1 truncate text-xs font-medium text-neutral-200">
+              {row.label || <span className="text-neutral-500 italic">Untitled</span>}
+            </span>
+
+            {/* Post count badge */}
+            <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+              0
+            </span>
+
+            {/* Edit pencil */}
+            <button
+              type="button"
+              aria-label={`Edit driver ${row.label || row.id}`}
+              className="shrink-0 text-neutral-500 opacity-0 transition hover:text-orange-400 group-hover:opacity-100 focus:opacity-100"
+              onClick={() => onFocus(row._uid)}
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 16 16"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <path d="M11.013 1.427a1.75 1.75 0 0 1 2.474 0l1.086 1.086a1.75 1.75 0 0 1 0 2.474l-8.61 8.61c-.21.21-.47.364-.756.445l-3.251.93a.75.75 0 0 1-.927-.928l.929-3.25c.081-.286.235-.547.445-.758l8.61-8.609zm1.414 1.06a.25.25 0 0 0-.354 0L10.811 3.75l1.439 1.44 1.263-1.263a.25.25 0 0 0 0-.354L12.427 2.487zm.979 2.914L11.967 3.962 4.312 11.617a.483.483 0 0 0-.12.21L3.35 14.05l2.223-.636a.483.483 0 0 0 .21-.12l7.623-7.623z" />
+              </svg>
+            </button>
+
+            {/* Delete */}
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label={`Delete driver ${row.label || row.id}`}
+              className="shrink-0 text-xs text-neutral-500 opacity-0 transition hover:text-rose-400 group-hover:opacity-100 focus:opacity-100"
+            >
+              &times;
+            </button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  // Expanded (full editor) mode
   return (
     <>
       {confirmDelete ? (
@@ -490,169 +723,288 @@ function DriverTreeRow({
           onCancel={() => setConfirmDelete(false)}
         />
       ) : null}
+
+      {/* biome-ignore lint/a11y/noStaticElementInteractions: focus tracking container for breadcrumb; child inputs are interactive */}
       <div
         ref={setNodeRef}
         style={style}
-        className="mb-2 rounded-lg border border-neutral-800 bg-neutral-950/60 p-3"
+        className="relative mb-2"
+        onFocus={() => onFocus(row._uid)}
+        data-testid={`driver-row-${row._uid}`}
       >
-        <div className="flex items-start gap-2">
-          {/* Collapse/expand chevron */}
-          <button
-            type="button"
-            onClick={() => onToggleCollapse(row._uid)}
-            aria-label={isCollapsed ? 'Expand' : 'Collapse'}
-            className={`mt-1 shrink-0 text-xs text-neutral-400 transition hover:text-neutral-200 ${!hasChildren ? 'invisible' : ''}`}
-          >
-            {isCollapsed ? '▶' : '▼'}
-          </button>
+        {/* Vertical tree guide line */}
+        {depth > 1 ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute top-0 bottom-0 border-l border-neutral-700"
+            style={{ left: `${(depth - 2) * INDENT_PX + 8}px` }}
+          />
+        ) : null}
+        {/* Horizontal connector into row */}
+        {depth > 1 ? (
+          <span
+            aria-hidden="true"
+            className="pointer-events-none absolute border-t border-neutral-700"
+            style={{
+              top: '22px',
+              left: `${(depth - 2) * INDENT_PX + 8}px`,
+              width: `${INDENT_PX - 8}px`,
+            }}
+          />
+        ) : null}
 
-          {/* Drag handle */}
-          <button
-            type="button"
-            {...attributes}
-            {...listeners}
-            aria-label="Drag to reorder"
-            className="mt-1 cursor-grab touch-none text-neutral-400 hover:text-neutral-300 active:cursor-grabbing"
-          >
-            <svg width="12" height="12" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
-              <circle cx="4" cy="3" r="1.2" />
-              <circle cx="4" cy="7" r="1.2" />
-              <circle cx="4" cy="11" r="1.2" />
-              <circle cx="10" cy="3" r="1.2" />
-              <circle cx="10" cy="7" r="1.2" />
-              <circle cx="10" cy="11" r="1.2" />
-            </svg>
-          </button>
+        <div
+          className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3"
+          style={{ marginLeft: `${(depth - 1) * INDENT_PX}px` }}
+        >
+          <div className="flex items-start gap-2">
+            {/* Collapse/expand chevron — controls subtree visibility only */}
+            <button
+              type="button"
+              onClick={() => onToggleCollapse(row._uid)}
+              aria-label={isCollapsed ? 'Expand children' : 'Collapse children'}
+              data-testid={`chevron-${row._uid}`}
+              className={`mt-1 shrink-0 text-xs text-neutral-400 transition hover:text-neutral-200 ${!hasChildren ? 'invisible' : ''}`}
+            >
+              {isCollapsed ? '▶' : '▼'}
+            </button>
 
-          <div className="flex-1 space-y-2">
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <div>
-                <label className="mb-0.5 block text-xs font-medium text-neutral-400">
-                  ID
-                  <input
-                    value={row.id}
-                    onChange={(e) => onUpdate(row._uid, 'id', e.target.value)}
-                    placeholder="bug"
-                    data-testid={`driver-row-id-${row._uid}`}
-                    className="mt-1 w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
-                  />
-                </label>
-              </div>
-              <div className="col-span-2">
-                <label className="mb-0.5 block text-xs font-medium text-neutral-400">
-                  Label
-                  <input
-                    value={row.label}
-                    onChange={(e) => onUpdate(row._uid, 'label', e.target.value)}
-                    placeholder="Bug / Issue Report"
-                    className="mt-1 w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
-                  />
-                </label>
-              </div>
-              <div>
-                <label className="mb-0.5 block text-xs font-medium text-neutral-400">
-                  Color
-                  <div className="mt-1 flex items-center gap-1">
+            {/* Drag handle */}
+            <button
+              type="button"
+              {...attributes}
+              {...listeners}
+              aria-label="Drag to reorder"
+              className="mt-1 cursor-grab touch-none text-neutral-400 hover:text-neutral-300 active:cursor-grabbing"
+            >
+              <svg
+                width="12"
+                height="12"
+                viewBox="0 0 14 14"
+                fill="currentColor"
+                aria-hidden="true"
+              >
+                <circle cx="4" cy="3" r="1.2" />
+                <circle cx="4" cy="7" r="1.2" />
+                <circle cx="4" cy="11" r="1.2" />
+                <circle cx="10" cy="3" r="1.2" />
+                <circle cx="10" cy="7" r="1.2" />
+                <circle cx="10" cy="11" r="1.2" />
+              </svg>
+            </button>
+
+            <div className="flex-1 space-y-2">
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                <div>
+                  <label className="mb-0.5 block text-xs font-medium text-neutral-400">
+                    ID
                     <input
-                      type="color"
-                      value={row.color}
-                      onChange={(e) => onUpdate(row._uid, 'color', e.target.value)}
-                      className="h-6 w-8 cursor-pointer rounded border border-neutral-700 bg-neutral-800 p-0.5"
+                      value={row.id}
+                      onChange={(e) => onUpdate(row._uid, 'id', e.target.value)}
+                      placeholder="bug"
+                      data-testid={`driver-row-id-${row._uid}`}
+                      className="mt-1 w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
                     />
-                    <span className="text-xs text-neutral-400">{row.color}</span>
+                  </label>
+                </div>
+                <div className="col-span-2">
+                  <label className="mb-0.5 block text-xs font-medium text-neutral-400">
+                    Label
+                    <input
+                      value={row.label}
+                      onChange={(e) => onUpdate(row._uid, 'label', e.target.value)}
+                      placeholder="Bug / Issue Report"
+                      className="mt-1 w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                    />
+                  </label>
+                </div>
+                <div>
+                  <span className="mb-0.5 block text-xs font-medium text-neutral-400">Color</span>
+                  <div className="mt-1 flex items-center gap-2">
+                    <ColorPickerPopover
+                      value={row.color}
+                      onChange={(v) => onUpdate(row._uid, 'color', v)}
+                    />
+                    <span className="font-mono text-xs text-neutral-400">{row.color}</span>
                   </div>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-neutral-400">
+                  Description
+                  <textarea
+                    value={row.description}
+                    onChange={(e) => onUpdate(row._uid, 'description', e.target.value)}
+                    placeholder="Optional"
+                    rows={1}
+                    className="mt-0.5 w-full resize-none rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                  />
                 </label>
               </div>
-            </div>
-            <div>
-              <label className="block text-xs font-medium text-neutral-400">
-                Description
-                <textarea
-                  value={row.description}
-                  onChange={(e) => onUpdate(row._uid, 'description', e.target.value)}
-                  placeholder="Optional"
-                  rows={1}
-                  className="mt-0.5 w-full resize-none rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
-                />
-              </label>
-            </div>
-            <KeywordsInput
-              keywords={row.keywords}
-              onChange={(kw) => onUpdate(row._uid, 'keywords', kw)}
-            />
-            <div className="flex flex-wrap items-center gap-2 pt-1">
-              {/* Add sub-driver — only if depth < 3 */}
-              {depth < 3 ? (
-                <button
-                  type="button"
-                  onClick={() => onAddChild(row._uid)}
-                  data-testid={`add-sub-driver-${row._uid}`}
-                  className="text-xs text-neutral-400 underline-offset-2 hover:text-orange-300 hover:underline"
-                >
-                  + Add sub-driver
-                </button>
-              ) : null}
+              <KeywordsInput
+                keywords={row.keywords}
+                onChange={(kw) => onUpdate(row._uid, 'keywords', kw)}
+              />
+              <div className="flex flex-wrap items-center gap-2 pt-1">
+                {/* Add sub-driver — only visible on hover/focus; hidden entirely at depth 3 */}
+                {depth < 3 ? (
+                  <button
+                    type="button"
+                    onClick={() => onAddChild(row._uid)}
+                    data-testid={`add-sub-driver-${row._uid}`}
+                    className="text-xs text-neutral-400 opacity-0 underline-offset-2 transition hover:text-orange-300 hover:underline group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
+                    aria-label={`Add sub-driver under ${row.label || row.id}`}
+                  >
+                    + Add sub-driver
+                  </button>
+                ) : null}
 
-              {/* Move to... */}
-              <div className="relative">
-                <button
-                  type="button"
-                  onClick={() => setShowMoveMenu((v) => !v)}
-                  data-testid={`move-to-${row._uid}`}
-                  className="text-xs text-neutral-400 underline-offset-2 hover:text-blue-300 hover:underline"
-                >
-                  Move to…
-                </button>
-                {showMoveMenu ? (
-                  <div className="absolute left-0 top-full z-30 mt-1 min-w-40 rounded-lg border border-neutral-700 bg-neutral-900 p-1 shadow-xl">
-                    <button
-                      type="button"
-                      className="w-full rounded px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
-                      onClick={() => {
-                        onMoveTo(row._uid, null);
-                        setShowMoveMenu(false);
-                      }}
+                {/* Move to… dropdown with depth-indented options */}
+                {/* biome-ignore lint/a11y/noStaticElementInteractions: blur delegation wrapper for move-to dropdown */}
+                <div className="relative" ref={moveMenuRef} onBlur={handleMoveFocus}>
+                  <button
+                    type="button"
+                    onClick={() => setShowMoveMenu((v) => !v)}
+                    data-testid={`move-to-${row._uid}`}
+                    className="text-xs text-neutral-400 underline-offset-2 hover:text-blue-300 hover:underline"
+                    aria-haspopup="listbox"
+                    aria-expanded={showMoveMenu}
+                  >
+                    Move to…
+                  </button>
+                  {showMoveMenu ? (
+                    <div
+                      role="listbox"
+                      aria-label="Move driver to"
+                      className="absolute left-0 top-full z-30 mt-1 min-w-48 rounded-lg border border-neutral-700 bg-neutral-900 p-1 shadow-xl"
                     >
-                      (Root &mdash; no parent)
-                    </button>
-                    {moveTargets.map((t) => (
+                      {/* "Move to top level" as first dedicated action */}
                       <button
-                        key={t.id}
                         type="button"
-                        className="w-full rounded px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+                        role="option"
+                        aria-selected={row.parentId === null}
+                        className="flex w-full items-center gap-1.5 rounded px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
                         onClick={() => {
-                          onMoveTo(row._uid, t.id);
+                          onMoveTo(row._uid, null);
                           setShowMoveMenu(false);
                         }}
                       >
-                        {t.label || t.id}
+                        <span className="text-neutral-500">↑</span>
+                        Move to top level
                       </button>
-                    ))}
-                  </div>
+                      <div className="my-1 border-t border-neutral-800" />
+                      {moveTargets.map((t) => {
+                        const byIdMap = new Map(allRows.map((r) => [r.id, r]));
+                        const targetDepth = rowDepth(t, byIdMap);
+                        return (
+                          <button
+                            key={t.id}
+                            type="button"
+                            role="option"
+                            aria-selected={row.parentId === t.id}
+                            className="flex w-full items-center rounded px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+                            style={{ paddingLeft: `${8 + (targetDepth - 1) * 12}px` }}
+                            onClick={() => {
+                              onMoveTo(row._uid, t.id);
+                              setShowMoveMenu(false);
+                            }}
+                          >
+                            {t.label || t.id}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  ) : null}
+                </div>
+
+                {/* Parent badge */}
+                {row.parentId ? (
+                  <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-400">
+                    child of <span className="text-neutral-200">{row.parentId}</span>
+                  </span>
                 ) : null}
               </div>
-
-              {/* Parent badge */}
-              {row.parentId ? (
-                <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-400">
-                  child of <span className="text-neutral-200">{row.parentId}</span>
-                </span>
-              ) : null}
             </div>
-          </div>
 
-          <button
-            type="button"
-            onClick={() => setConfirmDelete(true)}
-            aria-label={`Delete driver ${row.label || row.id}`}
-            className="mt-1 text-xs text-neutral-400 hover:text-rose-400"
-            title="Delete driver"
-          >
-            &times;
-          </button>
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              aria-label={`Delete driver ${row.label || row.id}`}
+              className="mt-1 text-xs text-neutral-400 hover:text-rose-400"
+              title="Delete driver"
+            >
+              &times;
+            </button>
+          </div>
         </div>
       </div>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Sticky breadcrumb bar
+// ---------------------------------------------------------------------------
+
+function StickyBreadcrumb({ parts }: { parts: string[] }) {
+  if (parts.length === 0) return null;
+  return (
+    <nav
+      aria-label="Currently editing"
+      className="sticky top-0 z-20 -mx-6 mb-3 flex items-center gap-1.5 border-b border-neutral-800 bg-neutral-900/95 px-6 py-2 backdrop-blur-sm"
+      data-testid="sticky-breadcrumb"
+    >
+      <span className="text-xs text-neutral-500">Editing:</span>
+      {parts.map((part) => (
+        <span key={part} className="flex items-center gap-1.5">
+          {parts.indexOf(part) > 0 ? <span className="text-neutral-600">›</span> : null}
+          <span className="text-xs font-medium text-neutral-200">{part}</span>
+        </span>
+      ))}
+    </nav>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Empty state CTA
+// ---------------------------------------------------------------------------
+
+function TaxonomyEmptyState({ onAdd }: { onAdd: () => void }) {
+  return (
+    <div
+      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-700 bg-neutral-950/30 py-14 text-center"
+      data-testid="taxonomy-empty-state"
+    >
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800">
+        <svg
+          width="22"
+          height="22"
+          viewBox="0 0 20 20"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          className="text-neutral-400"
+          aria-hidden="true"
+        >
+          <path d="M3 4h14M3 8h8M3 12h5" strokeLinecap="round" />
+          <circle cx="15" cy="14" r="4" />
+          <path d="M15 12v4M13 14h4" strokeLinecap="round" />
+        </svg>
+      </div>
+      <p className="mb-1 text-sm font-medium text-neutral-200">No drivers yet</p>
+      <p className="mb-5 max-w-xs text-xs text-neutral-400">
+        Create your first contact driver category. Posts will be auto-tagged based on keywords you
+        define.
+      </p>
+      <button
+        type="button"
+        onClick={onAdd}
+        data-testid="taxonomy-add-first-driver"
+        className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+      >
+        + Add first driver
+      </button>
+    </div>
   );
 }
 
@@ -704,6 +1056,8 @@ export function TaxonomyConfigSection({
   const [jsonError, setJsonError] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [collapsed, setCollapsed] = useState<Set<number>>(new Set());
+  const [compactAll, setCompactAll] = useState(false);
+  const [focusedUid, setFocusedUid] = useState<number | null>(null);
 
   const qc = useQueryClient();
 
@@ -737,18 +1091,18 @@ export function TaxonomyConfigSection({
   };
 
   const addRoot = () => {
-    setRows((prev) => [
-      ...prev,
-      {
-        _uid: ++_rowCounter,
-        id: '',
-        label: '',
-        color: '#94a3b8',
-        description: '',
-        keywords: [],
-        parentId: null,
-      },
-    ]);
+    const newRow: TaxRow = {
+      _uid: ++_rowCounter,
+      id: '',
+      label: '',
+      color: '#94a3b8',
+      description: '',
+      keywords: [],
+      parentId: null,
+    };
+    setRows((prev) => [...prev, newRow]);
+    setFocusedUid(newRow._uid);
+    if (compactAll) setCompactAll(false);
   };
 
   const addChild = (parentUid: number) => {
@@ -767,7 +1121,6 @@ export function TaxonomyConfigSection({
     const parentIdx = rows.findIndex((r) => r._uid === parentUid);
     setRows((prev) => {
       const next = [...prev];
-      // Find last descendant index
       let insertAt = parentIdx + 1;
       for (let i = parentIdx + 1; i < next.length; i++) {
         if (next[i]?.parentId === parent.id) insertAt = i + 1;
@@ -781,17 +1134,19 @@ export function TaxonomyConfigSection({
       next.delete(parentUid);
       return next;
     });
+    setFocusedUid(newRow._uid);
+    if (compactAll) setCompactAll(false);
   };
 
   const removeRow = (uid: number) => {
     setRows((prev) => {
       const row = prev.find((r) => r._uid === uid);
       if (!row) return prev;
-      // Promote children to root when parent is deleted
       return prev
         .filter((r) => r._uid !== uid)
         .map((r) => (r.parentId === row.id ? { ...r, parentId: null } : r));
     });
+    if (focusedUid === uid) setFocusedUid(null);
   };
 
   const moveTo = (uid: number, newParentId: string | null) => {
@@ -859,7 +1214,7 @@ export function TaxonomyConfigSection({
     childrenOf.get(pid)?.add(r._uid);
   }
 
-  // For collapse: compute which uids are hidden (ancestors are collapsed)
+  // Compute which uids are hidden (ancestors are collapsed)
   const hiddenUids = new Set<number>();
   for (const r of orderedRows) {
     if (!r.parentId) continue;
@@ -870,15 +1225,30 @@ export function TaxonomyConfigSection({
     }
   }
 
+  // Breadcrumb for focused row
+  const focusedRow = focusedUid !== null ? rows.find((r) => r._uid === focusedUid) : undefined;
+  const breadcrumbParts = focusedRow ? buildBreadcrumb(focusedRow, byId) : [];
+
+  const tabId = useId();
+
   return (
     <Section
       title="Contact driver taxonomy"
       description="Define the issue categories used for tagging posts. Children indent under parents. Changes take effect on the next auto-tagged post."
     >
-      <div className="mb-4 flex items-center justify-between">
+      {/* Tab strip: Visual / JSON — role="tablist" */}
+      <div className="mb-4 flex items-center justify-between gap-4">
         <TaxonomyPreview rows={rows} />
-        <div className="ml-auto flex gap-1 rounded-lg border border-neutral-800 bg-neutral-950 p-0.5">
+        <div
+          role="tablist"
+          aria-label="Taxonomy editor mode"
+          className="ml-auto flex shrink-0 gap-0.5 rounded-lg border border-neutral-800 bg-neutral-950 p-0.5"
+        >
           <button
+            role="tab"
+            aria-selected={mode === 'visual'}
+            aria-controls={`${tabId}-visual`}
+            id={`${tabId}-tab-visual`}
             type="button"
             onClick={() => switchMode('visual')}
             className={`rounded-md px-3 py-1 text-xs font-medium transition ${mode === 'visual' ? 'bg-orange-600/30 text-orange-200' : 'text-neutral-400 hover:text-neutral-200'}`}
@@ -886,6 +1256,10 @@ export function TaxonomyConfigSection({
             Visual
           </button>
           <button
+            role="tab"
+            aria-selected={mode === 'json'}
+            aria-controls={`${tabId}-json`}
+            id={`${tabId}-tab-json`}
             type="button"
             onClick={() => switchMode('json')}
             data-testid="taxonomy-json-toggle"
@@ -896,68 +1270,129 @@ export function TaxonomyConfigSection({
         </div>
       </div>
 
-      {mode === 'visual' ? (
-        <>
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={orderedRows.map((r) => r._uid)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div data-testid="taxonomy-driver-list">
-                {orderedRows.map((row) => {
-                  if (hiddenUids.has(row._uid)) return null;
-                  const depth = rowDepth(row, byId);
-                  const hasChildren = (childrenOf.get(row.id)?.size ?? 0) > 0;
-                  return (
-                    <DriverTreeRow
-                      key={row._uid}
-                      row={row}
-                      depth={depth}
-                      allRows={rows}
-                      isCollapsed={collapsed.has(row._uid)}
-                      hasChildren={hasChildren}
-                      onToggleCollapse={toggleCollapse}
-                      onUpdate={update}
-                      onDelete={removeRow}
-                      onAddChild={addChild}
-                      onMoveTo={moveTo}
-                    />
-                  );
-                })}
-              </div>
-            </SortableContext>
-          </DndContext>
-          <button
-            type="button"
-            onClick={addRoot}
-            data-testid="taxonomy-add-driver"
-            className="mt-4 text-xs text-neutral-400 underline-offset-2 hover:text-orange-300 hover:underline"
-          >
-            + Add root driver
-          </button>
-        </>
-      ) : (
-        <>
-          <textarea
-            value={jsonText}
-            onChange={(e) => setJsonText(e.target.value)}
-            onBlur={onJsonBlur}
-            rows={16}
-            className="w-full resize-y rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 font-mono text-xs text-neutral-100 outline-none focus:border-orange-500"
-            aria-label="Taxonomy JSON editor"
-            data-testid="taxonomy-json-editor"
-          />
-          {jsonError ? (
-            <div className="mt-2 rounded border border-amber-800 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
-              JSON parse error: {jsonError}
+      {/* Visual tab panel */}
+      <div
+        role="tabpanel"
+        id={`${tabId}-visual`}
+        aria-labelledby={`${tabId}-tab-visual`}
+        hidden={mode !== 'visual'}
+      >
+        {rows.length === 0 ? (
+          <TaxonomyEmptyState onAdd={addRoot} />
+        ) : (
+          <>
+            {/* Global compact toggle + breadcrumb */}
+            <div className="mb-3 flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setCompactAll((v) => !v)}
+                data-testid="compact-mode-toggle"
+                className="flex items-center gap-1.5 rounded-md border border-neutral-700 bg-neutral-800/60 px-2.5 py-1 text-xs text-neutral-400 transition hover:border-neutral-600 hover:text-neutral-200"
+                aria-pressed={compactAll}
+              >
+                {compactAll ? (
+                  <>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h11A1.5 1.5 0 0 1 15 3.5v9A1.5 1.5 0 0 1 13.5 14h-11A1.5 1.5 0 0 1 1 12.5v-9zm1.5-.5a.5.5 0 0 0-.5.5v9a.5.5 0 0 0 .5.5h11a.5.5 0 0 0 .5-.5v-9a.5.5 0 0 0-.5-.5h-11z" />
+                    </svg>
+                    Show all expanded
+                  </>
+                ) : (
+                  <>
+                    <svg
+                      width="12"
+                      height="12"
+                      viewBox="0 0 16 16"
+                      fill="currentColor"
+                      aria-hidden="true"
+                    >
+                      <path d="M1 3.5A1.5 1.5 0 0 1 2.5 2h11A1.5 1.5 0 0 1 15 3.5v2A1.5 1.5 0 0 1 13.5 7h-11A1.5 1.5 0 0 1 1 5.5v-2z" />
+                    </svg>
+                    Show all compact
+                  </>
+                )}
+              </button>
             </div>
-          ) : null}
-        </>
-      )}
+
+            {/* Sticky breadcrumb — appears when a row is focused */}
+            <StickyBreadcrumb parts={breadcrumbParts} />
+
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragEnd={handleDragEnd}
+            >
+              <SortableContext
+                items={orderedRows.map((r) => r._uid)}
+                strategy={verticalListSortingStrategy}
+              >
+                <div data-testid="taxonomy-driver-list" className="group">
+                  {orderedRows.map((row) => {
+                    if (hiddenUids.has(row._uid)) return null;
+                    const depth = rowDepth(row, byId);
+                    const hasChildren = (childrenOf.get(row.id)?.size ?? 0) > 0;
+                    return (
+                      <DriverTreeRow
+                        key={row._uid}
+                        row={row}
+                        depth={depth}
+                        allRows={rows}
+                        isCollapsed={collapsed.has(row._uid)}
+                        hasChildren={hasChildren}
+                        isCompact={compactAll}
+                        onToggleCollapse={toggleCollapse}
+                        onUpdate={update}
+                        onDelete={removeRow}
+                        onAddChild={addChild}
+                        onMoveTo={moveTo}
+                        onFocus={setFocusedUid}
+                      />
+                    );
+                  })}
+                </div>
+              </SortableContext>
+            </DndContext>
+            <button
+              type="button"
+              onClick={addRoot}
+              data-testid="taxonomy-add-driver"
+              className="mt-4 text-xs text-neutral-400 underline-offset-2 hover:text-orange-300 hover:underline"
+            >
+              + Add root driver
+            </button>
+          </>
+        )}
+      </div>
+
+      {/* JSON tab panel */}
+      <div
+        role="tabpanel"
+        id={`${tabId}-json`}
+        aria-labelledby={`${tabId}-tab-json`}
+        hidden={mode !== 'json'}
+      >
+        <textarea
+          value={jsonText}
+          onChange={(e) => setJsonText(e.target.value)}
+          onBlur={onJsonBlur}
+          rows={16}
+          className="w-full resize-y rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 font-mono text-xs text-neutral-100 outline-none focus:border-orange-500"
+          aria-label="Taxonomy JSON editor"
+          data-testid="taxonomy-json-editor"
+        />
+        {jsonError ? (
+          <div className="mt-2 rounded border border-amber-800 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+            JSON parse error: {jsonError}
+          </div>
+        ) : null}
+      </div>
+
       <FieldError msg={saveError} />
       <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} disabled={!!jsonError} />
     </Section>
