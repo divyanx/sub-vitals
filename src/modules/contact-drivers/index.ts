@@ -24,7 +24,7 @@ import {
   DEFAULT_TAXONOMY,
   ensurePostMeta,
   getDriverRollup,
-  getPostMetaMany,
+  getPostMetaMap,
   getPostsByDriver,
   getPostTag,
   getTaxonomy,
@@ -182,16 +182,50 @@ export const contactDriversModule: RedLatticeModule = {
       const cap = Number.isFinite(limit) ? Math.min(Math.max(limit, 1), 200) : 50;
       const statusFilter = c.req.query('status') as PostStatus | undefined;
       const postIds = await getPostsByDriver(driverId, cap);
-      const posts = await getPostMetaMany(postIds);
+      const metaMap = await getPostMetaMap(postIds);
       const tags = await Promise.all(postIds.map((id) => getPostTag(id)));
       const tagById = new Map(
         tags.filter((t): t is NonNullable<typeof t> => !!t).map((t) => [t.postId, t]),
       );
-      const enriched = posts
-        .map((p) => {
-          const t = tagById.get(p.postId);
+
+      // Backfill missing meta from Reddit (best-effort) so old posts from
+      // before ensurePostMeta existed self-heal on first view. Capped per
+      // request — never block the response on more than a handful.
+      const sub = context.subredditName ?? '';
+      const missingIds = postIds.filter((id) => !metaMap.get(id)).slice(0, 10);
+      await Promise.all(
+        missingIds.map(async (postId) => {
+          try {
+            const post = await reddit.getPostById(postId as `t3_${string}`);
+            const backfilled = {
+              postId,
+              title: post.title ?? '',
+              authorName: post.authorName ?? 'unknown',
+              url: `https://www.reddit.com/r/${sub}/comments/${postId.replace('t3_', '')}`,
+              createdAt: post.createdAt?.getTime?.() ?? Date.now(),
+            };
+            await ensurePostMeta(backfilled);
+            metaMap.set(postId, backfilled);
+          } catch (err) {
+            log.warn('contact-drivers: meta backfill failed', {
+              err: err instanceof Error ? err.message : String(err),
+              postId,
+            });
+          }
+        }),
+      );
+
+      const enriched = postIds
+        .map((postId) => {
+          const meta = metaMap.get(postId);
+          const t = tagById.get(postId);
           return {
-            ...p,
+            postId,
+            title: meta?.title ?? '(unknown post)',
+            authorName: meta?.authorName ?? 'unknown',
+            url:
+              meta?.url ?? `https://www.reddit.com/r/${sub}/comments/${postId.replace('t3_', '')}`,
+            createdAt: meta?.createdAt ?? 0,
             driverId,
             taggedBy: t?.taggedBy ?? null,
             confidence: t?.confidence ?? null,

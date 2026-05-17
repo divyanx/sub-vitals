@@ -146,6 +146,23 @@ export async function getPostMetaMany(postIds: string[]): Promise<PostMeta[]> {
   return records.filter((r): r is PostMeta => r !== null);
 }
 
+/**
+ * Like getPostMetaMany but returns a Map keyed by postId, including null
+ * entries for missing ones. Used by endpoints that want to render a row
+ * for every requested id (even if meta is missing) so old posts don't
+ * silently disappear from the dashboard.
+ */
+export async function getPostMetaMap(postIds: string[]): Promise<Map<string, PostMeta | null>> {
+  const out = new Map<string, PostMeta | null>();
+  if (postIds.length === 0) return out;
+  const records = await Promise.all(postIds.map((id) => getPostMeta(id)));
+  for (let i = 0; i < postIds.length; i++) {
+    const id = postIds[i];
+    if (id) out.set(id, records[i] ?? null);
+  }
+  return out;
+}
+
 export async function getRecentPostIds(limit = 25): Promise<string[]> {
   const members = await redis.zRange(K.recentPosts(), 0, limit - 1, {
     reverse: true,
