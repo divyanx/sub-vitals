@@ -101,4 +101,73 @@ test.describe('Pipelines tab', () => {
       'true',
     );
   });
+
+  test('Tune button on a pipeline card opens the drawer', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await expect(page.getByTestId('pipelines-grid')).toBeVisible({ timeout: 8000 });
+    // Click the Tune button on the Sentiment pipeline card
+    await page.getByTestId('pipeline-tune-sentiment').click();
+    await expect(page.getByTestId('pipeline-drawer')).toBeVisible({ timeout: 6000 });
+    await expect(
+      page.getByRole('dialog', { name: /Sentiment scoring pipeline settings/i }),
+    ).toBeVisible();
+  });
+
+  test('Drawer shows Prompts tab by default', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByTestId('pipeline-tune-sentiment').click();
+    await expect(page.getByTestId('pipeline-drawer')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByLabel('System prompt')).toBeVisible();
+  });
+
+  test('Drawer closes on Escape key', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByTestId('pipeline-tune-sentiment').click();
+    await expect(page.getByTestId('pipeline-drawer')).toBeVisible({ timeout: 6000 });
+    await page.keyboard.press('Escape');
+    await expect(page.getByTestId('pipeline-drawer')).not.toBeVisible();
+  });
+
+  test('+ New pipeline button opens the modal', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByTestId('new-pipeline-button').click();
+    await expect(page.getByTestId('new-pipeline-modal')).toBeVisible({ timeout: 6000 });
+  });
+
+  test('Custom pipeline can be created from the modal', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByTestId('new-pipeline-button').click();
+    await expect(page.getByTestId('new-pipeline-modal')).toBeVisible({ timeout: 6000 });
+    // Fill form
+    await page.getByTestId('new-pipeline-name').fill('Test pipeline');
+    await page.getByTestId('new-pipeline-system-prompt').fill('You are a test classifier.');
+    await page.getByTestId('new-pipeline-user-prompt').fill('Classify: {{post.title}}');
+    // Save
+    await page.getByTestId('new-pipeline-save').click();
+    // Modal should close after successful create
+    await expect(page.getByTestId('new-pipeline-modal')).not.toBeVisible({ timeout: 5000 });
+  });
+
+  test('Advanced option in new pipeline modal triggers Studio promotion', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByTestId('new-pipeline-button').click();
+    await expect(page.getByTestId('new-pipeline-modal')).toBeVisible({ timeout: 6000 });
+    // Click "Multiple steps / branching"
+    await page.getByTestId('studio-advanced-multiple-steps-/-branching').click();
+    // Should close modal and open Studio promotion modal
+    await expect(page.getByTestId('new-pipeline-modal')).not.toBeVisible();
+    await expect(page.getByRole('dialog', { name: /RedLattice Studio/i })).toBeVisible();
+  });
 });

@@ -1,0 +1,11 @@
+{
+  "id": "sentiment",
+  "overrides": {
+    "systemPrompt": "You judge the sentiment of short Reddit posts about a brand product.",
+    "userPrompt": "Text:\n\"\"\"{{post.body}}\"\"\"",
+    "thresholds": {
+      "escalation-threshold": 5
+    },
+    "enabled": true
+  }
+}

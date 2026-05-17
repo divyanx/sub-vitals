@@ -278,6 +278,72 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ json: { ok: true } });
     }
 
+    // Pipeline builtin GET  e.g. /api/pipelines/builtin/sentiment
+    const builtinMatch = pathname.match(/^\/api\/pipelines\/builtin\/([^/]+)$/);
+    if (builtinMatch && method === 'GET') {
+      const id = builtinMatch[1];
+      if (id === 'sentiment') {
+        return route.fulfill({ json: fixture('pipeline-builtin-sentiment') });
+      }
+      return route.fulfill({ json: { id, overrides: {} } });
+    }
+    // Pipeline builtin PUT
+    if (builtinMatch && method === 'PUT') {
+      const id = builtinMatch[1];
+      const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>;
+      return route.fulfill({ json: { id, overrides: body } });
+    }
+
+    // Pipeline builtin test
+    const builtinTestMatch = pathname.match(/^\/api\/pipelines\/builtin\/([^/]+)\/test$/);
+    if (builtinTestMatch && method === 'POST') {
+      return route.fulfill({
+        json: {
+          id: builtinTestMatch[1],
+          output: { output: 'negative', label: 'negative' },
+          tokensIn: 42,
+          tokensOut: 12,
+          costCents: 0.001,
+        },
+      });
+    }
+
+    // Custom pipelines list
+    if (pathname === '/api/pipelines/custom' && method === 'GET') {
+      return route.fulfill({ json: fixture('pipeline-custom-list') });
+    }
+    // Custom pipeline create
+    if (pathname === '/api/pipelines/custom' && method === 'POST') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>;
+      return route.fulfill({
+        status: 201,
+        json: {
+          pipeline: {
+            id: 'cp_test001',
+            ...(body as object),
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          },
+        },
+      });
+    }
+    // Custom pipeline delete
+    if (pathname.match(/^\/api\/pipelines\/custom\/[^/]+$/) && method === 'DELETE') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    // Custom pipeline test
+    if (pathname.match(/^\/api\/pipelines\/custom\/[^/]+\/test$/) && method === 'POST') {
+      return route.fulfill({
+        json: {
+          id: 'cp_test001',
+          output: { output: 'true' },
+          tokensIn: 30,
+          tokensOut: 5,
+          costCents: 0.0005,
+        },
+      });
+    }
+
     // Fallback: abort unknown API paths so tests get a clear failure signal
     console.warn(`[mock-api] Unhandled request: ${method} ${pathname}`);
     return route.fulfill({ status: 404, json: { error: `mock: no handler for ${pathname}` } });
