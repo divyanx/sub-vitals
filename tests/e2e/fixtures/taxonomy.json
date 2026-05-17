@@ -7,6 +7,13 @@
       "description": "Product defects, crashes, errors the user did not expect"
     },
     {
+      "id": "bug.crash",
+      "label": "Crash",
+      "color": "#f43f5e",
+      "description": "App or device crash",
+      "parentId": "bug"
+    },
+    {
       "id": "praise",
       "label": "Praise / positive feedback",
       "color": "#10b981",

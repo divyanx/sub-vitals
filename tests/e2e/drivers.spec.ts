@@ -13,19 +13,25 @@ test.describe('Drivers tab', () => {
     await setupMocks(page);
   });
 
-  test('bar list renders all 5 drivers from taxonomy fixture', async ({ page }) => {
+  test('bar list renders all 6 drivers from taxonomy fixture', async ({ page }) => {
     await page.goto('/');
     await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
-    // Wait for data
-    await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
+    // Wait for data — use role button to avoid strict mode when breadcrumb has same text
+    await expect(
+      page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
+    ).toBeVisible({ timeout: 10000 });
 
-    // All taxonomy labels should be present
-    await expect(page.getByText('Bug / broken experience')).toBeVisible();
+    // All taxonomy labels should be present (use first() to avoid strict mode on breadcrumbs)
+    await expect(
+      page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
+    ).toBeVisible();
     await expect(page.getByText('Praise / positive feedback')).toBeVisible();
     await expect(page.getByText('Feature request')).toBeVisible();
     await expect(page.getByText('Billing / pricing')).toBeVisible();
     await expect(page.getByText('Onboarding / setup')).toBeVisible();
+    // Crash (child of bug) should also appear as its own bar entry
+    await expect(page.getByRole('button', { name: /Crash/i }).first()).toBeVisible();
   });
 
   test('clicking "praise" bar expands post list with correct posts', async ({ page }) => {
@@ -62,8 +68,13 @@ test.describe('Drivers tab', () => {
     await page.goto('/');
     await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
-    await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /Bug \/ broken experience/i }).click();
+    await expect(
+      page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
+    ).toBeVisible({ timeout: 10000 });
+    await page
+      .getByRole('button', { name: /Bug \/ broken experience/i })
+      .first()
+      .click();
 
     // Bug driver fixture has posts with "open" status — first post should appear
     await expect(page.getByText('App crashes every time I try to checkout')).toBeVisible({
@@ -87,8 +98,13 @@ test.describe('Drivers tab', () => {
 
     await page.goto('/');
     await page.getByRole('tab', { name: 'Contact drivers' }).click();
-    await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
-    await page.getByRole('button', { name: /Bug \/ broken experience/i }).click();
+    await expect(
+      page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
+    ).toBeVisible({ timeout: 10000 });
+    await page
+      .getByRole('button', { name: /Bug \/ broken experience/i })
+      .first()
+      .click();
 
     await expect(page.getByText('App crashes every time I try to checkout')).toBeVisible({
       timeout: 8000,
@@ -105,12 +121,101 @@ test.describe('Drivers tab', () => {
     await page.goto('/');
     await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
-    await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
+    await expect(
+      page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
+    ).toBeVisible({ timeout: 10000 });
 
     // Get all driver bar buttons to check order
     const driverBtns = page.locator('ul > li > button');
     const firstDriverText = await driverBtns.first().textContent();
     // Bug has highest volume across 30 days — should be first
     expect(firstDriverText).toContain('Bug');
+  });
+});
+
+test.describe('Drivers tab — taxonomy config panel', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMocks(page);
+  });
+
+  test('config toggle opens the taxonomy editor panel', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
+    await page.getByTestId('drivers-config-toggle').click();
+    await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByText(/contact driver taxonomy/i)).toBeVisible();
+  });
+
+  test('child driver row is indented relative to parent', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
+    await page.getByTestId('drivers-config-toggle').click();
+    await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 5000 });
+
+    // bug.crash should be indented — it has a "child of bug" badge visible
+    await expect(page.getByText('child of')).toBeVisible({ timeout: 4000 });
+  });
+
+  test('+ Add sub-driver button creates a new child row', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
+    await page.getByTestId('drivers-config-toggle').click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 6000 });
+
+    const countBefore = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+
+    // Click + Add sub-driver on the first visible add-sub-driver button
+    await page.getByText('+ Add sub-driver').first().click();
+
+    const countAfter = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+    expect(countAfter).toBe(countBefore + 1);
+  });
+
+  test('Move to... dropdown appears and lists possible targets', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
+    await page.getByTestId('drivers-config-toggle').click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 6000 });
+
+    // Click the first "Move to…" button
+    await page.getByText('Move to…').first().click();
+    // The dropdown should show "(Root — no parent)" option
+    await expect(page.getByText('(Root')).toBeVisible({ timeout: 3000 });
+  });
+
+  test('"Include sub-drivers" toggle appears for driver with children', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
+
+    // Open the Bug driver (which has bug.crash as child in the fixture)
+    await expect(
+      page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
+    ).toBeVisible({ timeout: 10000 });
+    await page
+      .getByRole('button', { name: /Bug \/ broken experience/i })
+      .first()
+      .click();
+
+    // The include-sub-drivers toggle should be visible in the post panel
+    await expect(page.getByTestId('include-sub-drivers-toggle')).toBeVisible({ timeout: 6000 });
+  });
+});
+
+test.describe('Drivers tab — breadcrumb labels', () => {
+  test.beforeEach(async ({ page }) => {
+    await setupMocks(page);
+  });
+
+  test('child driver label shows as breadcrumb in bar list', async ({ page }) => {
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
+
+    // The taxonomy fixture now has bug.crash — its bar entry should show breadcrumb
+    await expect(
+      page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
+    ).toBeVisible({ timeout: 10000 });
+    // bug.crash breadcrumb: "Bug / broken experience › Crash"
+    await expect(page.getByText(/Crash/)).toBeVisible({ timeout: 5000 });
   });
 });
