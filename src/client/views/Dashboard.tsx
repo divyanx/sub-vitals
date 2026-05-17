@@ -9,7 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
-import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import {
   type Agent,
@@ -19,16 +19,13 @@ import {
   type DriverPost,
   type PostStatus,
   type RecentPost,
-  type SentimentRollup,
   type TaxonomyNode,
 } from '../lib/api.ts';
 import { Onboarding } from './Onboarding.tsx';
 
 // Lazy-load heavy tabs — each is code-split into its own async chunk so the
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
-const Settings = lazy(() =>
-  import('./Settings.tsx').then((m) => ({ default: m.Settings })),
-);
+const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
 const SentimentChartLazy = lazy(() =>
   import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
 );
@@ -910,7 +907,14 @@ function Sparkline({ data, color, width = 80, height = 28 }: SparklineProps) {
   const innerH = h - PAD * 2;
 
   if (data.length < 2) {
-    return <svg width={typeof width === 'string' ? '100%' : w} height={h} aria-hidden />;
+    return (
+      <svg
+        width={typeof width === 'string' ? '100%' : w}
+        height={h}
+        role="presentation"
+        aria-hidden="true"
+      />
+    );
   }
 
   const min = Math.min(...data);
@@ -929,7 +933,8 @@ function Sparkline({ data, color, width = 80, height = 28 }: SparklineProps) {
       height={h}
       viewBox={`0 0 ${w} ${h}`}
       preserveAspectRatio="none"
-      aria-hidden
+      role="presentation"
+      aria-hidden="true"
     >
       <polyline
         points={pts.join(' ')}
