@@ -161,6 +161,64 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ json: fixture('draft-reply') });
     }
 
+    // AI model status
+    if (pathname === '/api/ai/status' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          effectiveModel: 'anthropic/claude-haiku-4.5',
+          isFallback: false,
+          originalSlug: null,
+          defaultModel: 'anthropic/claude-haiku-4.5',
+          catalog: [
+            {
+              slug: 'anthropic/claude-haiku-4.5',
+              label: 'Claude Haiku 4.5',
+              provider: 'anthropic',
+              tier: 'recommended',
+              pricePer1kTaggingCalls: 0.00015,
+              supportsStructuredOutput: true,
+              notes: 'Best balance of speed, cost, and reliability.',
+            },
+            {
+              slug: 'openai/gpt-5-mini',
+              label: 'GPT-5 Mini',
+              provider: 'openai',
+              tier: 'fast',
+              pricePer1kTaggingCalls: 0.000053,
+              supportsStructuredOutput: true,
+              notes: 'Low latency.',
+            },
+            {
+              slug: 'google/gemini-2.5-flash',
+              label: 'Gemini 2.5 Flash',
+              provider: 'google',
+              tier: 'cheapest',
+              pricePer1kTaggingCalls: 0.000065,
+              supportsStructuredOutput: true,
+              notes: 'Lowest cost option.',
+            },
+          ],
+        },
+      });
+    }
+
+    // AI validate model
+    if (pathname === '/api/ai/validate-model' && method === 'POST') {
+      return route.fulfill({
+        json: {
+          valid: true,
+          supportsStructuredOutput: true,
+          inCatalog: true,
+          estimatedCostCents: 0.015,
+        },
+      });
+    }
+
+    // AI clear fallback
+    if (pathname === '/api/ai/clear-fallback' && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+
     // Triage queue
     if (pathname === '/api/triage/queue') {
       return route.fulfill({ json: fixture('triage-queue') });
@@ -340,6 +398,115 @@ export async function setupMocks(page: Page): Promise<void> {
           tokensIn: 30,
           tokensOut: 5,
           costCents: 0.0005,
+        },
+      });
+    }
+
+    // Taxonomy templates list
+    if (pathname === '/api/taxonomy/templates' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          templates: [
+            {
+              id: 'ecommerce',
+              name: 'E-Commerce',
+              description:
+                'Orders, returns, products, account, pricing, and feedback for online retail brands.',
+              driverCount: 23,
+              deepestDepth: 2,
+            },
+            {
+              id: 'saas',
+              name: 'SaaS / Software',
+              description:
+                'Bugs, feature requests, billing, integrations, and onboarding for software products.',
+              driverCount: 19,
+              deepestDepth: 2,
+            },
+            {
+              id: 'hardware',
+              name: 'Hardware / Devices',
+              description:
+                'Defects, setup, compatibility, warranty, and repair for physical products.',
+              driverCount: 16,
+              deepestDepth: 2,
+            },
+            {
+              id: 'gaming',
+              name: 'Gaming',
+              description:
+                'Bugs, balance, cheating, account issues, and feature requests for games.',
+              driverCount: 15,
+              deepestDepth: 2,
+            },
+            {
+              id: 'finance',
+              name: 'Finance / FinTech',
+              description:
+                'Transactions, security, fees, withdrawals, and compliance for financial services.',
+              driverCount: 16,
+              deepestDepth: 2,
+            },
+            {
+              id: 'media',
+              name: 'Media & Streaming',
+              description:
+                'Content, subscriptions, streaming issues, recommendations, and moderation for media platforms.',
+              driverCount: 15,
+              deepestDepth: 2,
+            },
+          ],
+        },
+      });
+    }
+
+    // Taxonomy apply-template
+    if (pathname === '/api/taxonomy/apply-template' && method === 'POST') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as {
+        templateId?: string;
+        mode?: string;
+      };
+      // Return a small stub taxonomy representing the applied template
+      const ecommerceTaxonomy = [
+        {
+          id: 'ec.order',
+          label: 'Order Issue',
+          color: '#ef4444',
+          description: 'Problems with orders',
+          keywords: ['order'],
+          parentId: null,
+        },
+        {
+          id: 'ec.order.shipping-delay',
+          label: 'Shipping Delay',
+          color: '#f87171',
+          description: 'Late delivery',
+          keywords: ['delayed'],
+          parentId: 'ec.order',
+        },
+        {
+          id: 'ec.returns',
+          label: 'Returns',
+          color: '#f97316',
+          description: 'Return and refund requests',
+          keywords: ['return'],
+          parentId: null,
+        },
+        {
+          id: 'ec.feedback',
+          label: 'Feedback',
+          color: '#0ea5e9',
+          description: 'Customer feedback',
+          keywords: ['feedback'],
+          parentId: null,
+        },
+      ];
+      return route.fulfill({
+        json: {
+          taxonomy: ecommerceTaxonomy,
+          driverCount: ecommerceTaxonomy.length,
+          templateId: body.templateId,
+          mode: body.mode,
         },
       });
     }

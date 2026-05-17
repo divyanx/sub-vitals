@@ -615,6 +615,31 @@ function ThresholdsSection({
 // AI
 // ---------------------------------------------------------------------------
 
+const TIER_BADGE: Record<string, string> = {
+  recommended: 'bg-orange-900/50 text-orange-200 border-orange-700',
+  fast: 'bg-blue-900/50 text-blue-200 border-blue-700',
+  cheapest: 'bg-emerald-900/50 text-emerald-200 border-emerald-700',
+  best: 'bg-violet-900/50 text-violet-200 border-violet-700',
+  'eu-hosted': 'bg-sky-900/50 text-sky-200 border-sky-700',
+};
+
+const TIER_LABELS: Record<string, string> = {
+  recommended: 'Recommended',
+  fast: 'Fast',
+  cheapest: 'Cheapest',
+  best: 'Best',
+  'eu-hosted': 'EU',
+};
+
+type ValidationResult = {
+  valid: boolean;
+  supportsStructuredOutput: boolean;
+  inCatalog?: boolean;
+  estimatedCostCents?: number | null;
+  error?: string;
+  hint?: string;
+};
+
 function AISection({
   data,
   toast,
@@ -624,30 +649,135 @@ function AISection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
-  const modelId = useId();
-  const [model, setModel] = useState(String(data['llm-model'] ?? 'anthropic/claude-haiku-4.5'));
-  const [error, setError] = useState<string | null>(null);
+  const customModelId = useId();
 
-  const mut = useMutation({
-    mutationFn: () =>
-      api.settings.put({
-        'llm-model': model,
-      }),
+  // AI status query (catalog + fallback state).
+  const aiStatusQ = useQuery({
+    queryKey: ['ai-status'],
+    queryFn: api.ai.status,
+    staleTime: 30_000,
+  });
+
+  const catalog = aiStatusQ.data?.catalog ?? [];
+  const isFallback = aiStatusQ.data?.isFallback ?? false;
+  const originalSlug = aiStatusQ.data?.originalSlug ?? null;
+  const defaultModel = aiStatusQ.data?.defaultModel ?? 'anthropic/claude-haiku-4.5';
+
+  // Current effective model slug from settings (may be a custom slug not in catalog).
+  const currentSlug = String(data['llm-model'] ?? defaultModel);
+  const inCatalog = catalog.some((m) => m.slug === currentSlug);
+
+  const [selectedSlug, setSelectedSlug] = useState(inCatalog ? currentSlug : defaultModel);
+  const [customModel, setCustomModel] = useState(inCatalog ? '' : currentSlug);
+  const [useCustom, setUseCustom] = useState(!inCatalog && currentSlug !== defaultModel);
+
+  const effectiveSlug = useCustom && customModel.trim() ? customModel.trim() : selectedSlug;
+
+  const [validating, setValidating] = useState(false);
+  const [validation, setValidation] = useState<ValidationResult | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+
+  const qc = useQueryClient();
+
+  const saveMut = useMutation({
+    mutationFn: () => api.settings.put({ 'llm-model': effectiveSlug }),
     onSuccess: () => {
-      setError(null);
+      setSaveError(null);
       toast('success', 'AI settings saved.');
       onSaved();
+      void qc.invalidateQueries({ queryKey: ['ai-status'] });
     },
     onError: (err) => {
       const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setSaveError(msg);
       toast('error', `Save failed: ${msg}`);
     },
   });
 
+  const clearFallbackMut = useMutation({
+    mutationFn: api.ai.clearFallback,
+    onSuccess: () => {
+      toast('success', 'Fallback cleared — original model will be tried again.');
+      void qc.invalidateQueries({ queryKey: ['ai-status'] });
+    },
+    onError: (err) => {
+      toast('error', `Clear failed: ${err instanceof Error ? err.message : String(err)}`);
+    },
+  });
+
+  const acceptDefaultMut = useMutation({
+    mutationFn: async () => {
+      // Clear the fallback flag then save the default model explicitly.
+      await api.ai.clearFallback();
+      return api.settings.put({ 'llm-model': defaultModel });
+    },
+    onSuccess: () => {
+      toast('success', `Model set to ${defaultModel}.`);
+      setSelectedSlug(defaultModel);
+      setUseCustom(false);
+      setCustomModel('');
+      onSaved();
+      void qc.invalidateQueries({ queryKey: ['ai-status'] });
+    },
+    onError: (err) => {
+      toast('error', `Failed: ${err instanceof Error ? err.message : String(err)}`);
+    },
+  });
+
+  const validate = async (slug: string) => {
+    if (!slug.trim()) return;
+    setValidating(true);
+    setValidation(null);
+    try {
+      const result = await api.ai.validateModel(slug);
+      setValidation(result);
+    } catch (err) {
+      setValidation({
+        valid: false,
+        supportsStructuredOutput: false,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleDropdownChange = (slug: string) => {
+    setSelectedSlug(slug);
+    setValidation(null);
+    void validate(slug);
+  };
+
+  const handleCustomChange = (v: string) => {
+    setCustomModel(v);
+    setValidation(null);
+  };
+
+  const handleCustomBlur = () => {
+    if (customModel.trim()) {
+      void validate(customModel.trim());
+    }
+  };
+
+  // Cost estimate widget — read daily volume from driver rollup.
+  const todayDriverQ = useQuery({
+    queryKey: ['driver-volume-today'],
+    queryFn: api.driverVolume,
+    staleTime: 60_000,
+  });
+  const dailyPosts =
+    todayDriverQ.data?.series?.[todayDriverQ.data.series.length - 1]?.totalPosts ?? null;
+
+  const catalogEntry = catalog.find((m) => m.slug === effectiveSlug);
+  const monthlyCostEst =
+    catalogEntry && dailyPosts !== null
+      ? ((dailyPosts * 30 * catalogEntry.pricePer1kTaggingCalls) / 1000).toFixed(2)
+      : null;
+
   return (
-    <Section title="AI" description="OpenRouter model and API key status.">
+    <Section title="AI" description="OpenRouter model selection, validation, and API key status.">
       <div className="space-y-4">
+        {/* API Key status */}
         <div
           className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
             data.openrouterKeyConfigured
@@ -668,21 +798,173 @@ function AISection({
             </span>
           )}
         </div>
+
+        {/* Auto-fallback alert */}
+        {isFallback && originalSlug ? (
+          <div
+            className="flex flex-col gap-3 rounded-lg border border-amber-700 bg-amber-950/30 px-4 py-3 text-sm text-amber-200"
+            data-testid="fallback-alert"
+          >
+            <div className="flex items-start gap-2">
+              <span className="mt-0.5 text-base">⚠</span>
+              <span>
+                <strong>AI auto-fallback active</strong> — using{' '}
+                <code className="rounded bg-amber-900/40 px-1">{defaultModel}</code> because{' '}
+                <code className="rounded bg-amber-900/40 px-1">{originalSlug}</code> had repeated
+                errors.
+              </span>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={() => acceptDefaultMut.mutate()}
+                disabled={acceptDefaultMut.isPending}
+                className="rounded border border-emerald-700 bg-emerald-900/30 px-3 py-1 text-xs font-medium text-emerald-200 transition hover:bg-emerald-900/50 disabled:opacity-50"
+              >
+                Use default permanently
+              </button>
+              <button
+                type="button"
+                onClick={() => clearFallbackMut.mutate()}
+                disabled={clearFallbackMut.isPending}
+                className="rounded border border-amber-700 bg-amber-900/30 px-3 py-1 text-xs font-medium text-amber-200 transition hover:bg-amber-900/50 disabled:opacity-50"
+              >
+                Try {originalSlug} again
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* Model dropdown */}
         <div>
-          <Label htmlFor={modelId}>OpenRouter model slug</Label>
-          <Input
-            id={modelId}
-            value={model}
-            onChange={setModel}
-            placeholder="anthropic/claude-haiku-4.5"
-          />
-          <p className="mt-1 text-xs text-neutral-400">
-            e.g. anthropic/claude-haiku-4.5, openai/gpt-5-mini, google/gemini-2.5-flash
-          </p>
+          <Label>AI model</Label>
+          {aiStatusQ.isPending ? (
+            <div className="h-10 animate-pulse rounded-md border border-neutral-700 bg-neutral-800" />
+          ) : (
+            <select
+              value={useCustom ? '__custom__' : selectedSlug}
+              onChange={(e) => {
+                if (e.target.value === '__custom__') {
+                  setUseCustom(true);
+                } else {
+                  setUseCustom(false);
+                  handleDropdownChange(e.target.value);
+                }
+              }}
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+              data-testid="model-dropdown"
+            >
+              {catalog.map((m) => (
+                <option key={m.slug} value={m.slug}>
+                  {m.label} ({TIER_LABELS[m.tier] ?? m.tier}) — ~$
+                  {m.pricePer1kTaggingCalls.toFixed(4)}/1k calls
+                </option>
+              ))}
+              <option value="__custom__">Custom model…</option>
+            </select>
+          )}
+
+          {/* Tier + price chips for selected model */}
+          {!useCustom && catalogEntry ? (
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span
+                className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
+                  TIER_BADGE[catalogEntry.tier] ??
+                  'bg-neutral-800 text-neutral-300 border-neutral-700'
+                }`}
+              >
+                {TIER_LABELS[catalogEntry.tier] ?? catalogEntry.tier}
+              </span>
+              <span className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300">
+                ~${catalogEntry.pricePer1kTaggingCalls.toFixed(4)}/1k posts
+              </span>
+              {catalogEntry.notes ? (
+                <span className="text-xs text-neutral-400">{catalogEntry.notes}</span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
+
+        {/* Custom model input */}
+        {useCustom ? (
+          <div className="rounded-lg border border-neutral-700 bg-neutral-900/50 p-4">
+            <Label htmlFor={customModelId}>Custom model slug</Label>
+            <div className="mt-1 flex gap-2">
+              <Input
+                id={customModelId}
+                value={customModel}
+                onChange={handleCustomChange}
+                placeholder="provider/model-name"
+              />
+              <button
+                type="button"
+                onClick={handleCustomBlur}
+                disabled={validating || !customModel.trim()}
+                className="shrink-0 rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-xs font-medium text-neutral-300 transition hover:bg-neutral-700 disabled:opacity-50"
+              >
+                {validating ? 'Checking…' : 'Validate'}
+              </button>
+            </div>
+            <p className="mt-1 text-xs text-amber-400">
+              Unverified — may not work with all pipelines.
+            </p>
+          </div>
+        ) : null}
+
+        {/* Validation result */}
+        {validating ? (
+          <div className="flex items-center gap-2 rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-400">
+            <span className="animate-spin">⟳</span> Validating model…
+          </div>
+        ) : validation ? (
+          <div
+            className={`rounded border px-3 py-2 text-xs ${
+              !validation.valid
+                ? 'border-rose-700 bg-rose-950/40 text-rose-200'
+                : !validation.supportsStructuredOutput
+                  ? 'border-amber-700 bg-amber-950/40 text-amber-200'
+                  : 'border-emerald-700 bg-emerald-950/40 text-emerald-200'
+            }`}
+            data-testid="validation-result"
+          >
+            <span className="mr-1 font-bold">
+              {!validation.valid ? '✗' : !validation.supportsStructuredOutput ? '⚠' : '✓'}
+            </span>
+            {!validation.valid
+              ? `Model invalid: ${validation.hint ?? validation.error ?? 'unknown error'}`
+              : !validation.supportsStructuredOutput
+                ? 'This model returned a result but does not reliably support structured output. Tagging pipelines may fail; free-text drafts will work.'
+                : 'Validated — this model supports all pipelines.'}
+            {!validation.inCatalog && validation.valid ? (
+              <span className="ml-1 text-amber-400">(Not in curated catalog.)</span>
+            ) : null}
+          </div>
+        ) : null}
+
+        {/* Cost estimate widget */}
+        {monthlyCostEst !== null && dailyPosts !== null ? (
+          <div className="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-300">
+            At {dailyPosts} posts/day, estimated monthly AI cost ≈{' '}
+            <strong className="text-neutral-100">${monthlyCostEst}</strong>
+          </div>
+        ) : null}
       </div>
-      <FieldError msg={error} />
-      <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
+
+      <FieldError msg={saveError} />
+
+      <div className="mt-6 flex justify-end border-t border-neutral-800 pt-4">
+        <button
+          type="button"
+          onClick={() => {
+            void validate(effectiveSlug);
+            saveMut.mutate();
+          }}
+          disabled={saveMut.isPending}
+          className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+        >
+          {saveMut.isPending ? 'Saving…' : 'Save'}
+        </button>
+      </div>
     </Section>
   );
 }
