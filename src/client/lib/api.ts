@@ -129,6 +129,34 @@ export interface RecentPost {
   sentimentScoredBy: 'lexicon' | 'ai' | null;
 }
 
+export type CustomPipelineAction =
+  | { type: 'tag-driver'; driverId: string }
+  | { type: 'send-modmail'; bodyTemplate: string }
+  | { type: 'set-status'; status: 'open' | 'in-progress' | 'resolved' };
+
+export interface CustomPipelineSummary {
+  id: string;
+  name: string;
+  description: string;
+  trigger: 'post-create' | 'comment-create';
+  systemPrompt: string;
+  userPrompt: string;
+  outputSchema: 'single-label' | 'label-confidence' | 'boolean';
+  action: CustomPipelineAction;
+  createdAt: number;
+  updatedAt: number;
+}
+
+export interface CustomPipelineBody {
+  name: string;
+  description: string;
+  trigger: 'post-create' | 'comment-create';
+  systemPrompt: string;
+  userPrompt: string;
+  outputSchema: 'single-label' | 'label-confidence' | 'boolean';
+  action: CustomPipelineAction;
+}
+
 async function getJson<T>(path: string): Promise<T> {
   const r = await fetch(path, { headers: { accept: 'application/json' } });
   if (!r.ok) throw new Error(`${path} → HTTP ${r.status}`);
@@ -551,6 +579,86 @@ export const api = {
         costCents: number;
         cached: boolean;
       };
+    },
+  },
+  pipelines: {
+    getBuiltin: (id: string) =>
+      getJson<{
+        id: string;
+        overrides: {
+          systemPrompt?: string;
+          userPrompt?: string;
+          thresholds?: Record<string, number>;
+          enabled?: boolean;
+        };
+      }>(`/api/pipelines/builtin/${encodeURIComponent(id)}`),
+
+    putBuiltin: async (
+      id: string,
+      patch: {
+        systemPrompt?: string;
+        userPrompt?: string;
+        thresholds?: Record<string, number>;
+        enabled?: boolean;
+      },
+    ) => {
+      const r = await fetch(`/api/pipelines/builtin/${encodeURIComponent(id)}`, {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { id: string; overrides: typeof patch };
+    },
+
+    testBuiltin: async (id: string, sampleInput: string) => {
+      const r = await fetch(`/api/pipelines/builtin/${encodeURIComponent(id)}/test`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ sampleInput }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as {
+        id: string;
+        output: { output: string; label?: string };
+        tokensIn: number;
+        tokensOut: number;
+        costCents: number;
+      };
+    },
+
+    listCustom: async () => {
+      const raw = await getJson<{
+        count: number;
+        pipelines: CustomPipelineSummary[];
+      }>('/api/pipelines/custom');
+      return { ...raw, pipelines: arr<CustomPipelineSummary>(raw.pipelines) };
+    },
+
+    createCustom: async (body: CustomPipelineBody) => {
+      const r = await fetch('/api/pipelines/custom', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { pipeline: CustomPipelineSummary };
+    },
+
+    deleteCustom: async (id: string) => {
+      const r = await fetch(`/api/pipelines/custom/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (!r.ok) throw new Error(`delete failed: HTTP ${r.status}`);
     },
   },
 };
