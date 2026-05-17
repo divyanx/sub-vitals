@@ -75,7 +75,9 @@ import {
   settingsUpdateSchema,
   taxonomyArraySchema,
 } from '@shared/validation.js';
+import * as Sentry from '@sentry/core';
 import { Hono } from 'hono';
+import { compress } from 'hono/compress';
 import { logger } from 'hono/logger';
 import { z } from 'zod';
 
@@ -100,12 +102,17 @@ registerModule(studioBridgeModule);
 
 const app = new Hono();
 
+// Gzip API responses to reduce bandwidth for mod dashboards on mobile Reddit.
+app.use('*', compress());
+
 app.use(
   '*',
   logger((str) => log.debug(str)),
 );
 
 app.onError((err, c) => {
+  // Capture to Sentry when SENTRY_DSN is configured; no-ops otherwise.
+  Sentry.captureException(err);
   log.error('unhandled error', {
     err: err instanceof Error ? err.message : String(err),
     path: c.req.path,
@@ -1166,6 +1173,33 @@ app.delete('/api/views/:id', async (c) => {
   const id = c.req.param('id');
   if (!id) return c.json({ error: 'missing id' }, 400);
   await redis.hDel(VIEWS_KEY, [id]);
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
+// Onboarding
+// ---------------------------------------------------------------------------
+
+const ONBOARDED_KEY = (userId: string) => `rl:onboarded:${userId}`;
+
+app.get('/api/onboarding/status', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const userId = context.username ?? 'unknown';
+  const val = await redis.get(ONBOARDED_KEY(userId));
+  return c.json({ onboarded: val === '1' });
+});
+
+app.post('/api/onboarding/complete', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const userId = context.username ?? 'unknown';
+  await redis.set(ONBOARDED_KEY(userId), '1');
+  return c.json({ ok: true });
+});
+
+app.post('/api/onboarding/reset', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const userId = context.username ?? 'unknown';
+  await redis.del(ONBOARDED_KEY(userId));
   return c.json({ ok: true });
 });
 

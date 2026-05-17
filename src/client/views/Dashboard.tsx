@@ -9,18 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  Line,
-  LineChart,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { Suspense, lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import {
   type Agent,
@@ -33,7 +22,16 @@ import {
   type SentimentRollup,
   type TaxonomyNode,
 } from '../lib/api.ts';
-import { Settings } from './Settings.tsx';
+import { Onboarding } from './Onboarding.tsx';
+
+// Lazy-load heavy tabs — each is code-split into its own async chunk so the
+// initial JS bundle stays lean. The skeleton fallback renders instantly.
+const Settings = lazy(() =>
+  import('./Settings.tsx').then((m) => ({ default: m.Settings })),
+);
+const SentimentChartLazy = lazy(() =>
+  import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
+);
 
 type Tab =
   | 'inbox'
@@ -89,28 +87,31 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
 
   return (
     <div className="flex min-h-full flex-col">
+      <Onboarding />
       <Header />
       <Nav tab={tab} setTab={setTab} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
-          {tab === 'inbox' && <Inbox />}
-          {tab === 'overview' && (
-            <Overview
-              onNavigate={(t, driver) => {
-                if (driver) setActiveDriver(driver);
-                setTab(t, driver ? { driver } : undefined);
-              }}
-            />
-          )}
-          {tab === 'drivers' && <Drivers initialDriver={activeDriver} />}
-          {tab === 'sentiment' && <SentimentTab />}
-          {tab === 'incidents' && <Incidents />}
-          {tab === 'themes' && <Themes />}
-          {tab === 'pipelines' && <Pipelines onOpenSettings={() => setTab('settings')} />}
-          {tab === 'agents' && <Agents />}
-          {tab === 'export' && <ExportTab />}
-          {tab === 'audit' && <Audit />}
-          {tab === 'settings' && <Settings />}
+          <Suspense fallback={<SkeletonGrid />}>
+            {tab === 'inbox' && <Inbox />}
+            {tab === 'overview' && (
+              <Overview
+                onNavigate={(t, driver) => {
+                  if (driver) setActiveDriver(driver);
+                  setTab(t, driver ? { driver } : undefined);
+                }}
+              />
+            )}
+            {tab === 'drivers' && <Drivers initialDriver={activeDriver} />}
+            {tab === 'sentiment' && <SentimentTab />}
+            {tab === 'incidents' && <Incidents />}
+            {tab === 'themes' && <Themes />}
+            {tab === 'pipelines' && <Pipelines onOpenSettings={() => setTab('settings')} />}
+            {tab === 'agents' && <Agents />}
+            {tab === 'export' && <ExportTab />}
+            {tab === 'audit' && <Audit />}
+            {tab === 'settings' && <Settings />}
+          </Suspense>
         </ErrorBoundary>
       </main>
     </div>
@@ -892,6 +893,7 @@ function KpiTile({
 }
 
 // --- Sparkline helpers -----------------------------------------------------
+// Inline SVG sparkline — zero dependency on recharts/d3 for this tiny widget.
 
 interface SparklineProps {
   data: number[];
@@ -901,20 +903,43 @@ interface SparklineProps {
 }
 
 function Sparkline({ data, color, width = 80, height = 28 }: SparklineProps) {
-  const chartData = data.map((v, i) => ({ i, v }));
+  const w = typeof width === 'number' ? width : 80;
+  const h = height ?? 28;
+  const PAD = 2;
+  const innerW = w - PAD * 2;
+  const innerH = h - PAD * 2;
+
+  if (data.length < 2) {
+    return <svg width={typeof width === 'string' ? '100%' : w} height={h} aria-hidden />;
+  }
+
+  const min = Math.min(...data);
+  const max = Math.max(...data);
+  const range = max - min || 1;
+
+  const pts = data.map((v, i) => {
+    const x = PAD + (i / (data.length - 1)) * innerW;
+    const y = PAD + (1 - (v - min) / range) * innerH;
+    return `${x.toFixed(2)},${y.toFixed(2)}`;
+  });
+
   return (
-    <ResponsiveContainer width={width} height={height}>
-      <LineChart data={chartData} margin={{ top: 2, right: 2, left: 2, bottom: 2 }}>
-        <Line
-          type="monotone"
-          dataKey="v"
-          stroke={color}
-          strokeWidth={1.5}
-          dot={false}
-          isAnimationActive={false}
-        />
-      </LineChart>
-    </ResponsiveContainer>
+    <svg
+      width={typeof width === 'string' ? '100%' : w}
+      height={h}
+      viewBox={`0 0 ${w} ${h}`}
+      preserveAspectRatio="none"
+      aria-hidden
+    >
+      <polyline
+        points={pts.join(' ')}
+        fill="none"
+        stroke={color}
+        strokeWidth="1.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   );
 }
 
@@ -1870,58 +1895,14 @@ function SentimentTab() {
         <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">
           Daily sentiment volume · 30 days
         </h2>
-        <SentimentChart series={series} />
+        <Suspense
+          fallback={
+            <div className="h-64 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />
+          }
+        >
+          <SentimentChartLazy series={series} />
+        </Suspense>
       </section>
-    </div>
-  );
-}
-
-function SentimentChart({ series }: { series: SentimentRollup[] }) {
-  const data = useMemo(
-    () =>
-      series.map((d) => ({
-        date: d.date.slice(5),
-        positive: d.positive,
-        neutral: d.neutral,
-        negative: d.negative,
-      })),
-    [series],
-  );
-  return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-      <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 6, right: 6, left: -16, bottom: 0 }}>
-            <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="date" stroke="#525866" fontSize={11} tickMargin={6} />
-            <YAxis stroke="#525866" fontSize={11} allowDecimals={false} />
-            <Tooltip
-              contentStyle={{
-                background: '#0a0a0a',
-                border: '1px solid #262626',
-                borderRadius: 6,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: '#9ca3af' }}
-            />
-            <Area
-              type="monotone"
-              dataKey="positive"
-              stackId="1"
-              stroke="#10b981"
-              fill="#10b98155"
-            />
-            <Area type="monotone" dataKey="neutral" stackId="1" stroke="#737373" fill="#73737355" />
-            <Area
-              type="monotone"
-              dataKey="negative"
-              stackId="1"
-              stroke="#f43f5e"
-              fill="#f43f5e55"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
-      </div>
     </div>
   );
 }

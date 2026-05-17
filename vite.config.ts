@@ -1,6 +1,7 @@
 import { devvit } from '@devvit/start/vite';
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
+import { visualizer } from 'rollup-plugin-visualizer';
 import { defineConfig } from 'vite';
 
 /**
@@ -14,5 +15,17 @@ import { defineConfig } from 'vite';
  * This is the pattern used by Reddit's official devvit-template-react.
  */
 export default defineConfig({
-  plugins: [react(), tailwindcss(), devvit()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    devvit(),
+    // Bundle composition report — open dist/client/stats.html after build to
+    // visualise what's in the bundle. Only emitted in non-CI builds.
+    visualizer({
+      filename: 'dist/client/stats.html',
+      gzipSize: true,
+      brotliSize: true,
+      open: false,
+    }),
+  ],
 });
