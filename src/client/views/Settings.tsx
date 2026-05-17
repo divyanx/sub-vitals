@@ -137,14 +137,16 @@ function SaveButton({
   disabled?: boolean;
 }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={loading || disabled}
-      className="mt-4 rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
-    >
-      {loading ? 'Saving…' : 'Save'}
-    </button>
+    <div className="mt-6 flex justify-end border-t border-neutral-800 pt-4">
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={loading || disabled}
+        className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+      >
+        {loading ? 'Saving…' : 'Save'}
+      </button>
+    </div>
   );
 }
 
