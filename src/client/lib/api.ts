@@ -137,9 +137,37 @@ function arr<T>(v: unknown): T[] {
   return Array.isArray(v) ? (v as T[]) : [];
 }
 
+// ---------------------------------------------------------------------------
+// Pulse stats — 7-day sentiment rollup + active incidents for the Blocks view
+// ---------------------------------------------------------------------------
+
+export interface PulseSentimentDay {
+  date: string;
+  positive: number;
+  neutral: number;
+  negative: number;
+  total: number;
+  averageScore: number;
+}
+
+export interface PulseStats {
+  today: string;
+  postsToday: number;
+  topDriver: {
+    id: string | null;
+    label: string | null;
+    count: number;
+  };
+  negativeShare: number | null;
+  negativeShareTrend: 'up' | 'down' | 'flat';
+  activeIncidents: number;
+  sentimentTrend: PulseSentimentDay[];
+}
+
 export const api = {
   health: () => getJson<{ ok: boolean; ts: number }>('/api/health'),
   summary: () => getJson<DashboardSummary>('/api/dashboard/summary'),
+  pulseStats: () => getJson<PulseStats>('/api/dashboard/pulse-stats'),
   recentPosts: async (limit = 25) => {
     const raw = await getJson<{ items: RecentPost[]; count: number }>(
       `/api/dashboard/recent-posts?limit=${limit}`,

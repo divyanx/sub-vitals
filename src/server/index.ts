@@ -41,6 +41,7 @@ import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { studioBridgeModule } from '@modules/studio-bridge/index.js';
 import { regenerateThemes, themeClusteringModule } from '@modules/theme-clustering/index.js';
+import * as Sentry from '@sentry/core';
 import { buildWeeklyDigest, gatherDigestStats } from '@shared/digest.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
 import { K, today, yyyymm } from '@shared/keys.js';
@@ -53,9 +54,11 @@ import {
   writeOverrideSetting,
 } from '@shared/settings-overrides.js';
 import {
+  getActiveIncidentId,
   getCommentIdsForPost,
   getCommentMeta,
   getDriverRollup,
+  getIncident,
   getLastDigestSentAt,
   getPostMeta,
   getPostMetaMany,
@@ -65,6 +68,7 @@ import {
   getSentimentScore,
   getTaxonomy,
   getUserPostIds,
+  listIncidentIds,
   setLastDigestSentAt,
   setPostStatus,
   setTaxonomy,
@@ -75,7 +79,6 @@ import {
   settingsUpdateSchema,
   taxonomyArraySchema,
 } from '@shared/validation.js';
-import * as Sentry from '@sentry/core';
 import { Hono } from 'hono';
 import { compress } from 'hono/compress';
 import { logger } from 'hono/logger';
@@ -197,6 +200,121 @@ app.get('/api/dashboard/summary', async (c) => {
       monthTokensIn: monthlyTokens.tokensIn,
       monthTokensOut: monthlyTokens.tokensOut,
     },
+  });
+});
+
+/**
+ * Pulse stats — 7-day sentiment rollup + active incident count, purpose-built
+ * for the native Blocks Daily Pulse view.
+ *
+ * Aggregates the last 7 days of sentiment data (positive/neutral/negative) plus
+ * today's top driver and the active incident count so the Pulse view can render
+ * a mini trend chart without a round-trip to /api/dashboard/summary.
+ *
+ * No auth required — the Pulse post is publicly visible in the subreddit.
+ */
+app.get('/api/dashboard/pulse-stats', async (c) => {
+  const d = today();
+  const DAYS = 7;
+
+  // Build the date range for the last 7 days ending today
+  const dates: string[] = [];
+  for (let i = DAYS - 1; i >= 0; i--) {
+    const dt = new Date();
+    dt.setUTCDate(dt.getUTCDate() - i);
+    dates.push(dt.toISOString().slice(0, 10));
+  }
+
+  const [rollups, driversToday, taxonomy, activeIncidentId] = await Promise.all([
+    Promise.all(dates.map((date) => getSentimentRollup(date))),
+    getDriverRollup(d),
+    getTaxonomy(),
+    getActiveIncidentId(),
+  ]);
+
+  // Sentiment trend: one entry per day, null-safe defaults
+  const sentimentTrend = dates.map((date, i) => {
+    const r = rollups[i];
+    return {
+      date,
+      positive: r?.positive ?? 0,
+      neutral: r?.neutral ?? 0,
+      negative: r?.negative ?? 0,
+      total: r?.total ?? 0,
+      averageScore: r?.averageScore ?? 0,
+    };
+  });
+
+  // Today's totals (last entry in trend)
+  const todayRollup = rollups[DAYS - 1];
+  const todayTotal = todayRollup?.total ?? 0;
+  const todayNegative = todayRollup?.negative ?? 0;
+  const todayNegativeShare =
+    todayTotal > 0 ? Number((todayNegative / todayTotal).toFixed(3)) : null;
+
+  // Yesterday's share for trend arrow
+  const yesterdayRollup = rollups[DAYS - 2];
+  const yesterdayTotal = yesterdayRollup?.total ?? 0;
+  const yesterdayNegative = yesterdayRollup?.negative ?? 0;
+  const yesterdayNegativeShare =
+    yesterdayTotal > 0 ? Number((yesterdayNegative / yesterdayTotal).toFixed(3)) : null;
+
+  // Negative share trend: 'up' (getting worse), 'down' (improving), 'flat'
+  let negativeShareTrend: 'up' | 'down' | 'flat' = 'flat';
+  if (todayNegativeShare !== null && yesterdayNegativeShare !== null) {
+    const delta = todayNegativeShare - yesterdayNegativeShare;
+    if (delta > 0.02) negativeShareTrend = 'up';
+    else if (delta < -0.02) negativeShareTrend = 'down';
+  }
+
+  // Top driver today
+  let topDriverId: string | null = null;
+  let topDriverCount = 0;
+  if (driversToday) {
+    for (const [id, count] of Object.entries(driversToday.counts)) {
+      if (count > topDriverCount) {
+        topDriverCount = count;
+        topDriverId = id;
+      }
+    }
+  }
+  const topDriverLabel = topDriverId
+    ? (taxonomy.find((t) => t.id === topDriverId)?.label ?? topDriverId)
+    : null;
+
+  // Active incidents — count open ones from the archive list
+  let activeIncidentCount = 0;
+  if (activeIncidentId) {
+    // Check if the active incident is still open
+    const incident = await getIncident(activeIncidentId);
+    if (incident && incident.status === 'open') {
+      activeIncidentCount = 1;
+    }
+  }
+  // Also scan recent incidents for any open ones (covers edge cases where
+  // incidentActive key expired but incident itself wasn't resolved)
+  try {
+    const recentIds = await listIncidentIds(10);
+    const recentIncidents = await Promise.all(recentIds.map((id) => getIncident(id)));
+    const openCount = recentIncidents.filter((i) => i && i.status === 'open').length;
+    // Use the higher of the two counts (avoid double-counting the activeIncidentId)
+    activeIncidentCount = Math.max(activeIncidentCount, openCount);
+  } catch {
+    // Non-fatal; activeIncidentCount stays as computed above
+  }
+
+  return c.json({
+    today: d,
+    postsToday: driversToday?.totalPosts ?? 0,
+    topDriver: {
+      id: topDriverId,
+      label: topDriverLabel,
+      count: topDriverCount,
+    },
+    negativeShare: todayNegativeShare,
+    negativeShareTrend,
+    activeIncidents: activeIncidentCount,
+    sentimentTrend,
   });
 });
 
