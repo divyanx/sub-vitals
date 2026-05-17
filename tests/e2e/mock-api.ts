@@ -141,6 +141,22 @@ export async function setupMocks(page: Page): Promise<void> {
       });
     }
 
+    // Admin debug
+    if (pathname === '/api/admin/debug') {
+      return route.fulfill({
+        json: {
+          server: { ts: Date.now(), uptimeSec: 42 },
+          modules: ['contact-drivers', 'sentiment', 'impostor-detection', 'crisis-detection'],
+          llm: { monthCents: 12.5, tokensIn: 1000, tokensOut: 500, capCents: 500 },
+          taxonomy: ['bug', 'praise', 'feature-request', 'billing', 'onboarding'],
+          recentPostIds: [],
+          dashboardPostId: null,
+          subreddit: 'testsubreddit',
+          username: 'test_mod',
+        },
+      });
+    }
+
     // Audit log
     if (pathname === '/api/audit') {
       return route.fulfill({

@@ -37,3 +37,141 @@ test.describe('Settings tab', () => {
     expect(putFired).toBe(true);
   });
 });
+
+test.describe('Taxonomy editor', () => {
+  test('taxonomy section renders in visual mode by default', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByText(/contact driver taxonomy/i)).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible();
+  });
+
+  test('can switch to JSON mode', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+    await page.getByTestId('taxonomy-json-toggle').click();
+    await expect(page.getByTestId('taxonomy-json-editor')).toBeVisible();
+    await expect(page.getByTestId('taxonomy-driver-list')).not.toBeVisible();
+  });
+
+  test('can add a new driver in visual mode', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+
+    const cardsBefore = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+
+    await page.getByTestId('taxonomy-add-driver').click();
+    const cardsAfter = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+    expect(cardsAfter).toBe(cardsBefore + 1);
+  });
+
+  test('delete button shows confirmation modal', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+
+    // Click the first delete button (trash icon)
+    await page
+      .getByRole('button', { name: /delete driver/i })
+      .first()
+      .click();
+    // Confirmation modal should appear
+    await expect(page.getByText(/delete driver\?/i)).toBeVisible();
+    await expect(page.getByRole('button', { name: /delete$/i })).toBeVisible();
+    await expect(page.getByRole('button', { name: /cancel/i })).toBeVisible();
+  });
+
+  test('confirming delete removes the driver card', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+
+    const cardsBefore = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+
+    await page
+      .getByRole('button', { name: /delete driver/i })
+      .first()
+      .click();
+    await expect(page.getByText(/delete driver\?/i)).toBeVisible();
+    await page.getByRole('button', { name: /delete$/i }).click();
+
+    // Modal dismissed
+    await expect(page.getByText(/delete driver\?/i)).not.toBeVisible();
+    const cardsAfter = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+    expect(cardsAfter).toBe(cardsBefore - 1);
+  });
+
+  test('cancelling delete keeps the driver card', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+
+    const cardsBefore = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+
+    await page
+      .getByRole('button', { name: /delete driver/i })
+      .first()
+      .click();
+    await page.getByRole('button', { name: /cancel/i }).click();
+    await expect(page.getByText(/delete driver\?/i)).not.toBeVisible();
+
+    const cardsAfter = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
+    expect(cardsAfter).toBe(cardsBefore);
+  });
+
+  test('live preview shows colored chips for each driver', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+    // The preview section should contain "Current drivers:"
+    await expect(page.getByText(/current drivers:/i)).toBeVisible();
+  });
+
+  test('JSON mode textarea contains valid JSON', async ({ page }) => {
+    await setupMocks(page);
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+    await page.getByTestId('taxonomy-json-toggle').click();
+    await expect(page.getByTestId('taxonomy-json-editor')).toBeVisible();
+
+    const content = await page.getByTestId('taxonomy-json-editor').inputValue();
+    // Should be valid JSON
+    expect(() => JSON.parse(content)).not.toThrow();
+    const parsed = JSON.parse(content) as unknown[];
+    expect(Array.isArray(parsed)).toBe(true);
+  });
+
+  test('taxonomy save button fires PUT with taxonomy-json key', async ({ page }) => {
+    await setupMocks(page);
+    let taxonomyPutFired = false;
+    page.on('request', (req) => {
+      if (req.method() === 'PUT' && req.url().includes('/api/settings')) {
+        const body = req.postData() ?? '';
+        if (body.includes('taxonomy-json')) {
+          taxonomyPutFired = true;
+        }
+      }
+    });
+
+    await page.goto('/');
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
+
+    // Click the taxonomy-section Save button (second Save button on the page)
+    const saveButtons = page.getByRole('button', { name: /^save$/i });
+    await saveButtons.nth(1).click();
+    await page.waitForTimeout(500);
+
+    expect(taxonomyPutFired).toBe(true);
+  });
+});

@@ -376,6 +376,17 @@ export const api = {
       if (!r.ok) throw new Error(`delete view failed: HTTP ${r.status}`);
     },
   },
+  adminDebug: () =>
+    getJson<{
+      server: { ts: number; uptimeSec: number };
+      modules: string[];
+      llm: { monthCents: number; tokensIn: number; tokensOut: number; capCents: number };
+      taxonomy: string[];
+      recentPostIds: string[];
+      dashboardPostId: string | null;
+      subreddit: string | null;
+      username: string | null;
+    }>('/api/admin/debug'),
   settings: {
     get: () =>
       getJson<Record<string, unknown> & { openrouterKeyConfigured: boolean }>('/api/settings'),
