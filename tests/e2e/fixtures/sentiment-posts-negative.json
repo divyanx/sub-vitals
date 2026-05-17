@@ -1,0 +1,36 @@
+{
+  "label": "negative",
+  "count": 2,
+  "posts": [
+    {
+      "postId": "post_neg_001",
+      "title": "App keeps crashing every time I open it",
+      "authorName": "frustrated_frank",
+      "url": "https://reddit.com/r/testsubreddit/comments/post_neg_001",
+      "createdAt": 1747440000000,
+      "driverId": "bug",
+      "taggedBy": "auto",
+      "confidence": 0.92,
+      "reasoning": null,
+      "status": "open",
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.74,
+      "sentimentScoredBy": "lexicon"
+    },
+    {
+      "postId": "post_neg_002",
+      "title": "Terrible customer service, never using again",
+      "authorName": "angry_alice",
+      "url": "https://reddit.com/r/testsubreddit/comments/post_neg_002",
+      "createdAt": 1747353600000,
+      "driverId": "complaint",
+      "taggedBy": "ai",
+      "confidence": 0.88,
+      "reasoning": null,
+      "status": "open",
+      "sentimentLabel": "negative",
+      "sentimentScore": -0.81,
+      "sentimentScoredBy": "ai"
+    }
+  ]
+}

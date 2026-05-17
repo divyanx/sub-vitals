@@ -36,13 +36,14 @@ test.describe('Sentiment tab', () => {
   });
 
   test('card totals match fixture-computed values', async ({ page }) => {
-    // Each value is displayed in a <div class="...text-2xl..."> inside an <article>
-    const cards = page.getByRole('article');
-    const texts = await cards.allTextContents();
+    // Each card is now a <button> with data-testid
+    const positiveCard = page.getByTestId('sentiment-card-positive');
+    const neutralCard = page.getByTestId('sentiment-card-neutral');
+    const negativeCard = page.getByTestId('sentiment-card-negative');
 
-    expect(texts.some((t) => t.includes(String(TOTALS.positive)))).toBe(true);
-    expect(texts.some((t) => t.includes(String(TOTALS.neutral)))).toBe(true);
-    expect(texts.some((t) => t.includes(String(TOTALS.negative)))).toBe(true);
+    await expect(positiveCard).toContainText(String(TOTALS.positive));
+    await expect(neutralCard).toContainText(String(TOTALS.neutral));
+    await expect(negativeCard).toContainText(String(TOTALS.negative));
   });
 
   test('recharts SVG area chart is present', async ({ page }) => {
@@ -62,5 +63,45 @@ test.describe('Sentiment tab', () => {
     await expect(paths.first()).toBeVisible({ timeout: 5000 });
     const count = await paths.count();
     expect(count).toBeGreaterThanOrEqual(3);
+  });
+
+  test('clicking the Negative card expands the contributing posts list', async ({ page }) => {
+    // Click the Negative card
+    await page.getByTestId('sentiment-card-negative').click();
+
+    // The drill-through list should appear
+    await expect(page.getByTestId('sentiment-posts-negative')).toBeVisible({ timeout: 8000 });
+
+    // Both fixture posts should appear
+    await expect(page.getByText('App keeps crashing every time I open it')).toBeVisible();
+    await expect(page.getByText('Terrible customer service, never using again')).toBeVisible();
+  });
+
+  test('clicking Negative card a second time collapses the list', async ({ page }) => {
+    // Open
+    await page.getByTestId('sentiment-card-negative').click();
+    await expect(page.getByTestId('sentiment-posts-negative')).toBeVisible({ timeout: 8000 });
+
+    // Close
+    await page.getByTestId('sentiment-card-negative').click();
+    await expect(page.getByTestId('sentiment-posts-negative')).not.toBeVisible();
+  });
+
+  test('clicking a different card closes the previously open one', async ({ page }) => {
+    // Open Negative
+    await page.getByTestId('sentiment-card-negative').click();
+    await expect(page.getByTestId('sentiment-posts-negative')).toBeVisible({ timeout: 8000 });
+
+    // Click Positive — Negative list should close
+    await page.getByTestId('sentiment-card-positive').click();
+    await expect(page.getByTestId('sentiment-posts-negative')).not.toBeVisible();
+  });
+
+  test('Positive posts list shows empty state when no posts', async ({ page }) => {
+    // positive label returns 0 posts per mock
+    await page.getByTestId('sentiment-card-positive').click();
+    await expect(page.getByText(/no positive posts in the last 30 days/i)).toBeVisible({
+      timeout: 8000,
+    });
   });
 });

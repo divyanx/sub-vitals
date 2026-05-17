@@ -101,6 +101,16 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ json: fixture('sentiment-rollup') });
     }
 
+    // Sentiment posts drill-through  e.g. /api/sentiment/posts?label=negative
+    if (pathname === '/api/sentiment/posts') {
+      const label = url.searchParams.get('label');
+      if (label === 'negative') {
+        return route.fulfill({ json: fixture('sentiment-posts-negative') });
+      }
+      // positive and neutral: return empty
+      return route.fulfill({ json: { label: label ?? 'neutral', count: 0, posts: [] } });
+    }
+
     // Agents
     if (pathname === '/api/agents') {
       return route.fulfill({ json: fixture('agents') });
