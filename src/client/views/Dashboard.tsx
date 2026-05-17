@@ -21,6 +21,7 @@ import {
   XAxis,
   YAxis,
 } from 'recharts';
+import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import {
   type Agent,
   type AuditAction,
@@ -59,8 +60,14 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   // browser back/forward support.
   const setTab = useCallback((t: Tab, extra?: Record<string, string>) => {
     setTabState(t);
-    const params = new URLSearchParams({ tab: t, ...extra });
-    history.pushState({ tab: t, ...extra }, '', `?${params.toString()}`);
+    const cleanExtra: Record<string, string> = {};
+    if (extra) {
+      for (const [k, v] of Object.entries(extra)) {
+        if (typeof v === 'string' && v.length > 0) cleanExtra[k] = v;
+      }
+    }
+    const params = new URLSearchParams({ tab: t, ...cleanExtra });
+    history.pushState({ tab: t, ...cleanExtra }, '', `?${params.toString()}`);
   }, []);
 
   useEffect(() => {
@@ -84,23 +91,25 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
       <Header />
       <Nav tab={tab} setTab={setTab} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
-        {tab === 'inbox' && <Inbox />}
-        {tab === 'overview' && (
-          <Overview
-            onNavigate={(t, driver) => {
-              if (driver) setActiveDriver(driver);
-              setTab(t, driver ? { driver } : undefined);
-            }}
-          />
-        )}
-        {tab === 'drivers' && <Drivers initialDriver={activeDriver} />}
-        {tab === 'sentiment' && <SentimentTab />}
-        {tab === 'incidents' && <Incidents />}
-        {tab === 'themes' && <Themes />}
-        {tab === 'agents' && <Agents />}
-        {tab === 'export' && <ExportTab />}
-        {tab === 'audit' && <Audit />}
-        {tab === 'settings' && <Settings />}
+        <ErrorBoundary resetKey={tab}>
+          {tab === 'inbox' && <Inbox />}
+          {tab === 'overview' && (
+            <Overview
+              onNavigate={(t, driver) => {
+                if (driver) setActiveDriver(driver);
+                setTab(t, driver ? { driver } : undefined);
+              }}
+            />
+          )}
+          {tab === 'drivers' && <Drivers initialDriver={activeDriver} />}
+          {tab === 'sentiment' && <SentimentTab />}
+          {tab === 'incidents' && <Incidents />}
+          {tab === 'themes' && <Themes />}
+          {tab === 'agents' && <Agents />}
+          {tab === 'export' && <ExportTab />}
+          {tab === 'audit' && <Audit />}
+          {tab === 'settings' && <Settings />}
+        </ErrorBoundary>
       </main>
     </div>
   );

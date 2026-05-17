@@ -7,12 +7,14 @@ import './styles.css';
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: 2,
-      // Treat data as stale after 10s so a manual refetch is quick; auto-poll
-      // every 30s so new posts/sentiment scores appear without a manual refresh.
-      staleTime: 10_000,
-      refetchInterval: 30_000,
-      refetchOnWindowFocus: true,
+      // One quick retry is enough — three attempts × 15 queries was hammering
+      // the Devvit runtime when any endpoint went down and flooded the console.
+      retry: 1,
+      retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 8000),
+      staleTime: 30_000,
+      // No automatic polling. Mods can switch tabs or hit Retry to refresh.
+      refetchInterval: false,
+      refetchOnWindowFocus: false,
     },
   },
 });
