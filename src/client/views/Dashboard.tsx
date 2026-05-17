@@ -10,7 +10,15 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+// @ts-expect-error — tinykeys exports map lacks a "types" field; types live at dist/tinykeys.d.ts
+import { tinykeys } from 'tinykeys';
+import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
+import { EmptyState } from '../components/EmptyState.tsx';
+import { InfoTooltip } from '../components/InfoTooltip.tsx';
+import { ShortcutsModal } from '../components/ShortcutsModal.tsx';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
+import { markThemesVisited, type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
+import { useTheme } from '../hooks/useTheme.ts';
 import {
   type Agent,
   type AuditAction,
@@ -24,6 +32,8 @@ import {
   type RecentPost,
   type TaxonomyNode,
 } from '../lib/api.ts';
+import { absoluteTime, isoTime, relativeTime } from '../lib/format-time.ts';
+import { TOOLTIPS } from '../lib/tooltips.ts';
 import {
   DriversToastContainer,
   RoutingConfigSection,
@@ -60,11 +70,16 @@ export interface DashboardProps {
 export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProps) {
   const [tab, setTabState] = useState<Tab>(initialTab);
   const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
+  const [cmdOpen, setCmdOpen] = useState(false);
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const { theme, cycle: cycleTheme } = useTheme();
+  const badges = useNavBadges();
 
   // Keep URL in sync whenever the tab changes, and listen to popstate for
   // browser back/forward support.
   const setTab = useCallback((t: Tab, extra?: Record<string, string>) => {
     setTabState(t);
+    if (t === 'themes') markThemesVisited();
     const cleanExtra: Record<string, string> = {};
     if (extra) {
       for (const [k, v] of Object.entries(extra)) {
@@ -91,11 +106,174 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
+  // ── Keyboard shortcuts via tinykeys ────────────────────────────────────────
+  useEffect(() => {
+    const unsub = tinykeys(window, {
+      '$mod+k': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setCmdOpen((o) => !o);
+      },
+      '?': (e: KeyboardEvent) => {
+        // Ignore when typing in an input/textarea
+        const target = e.target as HTMLElement;
+        if (
+          target.tagName === 'INPUT' ||
+          target.tagName === 'TEXTAREA' ||
+          target.tagName === 'SELECT'
+        )
+          return;
+        setShortcutsOpen((o) => !o);
+      },
+      Escape: (_e: KeyboardEvent) => {
+        setCmdOpen(false);
+        setShortcutsOpen(false);
+      },
+      // Tab jumps: g i / g p / g d / g s / g n / g t / g a / g e / g u / g ,
+      'g i': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('inbox');
+      },
+      'g p': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('overview');
+      },
+      'g d': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('drivers');
+      },
+      'g s': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('sentiment');
+      },
+      'g n': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('incidents');
+      },
+      'g t': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('themes');
+      },
+      'g a': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('agents');
+      },
+      'g e': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('export');
+      },
+      'g u': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('audit');
+      },
+      'g ,': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('settings');
+      },
+    });
+    return () => unsub();
+  }, [setTab]);
+
+  // ── Command palette commands ────────────────────────────────────────────────
+  const commands: Command[] = useMemo(
+    () => [
+      {
+        id: 'tab-inbox',
+        label: 'Inbox',
+        group: 'Navigation',
+        shortcut: ['g', 'i'],
+        action: () => setTab('inbox'),
+      },
+      {
+        id: 'tab-overview',
+        label: 'Pulse (Overview)',
+        group: 'Navigation',
+        shortcut: ['g', 'p'],
+        action: () => setTab('overview'),
+      },
+      {
+        id: 'tab-drivers',
+        label: 'Contact Drivers',
+        group: 'Navigation',
+        shortcut: ['g', 'd'],
+        action: () => setTab('drivers'),
+      },
+      {
+        id: 'tab-sentiment',
+        label: 'Sentiment',
+        group: 'Navigation',
+        shortcut: ['g', 's'],
+        action: () => setTab('sentiment'),
+      },
+      {
+        id: 'tab-incidents',
+        label: 'Incidents',
+        group: 'Navigation',
+        shortcut: ['g', 'n'],
+        action: () => setTab('incidents'),
+      },
+      {
+        id: 'tab-themes',
+        label: 'Themes',
+        group: 'Navigation',
+        shortcut: ['g', 't'],
+        action: () => setTab('themes'),
+      },
+      {
+        id: 'tab-pipelines',
+        label: 'Pipelines',
+        group: 'Navigation',
+        action: () => setTab('pipelines'),
+      },
+      {
+        id: 'tab-agents',
+        label: 'Agents',
+        group: 'Navigation',
+        shortcut: ['g', 'a'],
+        action: () => setTab('agents'),
+      },
+      {
+        id: 'tab-export',
+        label: 'Export',
+        group: 'Navigation',
+        shortcut: ['g', 'e'],
+        action: () => setTab('export'),
+      },
+      {
+        id: 'tab-audit',
+        label: 'Audit',
+        group: 'Navigation',
+        shortcut: ['g', 'u'],
+        action: () => setTab('audit'),
+      },
+      {
+        id: 'tab-settings',
+        label: 'Settings',
+        group: 'Navigation',
+        shortcut: ['g', ','],
+        action: () => setTab('settings'),
+      },
+      {
+        id: 'theme-cycle',
+        label: `Theme: ${theme} → cycle`,
+        group: 'Preferences',
+        action: cycleTheme,
+      },
+      {
+        id: 'shortcuts',
+        label: 'Keyboard shortcuts',
+        group: 'Help',
+        shortcut: ['?'],
+        action: () => setShortcutsOpen(true),
+      },
+    ],
+    [setTab, theme, cycleTheme],
+  );
+
   return (
-    <div className="flex min-h-full flex-col">
+    <div className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--text)]">
       <Onboarding />
-      <Header />
-      <Nav tab={tab} setTab={setTab} />
+      <Header theme={theme} onCycleTheme={cycleTheme} onOpenCmd={() => setCmdOpen(true)} />
+      <Nav tab={tab} setTab={setTab} badges={badges} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
           <Suspense fallback={<SkeletonGrid />}>
@@ -120,19 +298,73 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
           </Suspense>
         </ErrorBoundary>
       </main>
+
+      <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} commands={commands} />
+      <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
     </div>
   );
 }
 
-function Header() {
+function Header({
+  theme,
+  onCycleTheme,
+  onOpenCmd,
+}: {
+  theme: 'system' | 'dark' | 'light';
+  onCycleTheme: () => void;
+  onOpenCmd: () => void;
+}) {
+  const themeIcon = theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '⚙️';
+  const themeLabel = `Theme: ${theme}. Click to cycle.`;
+
   return (
-    <header className="border-b border-neutral-800 bg-neutral-950/80 px-6 py-4 backdrop-blur">
+    <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-4 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-3">
         <span className="block h-3 w-3 rounded-full bg-orange-500" />
-        <h1 className="text-lg font-semibold tracking-tight">RedLattice</h1>
-        <span className="ml-2 rounded-full border border-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+        <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattice</h1>
+        <span className="ml-2 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
           analytics
         </span>
+
+        <div className="ml-auto flex items-center gap-2">
+          {/* ⌘K command palette trigger */}
+          <button
+            type="button"
+            onClick={onOpenCmd}
+            aria-label="Open command palette (⌘K)"
+            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          >
+            <svg
+              className="h-3 w-3"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M21 21l-4.35-4.35M17 11A6 6 0 111 11a6 6 0 0116 0z"
+              />
+            </svg>
+            <span className="hidden sm:inline">Search</span>
+            <kbd className="hidden rounded border border-[var(--border)] bg-[var(--bg)] px-1 font-mono text-[10px] sm:inline">
+              ⌘K
+            </kbd>
+          </button>
+
+          {/* Theme toggle */}
+          <button
+            type="button"
+            onClick={onCycleTheme}
+            aria-label={themeLabel}
+            title={themeLabel}
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-sm transition hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+          >
+            {themeIcon}
+          </button>
+        </div>
       </div>
     </header>
   );
@@ -152,10 +384,10 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'settings', label: 'Settings' },
 ];
 
-function Nav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
+function Nav({ tab, setTab, badges }: { tab: Tab; setTab: (t: Tab) => void; badges: NavBadges }) {
   return (
     <nav
-      className="relative border-b border-neutral-800 bg-neutral-950"
+      className="relative border-b border-[var(--border)] bg-[var(--bg)]"
       style={{
         /* Gradient fade on the right edge hints at hidden tabs on mobile */
         WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 2rem), transparent 100%)',
@@ -167,24 +399,46 @@ function Nav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
         aria-label="Dashboard tabs"
         className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-6"
         style={{ scrollbarWidth: 'none' }}
-        /* Hide WebKit scrollbar via global CSS fallback (see index.css) */
       >
-        {TABS.map((t) => (
-          <button
-            type="button"
-            role="tab"
-            key={t.id}
-            aria-selected={tab === t.id}
-            onClick={() => setTab(t.id)}
-            className={`-mb-px flex-shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition ${
-              tab === t.id
-                ? 'border-orange-500 text-white'
-                : 'border-transparent text-neutral-400 hover:text-neutral-200'
-            }`}
-          >
-            {t.label}
-          </button>
-        ))}
+        {TABS.map((t) => {
+          const isActive = tab === t.id;
+          const badge =
+            t.id === 'inbox' && badges.inbox > 0
+              ? badges.inbox
+              : t.id === 'incidents' && badges.incidents > 0
+                ? badges.incidents
+                : null;
+          const dot = t.id === 'themes' && badges.themesDot;
+
+          return (
+            <button
+              type="button"
+              role="tab"
+              key={t.id}
+              aria-selected={isActive}
+              onClick={() => setTab(t.id)}
+              className={`-mb-px relative flex flex-shrink-0 items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-medium transition ${
+                isActive
+                  ? 'border-orange-500 text-[var(--text)]'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+              }`}
+            >
+              {t.label}
+              {badge !== null ? (
+                <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-orange-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white">
+                  {badge > 99 ? '99+' : badge}
+                </span>
+              ) : null}
+              {dot ? (
+                <span
+                  className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500"
+                  title="New themes available"
+                  aria-hidden="true"
+                />
+              ) : null}
+            </button>
+          );
+        })}
       </div>
     </nav>
   );
@@ -406,12 +660,29 @@ function Inbox() {
       ) : queue.isError ? (
         <ErrorMsg msg="Couldn't load queue." retry={() => queue.refetch()} />
       ) : items.length === 0 ? (
-        <EmptyHint>
-          Inbox is empty for filter "{statusFilter}".{' '}
-          {statusFilter === 'open'
-            ? 'Either everything is handled, or no posts have been auto-tagged yet — try submitting a post in the sub.'
-            : null}
-        </EmptyHint>
+        statusFilter === 'open' ? (
+          <EmptyState
+            icon="📭"
+            title="No open posts in your queue"
+            body="New posts will appear here as they're auto-tagged. Submit a post to the subreddit to see it flow through."
+            cta={
+              <a
+                href="https://developers.reddit.com/docs/devvit"
+                target="_top"
+                rel="noopener noreferrer"
+                className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-xs font-medium text-orange-300 transition hover:bg-orange-600/40"
+              >
+                View seeder script docs →
+              </a>
+            }
+          />
+        ) : (
+          <EmptyState
+            icon="✅"
+            title={`No posts with status "${statusFilter}"`}
+            body="Try switching to the Open filter to see what needs attention."
+          />
+        )
       ) : (
         <>
           {/* Select-all header */}
@@ -833,6 +1104,7 @@ interface KpiTileProps {
   deltaPositive?: boolean | undefined;
   tone?: 'positive' | 'negative' | 'neutral' | 'warn' | undefined;
   onClick?: (() => void) | undefined;
+  tooltip?: string | undefined;
 }
 
 function KpiTile({
@@ -843,6 +1115,7 @@ function KpiTile({
   deltaPositive,
   tone = 'neutral',
   onClick,
+  tooltip,
 }: KpiTileProps) {
   const valueColor =
     tone === 'positive'
@@ -856,7 +1129,10 @@ function KpiTile({
 
   const inner = (
     <>
-      <div className="text-[10px] uppercase tracking-widest text-neutral-400">{label}</div>
+      <div className="flex items-center text-[10px] uppercase tracking-widest text-neutral-400">
+        {label}
+        {tooltip ? <InfoTooltip tip={tooltip} /> : null}
+      </div>
       <div
         className={`mt-1.5 truncate text-xl font-semibold tabular-nums leading-none ${valueColor}`}
       >
@@ -1181,6 +1457,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                   : undefined
               }
               deltaPositive={kpis.postsDelta >= 0}
+              tooltip={TOOLTIPS.postsToday}
             />
             <KpiTile
               label="Negative share"
@@ -1193,12 +1470,14 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
               }
               deltaPositive={kpis.negDelta <= 0}
               tone={kpis.negShare > 0.4 ? 'negative' : kpis.negShare > 0.25 ? 'warn' : 'neutral'}
+              tooltip={TOOLTIPS.negativeShare}
             />
             <KpiTile
               label="Top driver"
               value={kpis.topDriver}
               sub={`${kpis.topDriverCount} post${kpis.topDriverCount === 1 ? '' : 's'}`}
               onClick={() => navigateTo('drivers')}
+              tooltip={TOOLTIPS.topDriver}
             />
             <KpiTile
               label="Active incidents"
@@ -1206,12 +1485,14 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
               sub={kpis.activeIncidents > 0 ? 'needs attention' : 'all clear'}
               tone={kpis.activeIncidents > 0 ? 'negative' : 'positive'}
               onClick={kpis.activeIncidents > 0 ? () => navigateTo('incidents') : undefined}
+              tooltip={TOOLTIPS.activeIncidents}
             />
             <KpiTile
               label="Avg first-response"
               value={kpis.avgLatencyMs !== null ? formatLatency(kpis.avgLatencyMs) : '—'}
               sub="last 7 days · agents"
               onClick={() => navigateTo('agents')}
+              tooltip={TOOLTIPS.avgFirstResponse}
             />
             <KpiTile
               label="LLM spend (MTD)"
@@ -1222,6 +1503,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                   : ''
               }
               tone={kpis.llmSpend > 500 ? 'warn' : 'neutral'}
+              tooltip={TOOLTIPS.aiSpendMtd}
             />
           </div>
         ) : null}
@@ -1283,7 +1565,11 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                 ))}
               </div>
             ) : (
-              <EmptyHint>No driver data yet.</EmptyHint>
+              <EmptyState
+                icon="🏷️"
+                title="No driver data yet"
+                body="No posts have been tagged yet. Apply a taxonomy template or wait for new posts to flow through the contact-drivers pipeline."
+              />
             )}
           </section>
 
@@ -2102,8 +2388,17 @@ function SentimentDrillCard({
       className={`w-full cursor-pointer rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-left transition hover:border-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${ringClass}`}
       onClick={onToggle}
     >
-      <div className="text-xs uppercase tracking-wide text-neutral-400">
+      <div className="flex items-center text-xs uppercase tracking-wide text-neutral-400">
         {label.charAt(0).toUpperCase() + label.slice(1)}
+        <InfoTooltip
+          tip={
+            label === 'positive'
+              ? TOOLTIPS.sentimentPositive
+              : label === 'negative'
+                ? TOOLTIPS.sentimentNegative
+                : TOOLTIPS.sentimentNeutral
+          }
+        />
       </div>
       <div className={`mt-2 truncate text-2xl font-semibold ${accent}`}>{count}</div>
       <div className="mt-1 flex items-center gap-1 text-xs text-neutral-400">
@@ -2243,7 +2538,11 @@ function Incidents() {
       ) : q.isError ? (
         <ErrorMsg msg="Couldn't load incidents." retry={() => q.refetch()} />
       ) : q.data.incidents.length === 0 ? (
-        <EmptyHint>No incidents — your sub is calm right now.</EmptyHint>
+        <EmptyState
+          icon="✅"
+          title="All clear — no active incidents"
+          body="Incidents are auto-detected when comment volume or negative-sentiment spikes above your 14-day baseline. Your subreddit is currently calm."
+        />
       ) : (
         <ul className="space-y-2">
           {q.data.incidents.map((inc) => (
@@ -2252,8 +2551,11 @@ function Incidents() {
                 <div>
                   <div className="font-medium text-rose-200">{inc.reason}</div>
                   <div className="mt-1 text-xs text-neutral-400">
-                    started {relativeTime(inc.startedAt)} · {inc.postIds.length} posts ·{' '}
-                    {inc.commentIds.length} comments
+                    started{' '}
+                    <time dateTime={isoTime(inc.startedAt)} title={absoluteTime(inc.startedAt)}>
+                      {relativeTime(inc.startedAt)}
+                    </time>{' '}
+                    · {inc.postIds.length} posts · {inc.commentIds.length} comments
                   </div>
                 </div>
                 <div className="flex items-center gap-2 text-xs">
@@ -2353,9 +2655,21 @@ function Themes() {
       ) : q.isError ? (
         <ErrorMsg msg="Couldn't load themes." retry={() => q.refetch()} />
       ) : q.data.themes.length === 0 ? (
-        <EmptyHint>
-          No themes yet. Either no negative posts to cluster, or click Regenerate to compute now.
-        </EmptyHint>
+        <EmptyState
+          icon="🧩"
+          title="No themes yet"
+          body="Themes appear after ~10 negative posts are accumulated. Submit a few posts or wait for them to accumulate, then regenerate."
+          cta={
+            <button
+              type="button"
+              onClick={regenerate}
+              disabled={regenerating}
+              className="rounded-md border border-violet-700 bg-violet-900/30 px-4 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+            >
+              {regenerating ? 'Regenerating…' : '✨ Regenerate now'}
+            </button>
+          }
+        />
       ) : (
         <>
           <div className="text-xs text-neutral-400">
@@ -3662,10 +3976,21 @@ function formatLatency(ms: number): string {
 function AgentList({ agents }: { agents: Agent[] }) {
   if (agents.length === 0) {
     return (
-      <EmptyHint>
-        No verified agents yet. Use the comment-menu action "RedLattice · Mark verified agent" to
-        add one.
-      </EmptyHint>
+      <EmptyState
+        icon="🤝"
+        title="No verified agents yet"
+        body="Mark a comment author as a verified agent to track their response stats and sentiment lift."
+        cta={
+          <a
+            href="https://developers.reddit.com/docs/devvit"
+            target="_top"
+            rel="noopener noreferrer"
+            className="text-xs text-orange-400 underline-offset-2 hover:underline"
+          >
+            View agent verification docs →
+          </a>
+        }
+      />
     );
   }
   return (
@@ -3674,9 +3999,13 @@ function AgentList({ agents }: { agents: Agent[] }) {
         <li key={a.username} className="flex items-center justify-between px-4 py-3">
           <span className="font-medium">u/{a.username}</span>
           <span className="text-xs uppercase tracking-wide text-neutral-400">{a.role}</span>
-          <span className="text-xs text-neutral-400">
-            {new Date(a.verifiedAt).toLocaleDateString()}
-          </span>
+          <time
+            dateTime={isoTime(a.verifiedAt)}
+            title={absoluteTime(a.verifiedAt)}
+            className="text-xs text-neutral-400"
+          >
+            {relativeTime(a.verifiedAt)}
+          </time>
         </li>
       ))}
     </ul>
@@ -3968,11 +4297,19 @@ function Audit() {
       ) : q.isError ? (
         <ErrorMsg msg="Couldn't load audit log." retry={() => q.refetch()} />
       ) : q.data.count === 0 ? (
-        <EmptyHint>
-          {actionFilter || actorFilter
-            ? 'No entries match the current filters.'
-            : 'No audit entries yet. Audit log is written when mods take actions.'}
-        </EmptyHint>
+        actionFilter || actorFilter ? (
+          <EmptyState
+            icon="🔍"
+            title="No entries match the current filters"
+            body="Try clearing the action or actor filters to see all audit entries."
+          />
+        ) : (
+          <EmptyState
+            icon="📋"
+            title="No audit actions yet"
+            body="Anything you do here — marking agents, resolving incidents, saving pipeline configs — will be logged here."
+          />
+        )
       ) : (
         <div className="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900">
           <table className="w-full text-sm">
@@ -4020,7 +4357,9 @@ function AuditRow({
         aria-expanded={hasMeta ? expanded : undefined}
       >
         <td className="px-4 py-2 text-xs text-neutral-400 tabular-nums">
-          {relativeTime(entry.ts)}
+          <time dateTime={isoTime(entry.ts)} title={absoluteTime(entry.ts)}>
+            {relativeTime(entry.ts)}
+          </time>
         </td>
         <td className="px-4 py-2 text-xs text-neutral-300">
           {entry.actor ? `u/${entry.actor}` : <span className="text-neutral-400">—</span>}
@@ -4182,17 +4521,5 @@ function ErrorMsg({ msg, retry }: { msg: string; retry: () => void }) {
 }
 
 // ---------------------------------------------------------------------------
-// Helpers
+// Helpers — relativeTime, absoluteTime, isoTime imported from lib/format-time.ts
 // ---------------------------------------------------------------------------
-
-function relativeTime(ms: number): string {
-  const diff = Date.now() - ms;
-  const s = Math.max(0, Math.floor(diff / 1000));
-  if (s < 60) return `${s}s ago`;
-  const m = Math.floor(s / 60);
-  if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60);
-  if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24);
-  return `${d}d ago`;
-}

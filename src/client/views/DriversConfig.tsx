@@ -37,7 +37,7 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useId, useRef, useState } from 'react';
 import { api } from '../lib/api.ts';
@@ -1038,6 +1038,249 @@ function TaxonomyPreview({ rows }: { rows: TaxRow[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Taxonomy template marketplace
+// ---------------------------------------------------------------------------
+
+type TemplateId = 'ecommerce' | 'saas' | 'hardware' | 'gaming' | 'finance' | 'media';
+
+interface TemplateMeta {
+  id: string;
+  name: string;
+  description: string;
+  driverCount: number;
+  deepestDepth: number;
+}
+
+function TemplateApplyDialog({
+  template,
+  onClose,
+  onConfirm,
+  loading,
+}: {
+  template: TemplateMeta;
+  onClose: () => void;
+  onConfirm: (mode: 'replace' | 'merge') => void;
+  loading: boolean;
+}) {
+  const [applyMode, setApplyMode] = useState<'replace' | 'merge'>('replace');
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-label={`Apply ${template.name} template`}
+    >
+      <div className="w-full max-w-md rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl">
+        <div className="border-b border-neutral-800 px-5 py-4">
+          <h3 className="text-sm font-semibold text-neutral-100">
+            Apply "{template.name}" template
+          </h3>
+        </div>
+        <div className="space-y-3 px-5 py-4">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-neutral-700 p-3 hover:border-orange-600/60">
+            <input
+              type="radio"
+              name="apply-mode"
+              value="replace"
+              checked={applyMode === 'replace'}
+              onChange={() => setApplyMode('replace')}
+              className="mt-0.5"
+            />
+            <div>
+              <p className="text-sm font-medium text-neutral-200">Replace</p>
+              <p className="text-xs text-neutral-400">
+                Overwrites your current taxonomy with the template.
+              </p>
+            </div>
+          </label>
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-neutral-700 p-3 hover:border-orange-600/60">
+            <input
+              type="radio"
+              name="apply-mode"
+              value="merge"
+              checked={applyMode === 'merge'}
+              onChange={() => setApplyMode('merge')}
+              className="mt-0.5"
+            />
+            <div>
+              <p className="text-sm font-medium text-neutral-200">Merge</p>
+              <p className="text-xs text-neutral-400">
+                Keeps your existing drivers and adds template drivers that don't conflict.
+              </p>
+            </div>
+          </label>
+        </div>
+        <div className="flex justify-end gap-3 border-t border-neutral-800 px-5 py-3">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={loading}
+            className="rounded-md border border-neutral-700 px-4 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button
+            type="button"
+            onClick={() => onConfirm(applyMode)}
+            disabled={loading}
+            data-testid="apply-template-confirm-btn"
+            className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 hover:bg-orange-600/40 disabled:opacity-50"
+          >
+            {loading ? 'Applying…' : 'Apply template'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TemplateCard({
+  template,
+  onPreview,
+  onApply,
+}: {
+  template: TemplateMeta;
+  onPreview: () => void;
+  onApply: () => void;
+}) {
+  return (
+    <div
+      className="flex flex-col rounded-lg border border-neutral-700 bg-neutral-800/40 p-4 hover:border-orange-600/50 transition"
+      data-testid={`template-card-${template.id}`}
+    >
+      <h4 className="mb-1 text-sm font-semibold text-neutral-100">{template.name}</h4>
+      <p className="mb-3 grow text-xs text-neutral-400 leading-relaxed">{template.description}</p>
+      <div className="mb-3 flex items-center gap-3 text-xs text-neutral-500">
+        <span>{template.driverCount} drivers</span>
+        <span>·</span>
+        <span>{template.deepestDepth} levels deep</span>
+      </div>
+      <div className="flex gap-2">
+        <button
+          type="button"
+          onClick={onPreview}
+          className="rounded border border-neutral-600 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-400 hover:text-neutral-100 transition"
+        >
+          Preview
+        </button>
+        <button
+          type="button"
+          onClick={onApply}
+          data-testid={`apply-template-btn-${template.id}`}
+          className="rounded border border-orange-600/60 bg-orange-600/10 px-3 py-1 text-xs font-medium text-orange-300 hover:bg-orange-600/20 transition"
+        >
+          Apply
+        </button>
+      </div>
+    </div>
+  );
+}
+
+function TaxonomyTemplatesSection({
+  hasExistingTaxonomy,
+  toast,
+  onApplied,
+  editorScrollRef,
+}: {
+  hasExistingTaxonomy: boolean;
+  toast: (type: 'success' | 'error', msg: string) => void;
+  onApplied: () => void;
+  editorScrollRef?: React.RefObject<HTMLDivElement | null>;
+}) {
+  const [open, setOpen] = useState(!hasExistingTaxonomy);
+  const [applyTarget, setApplyTarget] = useState<TemplateMeta | null>(null);
+  const [applying, setApplying] = useState(false);
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['taxonomy-templates'],
+    queryFn: () => api.taxonomyTemplates.list(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const templates = data?.templates ?? [];
+
+  // Lazy-load preview nodes from the JSON files via the template endpoint
+  // We'll fetch from a data URL since they're bundled. For simplicity, use the
+  // existing api.taxonomy.applyTemplate in dry-run isn't available, so we'll
+  // just show a placeholder message and use the template meta.
+  const openPreview = (tmpl: TemplateMeta) => {
+    // Preview just opens the apply dialog with full template info
+    setApplyTarget(tmpl);
+  };
+
+  const handleApply = async (mode: 'replace' | 'merge') => {
+    if (!applyTarget) return;
+    setApplying(true);
+    try {
+      const result = await api.taxonomyTemplates.apply(applyTarget.id as TemplateId, mode);
+      setApplyTarget(null);
+      toast('success', `Applied "${applyTarget.name}" template — ${result.driverCount} drivers`);
+      onApplied();
+      setTimeout(() => {
+        editorScrollRef?.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }, 100);
+    } catch (err) {
+      toast('error', err instanceof Error ? err.message : 'Failed to apply template');
+    } finally {
+      setApplying(false);
+    }
+  };
+
+  return (
+    <>
+      {applyTarget ? (
+        <TemplateApplyDialog
+          template={applyTarget}
+          onClose={() => setApplyTarget(null)}
+          onConfirm={handleApply}
+          loading={applying}
+        />
+      ) : null}
+      <div className="mb-6 rounded-lg border border-neutral-700 bg-neutral-900/50">
+        <button
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          className="flex w-full items-center justify-between px-4 py-3 text-left"
+          aria-expanded={open}
+          data-testid="templates-section-toggle"
+        >
+          <div>
+            <span className="text-sm font-semibold text-neutral-200">Templates</span>
+            <span className="ml-2 text-xs text-neutral-500">Start with a pre-built taxonomy</span>
+          </div>
+          <span
+            className={`text-xs text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`}
+          >
+            ▼
+          </span>
+        </button>
+        {open ? (
+          <div className="border-t border-neutral-800 px-4 pb-4 pt-3">
+            {isLoading ? (
+              <p className="text-xs text-neutral-500">Loading templates…</p>
+            ) : (
+              <div
+                className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
+                data-testid="templates-grid"
+              >
+                {templates.map((tmpl) => (
+                  <TemplateCard
+                    key={tmpl.id}
+                    template={tmpl}
+                    onPreview={() => openPreview(tmpl)}
+                    onApply={() => setApplyTarget(tmpl)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Taxonomy config section (exported)
 // ---------------------------------------------------------------------------
 
@@ -1059,6 +1302,7 @@ export function TaxonomyConfigSection({
   const [compactAll, setCompactAll] = useState(false);
   const [focusedUid, setFocusedUid] = useState<number | null>(null);
 
+  const editorRef = useRef<HTMLDivElement>(null);
   const qc = useQueryClient();
 
   const sensors = useSensors(
@@ -1236,8 +1480,20 @@ export function TaxonomyConfigSection({
       title="Contact driver taxonomy"
       description="Define the issue categories used for tagging posts. Children indent under parents. Changes take effect on the next auto-tagged post."
     >
+      {/* Templates marketplace — shown above editor */}
+      <TaxonomyTemplatesSection
+        hasExistingTaxonomy={rows.length > 0}
+        toast={toast}
+        onApplied={() => {
+          // After apply, invalidate the settings query and reload rows from server
+          void qc.invalidateQueries({ queryKey: ['settings'] });
+          onSaved();
+        }}
+        editorScrollRef={editorRef}
+      />
+
       {/* Tab strip: Visual / JSON — role="tablist" */}
-      <div className="mb-4 flex items-center justify-between gap-4">
+      <div ref={editorRef} className="mb-4 flex items-center justify-between gap-4">
         <TaxonomyPreview rows={rows} />
         <div
           role="tablist"
