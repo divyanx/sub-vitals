@@ -16,6 +16,8 @@ import {
   type AuditAction,
   type AuditEntry,
   api,
+  type CustomPipelineAction,
+  type CustomPipelineBody,
   type DriverPost,
   formatDriverPath,
   type PostStatus,
@@ -2536,10 +2538,16 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
 export function PipelineCard({
   pipeline,
   onOpenSettings,
+  onOpenDrawer,
 }: {
   pipeline: PipelineDef;
   onOpenSettings?: () => void;
+  onOpenDrawer?: (pipeline: PipelineDef) => void;
 }) {
+  const handleTune = () => {
+    onOpenDrawer?.(pipeline);
+  };
+
   return (
     <div
       className="flex flex-col rounded-xl border border-neutral-800 bg-neutral-900 p-5"
@@ -2558,16 +2566,27 @@ export function PipelineCard({
             </span>
           </div>
         </div>
-        {pipeline.settingsLink === 'taxonomy' && onOpenSettings ? (
+        <div className="flex shrink-0 gap-2">
+          {pipeline.settingsLink === 'taxonomy' && onOpenSettings ? (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-300 hover:border-orange-600 hover:text-orange-300"
+              aria-label="Edit taxonomy in Settings"
+            >
+              Settings →
+            </button>
+          ) : null}
           <button
             type="button"
-            onClick={onOpenSettings}
-            className="shrink-0 rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-300 hover:border-orange-600 hover:text-orange-300"
-            aria-label="Edit taxonomy in Settings"
+            onClick={handleTune}
+            aria-label={`Tune ${pipeline.name} pipeline`}
+            data-testid={`pipeline-tune-${pipeline.id}`}
+            className="rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-300 hover:border-violet-600 hover:text-violet-300"
           >
-            Settings →
+            Tune →
           </button>
-        ) : null}
+        </div>
       </div>
 
       <dl className="flex flex-col gap-1.5 text-xs">
@@ -2606,6 +2625,463 @@ export function StubPipelineCard({ onOpen }: { onOpen: () => void }) {
         Build custom pipelines in Studio →
       </p>
     </button>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline drawer — side panel for tuning a built-in pipeline
+// ---------------------------------------------------------------------------
+
+type DrawerTab = 'prompts' | 'thresholds' | 'test' | 'stats';
+
+const PIPELINE_THRESHOLDS: Record<
+  string,
+  Array<{ key: string; label: string; min: number; max: number; step: number }>
+> = {
+  sentiment: [
+    {
+      key: 'escalation-threshold',
+      label: 'Escalation threshold (neg comments)',
+      min: 1,
+      max: 20,
+      step: 1,
+    },
+  ],
+  crisis: [
+    {
+      key: 'volume-multiplier',
+      label: 'Crisis volume multiplier',
+      min: 1.5,
+      max: 10,
+      step: 0.5,
+    },
+  ],
+  'agent-metrics': [
+    { key: 'sla-minutes', label: 'SLA threshold (minutes)', min: 5, max: 1440, step: 5 },
+  ],
+};
+
+const PIPELINE_DEFAULTS: Record<string, { systemPrompt: string; userPrompt: string }> = {
+  'contact-drivers': {
+    systemPrompt:
+      'You classify Reddit posts about a brand into contact driver categories. Respond with the most appropriate driver ID from the taxonomy.',
+    userPrompt:
+      'Post title: {{post.title}}\nPost body: {{post.body}}\nTaxonomy: {{taxonomy_json}}\n\nClassify this post.',
+  },
+  sentiment: {
+    systemPrompt:
+      'You judge the sentiment of short Reddit posts about a brand product. Reply with a label (positive/neutral/negative), a score from -1 to +1, and a one-sentence reasoning.',
+    userPrompt: 'Text:\n"""{{post.body}}"""',
+  },
+  impostor: {
+    systemPrompt:
+      'You detect potential brand impostor accounts in Reddit comments. Reply true if the comment appears to be from someone impersonating an official brand representative, false otherwise.',
+    userPrompt: 'Comment by u/{{comment.author}}:\n"{{comment.body}}"',
+  },
+  crisis: {
+    systemPrompt:
+      'You detect brand reputation crises from Reddit comment patterns. Reply true if the current comment represents crisis-level negativity given the context, false otherwise.',
+    userPrompt: 'Comment: {{comment.body}}',
+  },
+  themes: {
+    systemPrompt:
+      'You cluster Reddit posts about a brand into emerging themes. Group similar issues together and name each theme concisely.',
+    userPrompt: 'Posts:\n{{post.body}}',
+  },
+  'agent-metrics': {
+    systemPrompt: 'Tracks agent response metrics. No LLM prompt required.',
+    userPrompt: '',
+  },
+};
+
+const PROMPT_VARIABLES = [
+  '{{post.title}}',
+  '{{post.body}}',
+  '{{comment.body}}',
+  '{{comment.author}}',
+  '{{taxonomy_json}}',
+  '{{current_driver}}',
+  '{{current_sentiment}}',
+];
+
+function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose: () => void }) {
+  const qc = useQueryClient();
+  const [activeTab, setActiveTab] = useState<DrawerTab>('prompts');
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [userPrompt, setUserPrompt] = useState('');
+  const [thresholds, setThresholds] = useState<Record<string, number>>({});
+  const [enabled, setEnabled] = useState(true);
+  const [testInput, setTestInput] = useState('');
+  const [testResult, setTestResult] = useState<{ output: string; costCents: number } | null>(null);
+  const [testBusy, setTestBusy] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  const configQ = useQuery({
+    queryKey: ['pipeline-builtin', pipeline.id],
+    queryFn: () => api.pipelines.getBuiltin(pipeline.id),
+  });
+
+  // Populate local state from server data once loaded
+  useEffect(() => {
+    if (!configQ.data) return;
+    const overrides = configQ.data.overrides;
+    const defaults = PIPELINE_DEFAULTS[pipeline.id] ?? { systemPrompt: '', userPrompt: '' };
+    setSystemPrompt(overrides.systemPrompt ?? defaults.systemPrompt);
+    setUserPrompt(overrides.userPrompt ?? defaults.userPrompt);
+    setThresholds(overrides.thresholds ?? {});
+    setEnabled(overrides.enabled !== false);
+  }, [configQ.data, pipeline.id]);
+
+  const systemPromptRef = useRef<HTMLTextAreaElement>(null);
+  const userPromptRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVariable = (
+    variable: string,
+    ref: React.RefObject<HTMLTextAreaElement | null>,
+    setter: (v: string) => void,
+    currentValue: string,
+  ) => {
+    const ta = ref.current;
+    if (!ta) {
+      setter(currentValue + variable);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    setter(currentValue.slice(0, start) + variable + currentValue.slice(end));
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + variable.length, start + variable.length);
+    });
+  };
+
+  const handleSave = async () => {
+    setSaveError(null);
+    setSaveSuccess(false);
+    try {
+      await api.pipelines.putBuiltin(pipeline.id, {
+        systemPrompt,
+        userPrompt,
+        thresholds,
+        enabled,
+      });
+      await qc.invalidateQueries({ queryKey: ['pipeline-builtin', pipeline.id] });
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 2500);
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
+    }
+  };
+
+  const handleResetToDefault = () => {
+    const defaults = PIPELINE_DEFAULTS[pipeline.id] ?? { systemPrompt: '', userPrompt: '' };
+    setSystemPrompt(defaults.systemPrompt);
+    setUserPrompt(defaults.userPrompt);
+  };
+
+  const handleTest = async () => {
+    setTestBusy(true);
+    setTestError(null);
+    setTestResult(null);
+    try {
+      const r = await api.pipelines.testBuiltin(pipeline.id, testInput);
+      setTestResult({ output: JSON.stringify(r.output, null, 2), costCents: r.costCents });
+    } catch (err) {
+      setTestError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setTestBusy(false);
+    }
+  };
+
+  const DRAWER_TABS: { id: DrawerTab; label: string }[] = [
+    { id: 'prompts', label: 'Prompts' },
+    { id: 'thresholds', label: 'Thresholds' },
+    { id: 'test', label: 'Test' },
+    { id: 'stats', label: 'Stats' },
+  ];
+
+  const thresholdDefs = PIPELINE_THRESHOLDS[pipeline.id] ?? [];
+
+  // Close on Escape key
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <>
+      {/* Backdrop */}
+      <div
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+        aria-hidden="true"
+        onClick={onClose}
+      />
+
+      {/* Drawer */}
+      <aside
+        role="dialog"
+        aria-modal="true"
+        aria-label={`${pipeline.name} pipeline settings`}
+        data-testid="pipeline-drawer"
+        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-neutral-700 bg-neutral-950 shadow-2xl sm:w-[480px]"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-800 px-5 py-4">
+          <div>
+            <h2 className="text-sm font-semibold text-neutral-100">{pipeline.name}</h2>
+            <p className="mt-0.5 text-xs text-neutral-400">{pipeline.trigger}</p>
+          </div>
+          <div className="flex items-center gap-3">
+            {/* Enabled toggle */}
+            <label className="flex cursor-pointer items-center gap-1.5 text-xs">
+              <span className={enabled ? 'text-emerald-400' : 'text-neutral-400'}>
+                {enabled ? 'Enabled' : 'Disabled'}
+              </span>
+              <button
+                type="button"
+                role="switch"
+                aria-checked={enabled}
+                onClick={() => setEnabled((e) => !e)}
+                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enabled ? 'bg-emerald-600' : 'bg-neutral-700'}`}
+              >
+                <span
+                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-4' : 'translate-x-1'}`}
+                />
+              </button>
+            </label>
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Close drawer"
+              className="rounded p-1 text-neutral-400 hover:text-neutral-200"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Tab bar */}
+        <div className="flex gap-0 border-b border-neutral-800 px-5">
+          {DRAWER_TABS.map((t) => (
+            <button
+              key={t.id}
+              type="button"
+              onClick={() => setActiveTab(t.id)}
+              className={`-mb-px border-b-2 px-4 py-3 text-xs font-medium transition ${
+                activeTab === t.id
+                  ? 'border-orange-500 text-white'
+                  : 'border-transparent text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              {t.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Body — scrollable */}
+        <div className="flex-1 overflow-y-auto px-5 py-5">
+          {configQ.isPending ? (
+            <SkeletonList />
+          ) : configQ.isError ? (
+            <ErrorMsg msg="Couldn't load pipeline config." retry={() => configQ.refetch()} />
+          ) : (
+            <>
+              {/* Prompts tab */}
+              {activeTab === 'prompts' && (
+                <div className="space-y-5">
+                  <div>
+                    <div className="mb-2 flex items-center justify-between">
+                      <span className="text-xs font-medium text-neutral-300">System prompt</span>
+                      <button
+                        type="button"
+                        onClick={handleResetToDefault}
+                        className="text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-200"
+                      >
+                        Reset to default
+                      </button>
+                    </div>
+                    <textarea
+                      ref={systemPromptRef}
+                      value={systemPrompt}
+                      onChange={(e) => setSystemPrompt(e.target.value)}
+                      rows={6}
+                      className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+                      placeholder="System prompt…"
+                      aria-label="System prompt"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-neutral-300">
+                      User prompt template
+                    </p>
+                    <textarea
+                      ref={userPromptRef}
+                      value={userPrompt}
+                      onChange={(e) => setUserPrompt(e.target.value)}
+                      rows={6}
+                      className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+                      placeholder="User prompt template with {{variables}}…"
+                      aria-label="User prompt template"
+                    />
+                  </div>
+                  <div>
+                    <p className="mb-2 text-xs text-neutral-400">
+                      Available variables — click to insert at cursor:
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {PROMPT_VARIABLES.map((v) => (
+                        <button
+                          key={v}
+                          type="button"
+                          onClick={() => {
+                            // Try to insert into whichever textarea was last focused
+                            if (document.activeElement === systemPromptRef.current) {
+                              insertVariable(v, systemPromptRef, setSystemPrompt, systemPrompt);
+                            } else {
+                              insertVariable(v, userPromptRef, setUserPrompt, userPrompt);
+                            }
+                          }}
+                          className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 font-mono text-xs text-neutral-300 hover:border-orange-500 hover:text-orange-300"
+                        >
+                          {v}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Thresholds tab */}
+              {activeTab === 'thresholds' && (
+                <div className="space-y-5">
+                  {thresholdDefs.length === 0 ? (
+                    <EmptyHint>No configurable thresholds for this pipeline.</EmptyHint>
+                  ) : (
+                    thresholdDefs.map((def) => {
+                      const current = thresholds[def.key] ?? def.min;
+                      return (
+                        <div key={def.key}>
+                          <label className="mb-2 flex items-center justify-between text-xs font-medium text-neutral-300">
+                            <span>{def.label}</span>
+                            <input
+                              type="number"
+                              min={def.min}
+                              max={def.max}
+                              step={def.step}
+                              value={current}
+                              onChange={(e) =>
+                                setThresholds((prev) => ({
+                                  ...prev,
+                                  [def.key]: Number(e.target.value),
+                                }))
+                              }
+                              className="w-16 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-right text-xs text-neutral-100 outline-none focus:border-orange-500"
+                              aria-label={def.label}
+                            />
+                          </label>
+                          <input
+                            type="range"
+                            min={def.min}
+                            max={def.max}
+                            step={def.step}
+                            value={current}
+                            onChange={(e) =>
+                              setThresholds((prev) => ({
+                                ...prev,
+                                [def.key]: Number(e.target.value),
+                              }))
+                            }
+                            className="w-full accent-orange-500"
+                            aria-label={`${def.label} slider`}
+                          />
+                          <div className="mt-1 flex justify-between text-xs text-neutral-400">
+                            <span>{def.min}</span>
+                            <span>{def.max}</span>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
+              )}
+
+              {/* Test tab */}
+              {activeTab === 'test' && (
+                <div className="space-y-4">
+                  <div>
+                    <p className="mb-2 text-xs font-medium text-neutral-300">Sample input</p>
+                    <textarea
+                      value={testInput}
+                      onChange={(e) => setTestInput(e.target.value)}
+                      rows={5}
+                      placeholder="Paste sample post or comment text here…"
+                      className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+                      aria-label="Sample input for pipeline test"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={handleTest}
+                    disabled={testBusy || testInput.trim().length === 0}
+                    className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-xs font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
+                  >
+                    {testBusy ? 'Running…' : 'Run once'}
+                  </button>
+                  {testError ? (
+                    <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-xs text-rose-200">
+                      {testError}
+                    </div>
+                  ) : null}
+                  {testResult ? (
+                    <div className="space-y-2">
+                      <div className="text-xs text-neutral-400">
+                        Cost: ${(testResult.costCents / 100).toFixed(4)}
+                      </div>
+                      <pre className="overflow-auto rounded-md border border-neutral-700 bg-neutral-900 p-3 text-xs text-neutral-200">
+                        {testResult.output}
+                      </pre>
+                    </div>
+                  ) : null}
+                </div>
+              )}
+
+              {/* Stats tab */}
+              {activeTab === 'stats' && pipeline.moduleKey ? (
+                <PipelineStats moduleKey={pipeline.moduleKey} />
+              ) : activeTab === 'stats' ? (
+                <EmptyHint>No stats available for this pipeline.</EmptyHint>
+              ) : null}
+            </>
+          )}
+        </div>
+
+        {/* Footer — Save */}
+        <div className="border-t border-neutral-800 px-5 py-4">
+          {saveError ? (
+            <div className="mb-3 rounded-lg border border-rose-800 bg-rose-950/40 p-2 text-xs text-rose-200">
+              {saveError}
+            </div>
+          ) : null}
+          {saveSuccess ? (
+            <div className="mb-3 rounded-lg border border-emerald-800 bg-emerald-950/40 p-2 text-xs text-emerald-200">
+              Saved.
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={handleSave}
+            className="w-full rounded-md border border-orange-600 bg-orange-600/20 py-2 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40"
+          >
+            Save changes
+          </button>
+        </div>
+      </aside>
+    </>
   );
 }
 
@@ -2677,19 +3153,386 @@ function StudioModal({ onClose }: { onClose: () => void }) {
   );
 }
 
+// ---------------------------------------------------------------------------
+// New pipeline builder modal
+// ---------------------------------------------------------------------------
+
+const STUDIO_ADVANCED_OPTIONS = [
+  'Multiple steps / branching',
+  'Scheduled (cron)',
+  'Call external APIs',
+  'Combine multiple AI calls',
+];
+
+const BUILDER_VARIABLES = [
+  'post.title',
+  'post.body',
+  'comment.body',
+  'comment.author',
+  'taxonomy_json',
+  'current_driver',
+  'current_sentiment',
+];
+
+function NewPipelineModal({
+  onClose,
+  onStudioPromotion,
+}: {
+  onClose: () => void;
+  onStudioPromotion: () => void;
+}) {
+  const qc = useQueryClient();
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [trigger, setTrigger] = useState<'post-create' | 'comment-create'>('post-create');
+  const [systemPrompt, setSystemPrompt] = useState('');
+  const [userPrompt, setUserPrompt] = useState('');
+  const [outputSchema, setOutputSchema] = useState<'single-label' | 'label-confidence' | 'boolean'>(
+    'single-label',
+  );
+  const [actionType, setActionType] = useState<CustomPipelineAction['type']>('tag-driver');
+  const [actionDriverId, setActionDriverId] = useState('');
+  const [actionModmailTemplate, setActionModmailTemplate] = useState('');
+  const [actionStatus, setActionStatus] = useState<'open' | 'in-progress' | 'resolved'>('open');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const userPromptRef = useRef<HTMLTextAreaElement>(null);
+
+  const insertVariable = (variable: string) => {
+    const ta = userPromptRef.current;
+    const token = `{{${variable}}}`;
+    if (!ta) {
+      setUserPrompt((p) => p + token);
+      return;
+    }
+    const start = ta.selectionStart;
+    const end = ta.selectionEnd;
+    const next = userPrompt.slice(0, start) + token + userPrompt.slice(end);
+    setUserPrompt(next);
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + token.length, start + token.length);
+    });
+  };
+
+  const buildAction = (): CustomPipelineAction => {
+    if (actionType === 'tag-driver') return { type: 'tag-driver', driverId: actionDriverId };
+    if (actionType === 'send-modmail')
+      return { type: 'send-modmail', bodyTemplate: actionModmailTemplate };
+    return { type: 'set-status', status: actionStatus };
+  };
+
+  const handleCreate = async () => {
+    setError(null);
+    setBusy(true);
+    try {
+      const body: CustomPipelineBody = {
+        name: name.trim(),
+        description: description.trim(),
+        trigger,
+        systemPrompt: systemPrompt.trim(),
+        userPrompt: userPrompt.trim(),
+        outputSchema,
+        action: buildAction(),
+      };
+      await api.pipelines.createCustom(body);
+      await qc.invalidateQueries({ queryKey: ['custom-pipelines'] });
+      onClose();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  // Close on Escape
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="New custom pipeline"
+    >
+      <div
+        className="w-full max-w-lg overflow-y-auto rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl"
+        style={{ maxHeight: '90vh' }}
+        data-testid="new-pipeline-modal"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-neutral-800 px-6 py-4">
+          <h3 className="text-base font-semibold text-neutral-100">New pipeline</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-neutral-400 hover:text-neutral-200"
+          >
+            ×
+          </button>
+        </div>
+
+        <div className="space-y-5 px-6 py-5">
+          {/* Name */}
+          <div>
+            <p className="mb-1 text-xs font-medium text-neutral-300">Name *</p>
+            <input
+              type="text"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="e.g. Bug escalation detector"
+              aria-label="Pipeline name"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              data-testid="new-pipeline-name"
+            />
+          </div>
+
+          {/* Description */}
+          <div>
+            <p className="mb-1 text-xs font-medium text-neutral-300">Description</p>
+            <input
+              type="text"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional description…"
+              aria-label="Pipeline description"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+            />
+          </div>
+
+          {/* Trigger */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-neutral-300">Trigger</p>
+            <div className="flex gap-4">
+              {(
+                [
+                  { value: 'post-create', label: 'On post create' },
+                  { value: 'comment-create', label: 'On comment create' },
+                ] as const
+              ).map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200"
+                >
+                  <input
+                    type="radio"
+                    name="trigger"
+                    value={opt.value}
+                    checked={trigger === opt.value}
+                    onChange={() => setTrigger(opt.value)}
+                    className="accent-orange-500"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* System prompt */}
+          <div>
+            <p className="mb-1 text-xs font-medium text-neutral-300">System prompt *</p>
+            <textarea
+              value={systemPrompt}
+              onChange={(e) => setSystemPrompt(e.target.value)}
+              rows={4}
+              placeholder="You are a classifier that…"
+              aria-label="System prompt"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+              data-testid="new-pipeline-system-prompt"
+            />
+          </div>
+
+          {/* User prompt + variable chips */}
+          <div>
+            <p className="mb-1 text-xs font-medium text-neutral-300">User prompt template *</p>
+            <textarea
+              ref={userPromptRef}
+              value={userPrompt}
+              onChange={(e) => setUserPrompt(e.target.value)}
+              rows={4}
+              placeholder="Use {{variables}} for dynamic content…"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+              data-testid="new-pipeline-user-prompt"
+            />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {BUILDER_VARIABLES.map((v) => (
+                <button
+                  key={v}
+                  type="button"
+                  onClick={() => insertVariable(v)}
+                  className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 font-mono text-xs text-neutral-300 hover:border-orange-500 hover:text-orange-300"
+                >
+                  {`{{${v}}}`}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Output schema */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-neutral-300">Output schema</p>
+            <div className="space-y-1.5">
+              {(
+                [
+                  { value: 'single-label', label: 'Single label (string)' },
+                  {
+                    value: 'label-confidence',
+                    label: 'Label + confidence ({ label, confidence })',
+                  },
+                  { value: 'boolean', label: 'Boolean (true/false)' },
+                ] as const
+              ).map((opt) => (
+                <label
+                  key={opt.value}
+                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200"
+                >
+                  <input
+                    type="radio"
+                    name="outputSchema"
+                    value={opt.value}
+                    checked={outputSchema === opt.value}
+                    onChange={() => setOutputSchema(opt.value)}
+                    className="accent-orange-500"
+                  />
+                  {opt.label}
+                </label>
+              ))}
+            </div>
+          </div>
+
+          {/* Advanced options → Studio promotion */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-neutral-300">
+              Advanced options (require Studio)
+            </p>
+            <div className="space-y-1">
+              {STUDIO_ADVANCED_OPTIONS.map((opt) => (
+                <button
+                  key={opt}
+                  type="button"
+                  onClick={onStudioPromotion}
+                  className="flex w-full items-center justify-between rounded border border-neutral-800 bg-neutral-800/50 px-3 py-2 text-left text-xs text-neutral-400 hover:border-orange-500/50 hover:text-orange-300"
+                  data-testid={`studio-advanced-${opt.replace(/\s+/g, '-').toLowerCase()}`}
+                >
+                  <span>{opt}</span>
+                  <span className="text-orange-400">Studio →</span>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Action */}
+          <div>
+            <p className="mb-2 text-xs font-medium text-neutral-300">Action when output matches</p>
+            <select
+              value={actionType}
+              onChange={(e) => setActionType(e.target.value as CustomPipelineAction['type'])}
+              aria-label="Action type"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              data-testid="new-pipeline-action-type"
+            >
+              <option value="tag-driver">Tag post with driver</option>
+              <option value="send-modmail">Send modmail</option>
+              <option value="set-status">Set post status</option>
+            </select>
+            {actionType === 'tag-driver' ? (
+              <input
+                type="text"
+                value={actionDriverId}
+                onChange={(e) => setActionDriverId(e.target.value)}
+                placeholder="Driver ID (e.g. bug)"
+                className="mt-2 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              />
+            ) : actionType === 'send-modmail' ? (
+              <textarea
+                value={actionModmailTemplate}
+                onChange={(e) => setActionModmailTemplate(e.target.value)}
+                rows={3}
+                placeholder="Modmail body template…"
+                className="mt-2 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+              />
+            ) : (
+              <select
+                value={actionStatus}
+                onChange={(e) => setActionStatus(e.target.value as typeof actionStatus)}
+                className="mt-2 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              >
+                <option value="open">Open</option>
+                <option value="in-progress">In progress</option>
+                <option value="resolved">Resolved</option>
+              </select>
+            )}
+          </div>
+
+          {error ? (
+            <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-xs text-rose-200">
+              {error}
+            </div>
+          ) : null}
+        </div>
+
+        {/* Footer */}
+        <div className="border-t border-neutral-800 px-6 py-4">
+          <button
+            type="button"
+            onClick={handleCreate}
+            disabled={busy || !name.trim() || !systemPrompt.trim() || !userPrompt.trim()}
+            className="w-full rounded-md border border-orange-600 bg-orange-600/20 py-2 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
+            data-testid="new-pipeline-save"
+          >
+            {busy ? 'Creating…' : 'Create pipeline'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
   const [studioOpen, setStudioOpen] = useState(false);
+  const [drawerPipeline, setDrawerPipeline] = useState<PipelineDef | null>(null);
+  const [newPipelineOpen, setNewPipelineOpen] = useState(false);
 
   return (
     <div className="space-y-6">
       {studioOpen ? <StudioModal onClose={() => setStudioOpen(false)} /> : null}
+      {drawerPipeline ? (
+        <PipelineDrawer pipeline={drawerPipeline} onClose={() => setDrawerPipeline(null)} />
+      ) : null}
+      {newPipelineOpen ? (
+        <NewPipelineModal
+          onClose={() => setNewPipelineOpen(false)}
+          onStudioPromotion={() => {
+            setNewPipelineOpen(false);
+            setStudioOpen(true);
+          }}
+        />
+      ) : null}
 
-      <header>
-        <h2 className="text-sm uppercase tracking-wide text-neutral-400">Active pipelines</h2>
-        <p className="mt-1 max-w-2xl text-xs text-neutral-400">
-          Every classification and analysis pipeline running on this subreddit. Each pipeline is
-          event-driven, failure-isolated, and writes to Redis.
-        </p>
+      <header className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Active pipelines</h2>
+          <p className="mt-1 max-w-2xl text-xs text-neutral-400">
+            Every classification and analysis pipeline running on this subreddit. Each pipeline is
+            event-driven, failure-isolated, and writes to Redis.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setNewPipelineOpen(true)}
+          className="rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-900/60"
+          data-testid="new-pipeline-button"
+        >
+          + New pipeline
+        </button>
       </header>
 
       <div
@@ -2697,7 +3540,12 @@ function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
         data-testid="pipelines-grid"
       >
         {PIPELINE_DEFS.map((p) => (
-          <PipelineCard key={p.id} pipeline={p} onOpenSettings={onOpenSettings} />
+          <PipelineCard
+            key={p.id}
+            pipeline={p}
+            onOpenSettings={onOpenSettings}
+            onOpenDrawer={setDrawerPipeline}
+          />
         ))}
         <StubPipelineCard onOpen={() => setStudioOpen(true)} />
       </div>
