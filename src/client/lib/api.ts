@@ -3,6 +3,45 @@
  * Hono server mounted at `/api/*`.
  */
 
+// ---------------------------------------------------------------------------
+// Audit
+// ---------------------------------------------------------------------------
+
+export type AuditAction =
+  | 'tag-issue'
+  | 'mark-resolved'
+  | 'mark-open'
+  | 'mark-agent'
+  | 'unmark-agent'
+  | 'settings-update'
+  | 'incident-resolve'
+  | 'theme-regenerate'
+  | 'bulk-status';
+
+export interface AuditEntry {
+  ts: number;
+  actor: string | null;
+  action: AuditAction;
+  target: string | null;
+  meta?: Record<string, unknown>;
+}
+
+// ---------------------------------------------------------------------------
+// Saved views
+// ---------------------------------------------------------------------------
+
+export interface SavedView {
+  id: string;
+  name: string;
+  tab: 'inbox' | 'drivers';
+  params: Record<string, string>;
+  createdAt: number;
+}
+
+// ---------------------------------------------------------------------------
+// Dashboard summary types
+// ---------------------------------------------------------------------------
+
 export interface DashboardSummary {
   today: string;
   month: string;
@@ -266,6 +305,62 @@ export const api = {
   },
   sentimentRollup: () =>
     getJson<{ from: string; to: string; series: SentimentRollup[] }>('/api/sentiment/rollup'),
+  audit: (opts: { limit?: number; action?: AuditAction; actor?: string } = {}) => {
+    const q = new URLSearchParams();
+    if (opts.limit) q.set('limit', String(opts.limit));
+    if (opts.action) q.set('action', opts.action);
+    if (opts.actor) q.set('actor', opts.actor);
+    const qs = q.toString();
+    return getJson<{ count: number; entries: AuditEntry[] }>(`/api/audit${qs ? `?${qs}` : ''}`);
+  },
+  bulkSetStatus: async (
+    postIds: string[],
+    status: PostStatus,
+  ): Promise<{ ok: boolean; succeeded: number; failed: number }> => {
+    // Server caps at 50 — chunk if needed.
+    const CHUNK = 50;
+    let succeeded = 0;
+    let failed = 0;
+    for (let i = 0; i < postIds.length; i += CHUNK) {
+      const chunk = postIds.slice(i, i + CHUNK);
+      const r = await fetch('/api/posts/bulk-status', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ postIds: chunk, status }),
+      });
+      if (r.ok) {
+        const body = (await r.json()) as { succeeded: number; failed: number };
+        succeeded += body.succeeded;
+        failed += body.failed;
+      } else {
+        failed += chunk.length;
+      }
+    }
+    return { ok: failed === 0, succeeded, failed };
+  },
+  views: {
+    list: () => getJson<{ views: SavedView[] }>('/api/views'),
+    save: async (view: {
+      name: string;
+      tab: 'inbox' | 'drivers';
+      params: Record<string, string>;
+    }) => {
+      const r = await fetch('/api/views', {
+        method: 'PUT',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(view),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as SavedView;
+    },
+    delete: async (id: string) => {
+      const r = await fetch(`/api/views/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error(`delete view failed: HTTP ${r.status}`);
+    },
+  },
   settings: {
     get: () =>
       getJson<Record<string, unknown> & { openrouterKeyConfigured: boolean }>('/api/settings'),

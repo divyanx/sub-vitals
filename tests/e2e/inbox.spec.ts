@@ -109,4 +109,41 @@ test.describe('Inbox tab', () => {
     await page.waitForTimeout(500);
     expect(mutationFired).toBe(true);
   });
+
+  test('bulk action: checking 2 rows and clicking Apply fires /api/posts/bulk-status', async ({
+    page,
+  }) => {
+    let bulkRequestBody: unknown = null;
+    await page.route('**/api/posts/bulk-status', async (route) => {
+      const body = route.request().postDataJSON();
+      bulkRequestBody = body;
+      await route.fulfill({ json: { ok: true, results: [], succeeded: 2, failed: 0 } });
+    });
+
+    // Check the first two post checkboxes
+    const checkboxes = page.getByRole('checkbox', { name: /Select post/i });
+    await checkboxes.nth(0).check();
+    await checkboxes.nth(1).check();
+
+    // Bulk action bar should appear with "2 selected"
+    await expect(page.getByText('2 selected')).toBeVisible({ timeout: 3000 });
+
+    // Apply button click
+    await page.getByRole('button', { name: 'Apply' }).click();
+    await page.waitForTimeout(600);
+
+    expect(bulkRequestBody).not.toBeNull();
+    const body = bulkRequestBody as { postIds: string[]; status: string };
+    expect(body.postIds).toHaveLength(2);
+    expect(body.status).toBe('resolved'); // default selection in the dropdown
+  });
+
+  test('Escape key clears bulk selection', async ({ page }) => {
+    const checkboxes = page.getByRole('checkbox', { name: /Select post/i });
+    await checkboxes.nth(0).check();
+    await expect(page.getByText('1 selected')).toBeVisible({ timeout: 3000 });
+
+    await page.keyboard.press('Escape');
+    await expect(page.getByText('1 selected')).not.toBeVisible({ timeout: 2000 });
+  });
 });

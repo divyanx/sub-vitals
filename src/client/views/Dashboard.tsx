@@ -7,9 +7,9 @@
  * activity feed with deep links back to the actual Reddit posts.
  */
 
-import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
-import { useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Area,
   AreaChart,
@@ -23,6 +23,8 @@ import {
 } from 'recharts';
 import {
   type Agent,
+  type AuditAction,
+  type AuditEntry,
   api,
   type DriverPost,
   type PostStatus,
@@ -41,6 +43,7 @@ type Tab =
   | 'themes'
   | 'agents'
   | 'export'
+  | 'audit'
   | 'settings';
 
 export interface DashboardProps {
@@ -65,6 +68,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         {tab === 'themes' && <Themes />}
         {tab === 'agents' && <Agents />}
         {tab === 'export' && <ExportTab />}
+        {tab === 'audit' && <Audit />}
         {tab === 'settings' && <Settings />}
       </main>
     </div>
@@ -94,6 +98,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'themes', label: 'Themes' },
   { id: 'agents', label: 'Agents' },
   { id: 'export', label: 'Export' },
+  { id: 'audit', label: 'Audit' },
   { id: 'settings', label: 'Settings' },
 ];
 
@@ -130,6 +135,13 @@ const STATUS_TABS: { id: 'open' | 'in-progress' | 'all'; label: string }[] = [
   { id: 'all', label: 'All' },
 ];
 
+const BULK_STATUS_OPTIONS: { value: PostStatus; label: string }[] = [
+  { value: 'resolved', label: 'Mark resolved' },
+  { value: 'in-progress', label: 'Mark in-progress' },
+  { value: 'responded', label: 'Mark responded' },
+  { value: 'open', label: 'Re-open' },
+];
+
 function Inbox() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<'open' | 'in-progress' | 'all'>('open');
@@ -137,10 +149,21 @@ function Inbox() {
   const [openHistory, setOpenHistory] = useState<string | null>(null);
   const [openDraft, setOpenDraft] = useState<string | null>(null);
 
+  // Multi-select state
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [bulkStatus, setBulkStatus] = useState<PostStatus>('resolved');
+  const [bulkToast, setBulkToast] = useState<string | null>(null);
+  const [bulkBusy, setBulkBusy] = useState(false);
+
   const queue = useQuery({
     queryKey: ['triage-queue', statusFilter],
     queryFn: () => api.triageQueue({ status: statusFilter }),
   });
+
+  // Clear selection when filter changes or data reloads
+  useEffect(() => {
+    setSelected(new Set());
+  }, []);
 
   const [actionError, setActionError] = useState<string | null>(null);
   const mutate = async (postId: string, status: PostStatus) => {
@@ -157,6 +180,64 @@ function Inbox() {
     }
   };
 
+  const items = queue.data?.items ?? [];
+  const allIds = items.map((p) => p.postId);
+  const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
+  const someSelected = selected.size > 0;
+
+  const toggleAll = () => {
+    if (allSelected) {
+      setSelected(new Set());
+    } else {
+      setSelected(new Set(allIds));
+    }
+  };
+
+  const toggleOne = (postId: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      if (next.has(postId)) {
+        next.delete(postId);
+      } else {
+        next.add(postId);
+      }
+      return next;
+    });
+  };
+
+  const applyBulk = async () => {
+    if (selected.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const result = await api.bulkSetStatus([...selected], bulkStatus);
+      setBulkToast(
+        `${result.succeeded} updated${result.failed > 0 ? `, ${result.failed} failed` : ''}`,
+      );
+      setTimeout(() => setBulkToast(null), 3500);
+      setSelected(new Set());
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['triage-queue'] }),
+        qc.invalidateQueries({ queryKey: ['recent-posts'] }),
+        qc.invalidateQueries({ queryKey: ['driver-posts'] }),
+      ]);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  // Keyboard: Escape clears selection
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && someSelected) {
+        setSelected(new Set());
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [someSelected]);
+
   return (
     <section className="space-y-5">
       {actionError ? (
@@ -171,6 +252,19 @@ function Inbox() {
           </button>
         </div>
       ) : null}
+
+      {/* Saved views strip */}
+      <SavedViewsStrip
+        tab="inbox"
+        onApply={(params) => {
+          const s = params.status as 'open' | 'in-progress' | 'all' | undefined;
+          if (s && (s === 'open' || s === 'in-progress' || s === 'all')) {
+            setStatusFilter(s);
+          }
+        }}
+        currentParams={{ status: statusFilter }}
+      />
+
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h2 className="text-sm uppercase tracking-wide text-neutral-400">Triage inbox</h2>
@@ -197,11 +291,56 @@ function Inbox() {
         </div>
       </header>
 
+      {/* Bulk action bar */}
+      {someSelected ? (
+        <div
+          role="toolbar"
+          aria-label="Bulk actions"
+          className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border border-orange-700 bg-neutral-950/95 px-4 py-2.5 text-sm backdrop-blur"
+        >
+          <span className="font-medium text-orange-200">{selected.size} selected</span>
+          <span className="text-neutral-600">·</span>
+          <select
+            value={bulkStatus}
+            onChange={(e) => setBulkStatus(e.target.value as PostStatus)}
+            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+            aria-label="Bulk status to apply"
+          >
+            {BULK_STATUS_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </select>
+          <button
+            type="button"
+            onClick={applyBulk}
+            disabled={bulkBusy}
+            className="rounded-md border border-emerald-700 bg-emerald-900/40 px-3 py-1 text-xs text-emerald-200 transition hover:bg-emerald-900/70 disabled:opacity-50"
+          >
+            {bulkBusy ? 'Updating…' : 'Apply'}
+          </button>
+          <button
+            type="button"
+            onClick={() => setSelected(new Set())}
+            className="ml-auto text-xs text-neutral-500 underline-offset-2 hover:text-neutral-300 hover:underline"
+          >
+            Clear (Esc)
+          </button>
+        </div>
+      ) : null}
+
+      {bulkToast ? (
+        <div className="rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200">
+          {bulkToast}
+        </div>
+      ) : null}
+
       {queue.isPending ? (
         <SkeletonList />
       ) : queue.isError ? (
         <ErrorMsg msg="Couldn't load queue." retry={() => queue.refetch()} />
-      ) : queue.data.items.length === 0 ? (
+      ) : items.length === 0 ? (
         <EmptyHint>
           Inbox is empty for filter "{statusFilter}".{' '}
           {statusFilter === 'open'
@@ -209,135 +348,160 @@ function Inbox() {
             : null}
         </EmptyHint>
       ) : (
-        <ol className="space-y-2">
-          {queue.data.items.map((p, idx) => (
-            <li
-              key={p.postId}
-              className="rounded-lg border border-neutral-800 bg-neutral-900 p-4 transition hover:border-neutral-700"
-            >
-              <div className="flex items-start gap-3">
-                <div className="flex w-10 flex-shrink-0 flex-col items-center pt-0.5">
-                  <span className="text-xs font-medium text-orange-300">#{idx + 1}</span>
-                  <PriorityPill priority={p.priority} />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <a
-                    href={p.url}
-                    target="_top"
-                    rel="noopener noreferrer"
-                    className="block truncate text-sm font-medium text-neutral-100 hover:underline"
-                    title={p.title}
-                  >
-                    {p.title || '(no title)'}
-                  </a>
-                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setOpenHistory(openHistory === p.authorName ? null : p.authorName)
-                      }
-                      className="text-neutral-300 underline-offset-2 hover:underline"
-                    >
-                      u/{p.authorName}
-                    </button>
-                    <span>·</span>
-                    <span>{relativeTime(p.createdAt)}</span>
-                    {p.driverId ? (
-                      <>
-                        <span>·</span>
-                        <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
-                      </>
-                    ) : null}
-                    {p.sentimentLabel ? (
-                      <>
-                        <span>·</span>
-                        <SentimentBadge
-                          label={p.sentimentLabel}
-                          score={p.sentimentScore}
-                          by={p.sentimentScoredBy}
-                        />
-                      </>
-                    ) : null}
-                    {p.status ? (
-                      <>
-                        <span>·</span>
-                        <StatusBadge status={p.status} />
-                      </>
-                    ) : null}
+        <>
+          {/* Select-all header */}
+          <div className="flex items-center gap-2 pb-1 text-xs text-neutral-500">
+            <input
+              type="checkbox"
+              aria-label="Select all"
+              checked={allSelected}
+              onChange={toggleAll}
+              className="h-3.5 w-3.5 accent-orange-500"
+            />
+            <span>Select all</span>
+          </div>
+          <ol className="space-y-2">
+            {items.map((p, idx) => (
+              <li
+                key={p.postId}
+                className={`rounded-lg border bg-neutral-900 p-4 transition ${
+                  selected.has(p.postId)
+                    ? 'border-orange-600/60'
+                    : 'border-neutral-800 hover:border-neutral-700'
+                }`}
+              >
+                <div className="flex items-start gap-3">
+                  {/* Checkbox + rank */}
+                  <div className="flex w-10 flex-shrink-0 flex-col items-center gap-1 pt-0.5">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select post: ${p.title}`}
+                      checked={selected.has(p.postId)}
+                      onChange={() => toggleOne(p.postId)}
+                      className="h-3.5 w-3.5 accent-orange-500"
+                    />
+                    <span className="text-xs font-medium text-orange-300">#{idx + 1}</span>
+                    <PriorityPill priority={p.priority} />
                   </div>
-                  {p.reasoning ? (
-                    <div className="mt-1 text-xs italic text-neutral-500">"{p.reasoning}"</div>
-                  ) : null}
-                  <div className="mt-2 flex flex-wrap gap-2 text-xs">
-                    {p.status !== 'resolved' ? (
-                      <button
-                        type="button"
-                        onClick={() => mutate(p.postId, 'resolved')}
-                        className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
-                      >
-                        ✓ Resolve
-                      </button>
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => mutate(p.postId, 'open')}
-                        className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
-                      >
-                        Re-open
-                      </button>
-                    )}
-                    {p.status === 'open' ? (
-                      <button
-                        type="button"
-                        onClick={() => mutate(p.postId, 'in-progress')}
-                        className="rounded-full border border-blue-700 bg-blue-900/30 px-2 py-0.5 text-blue-200 transition hover:bg-blue-900/60"
-                      >
-                        Take ownership
-                      </button>
-                    ) : null}
-                    <button
-                      type="button"
-                      onClick={() => setOpenThread(openThread === p.postId ? null : p.postId)}
-                      className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
-                    >
-                      {openThread === p.postId ? 'Hide thread' : 'View thread'}
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setOpenDraft(openDraft === p.postId ? null : p.postId)}
-                      className="rounded-full border border-violet-700 bg-violet-900/30 px-2 py-0.5 text-violet-200 transition hover:bg-violet-900/60"
-                    >
-                      {openDraft === p.postId ? 'Hide drafts' : '✨ Draft reply'}
-                    </button>
+                  <div className="min-w-0 flex-1">
                     <a
                       href={p.url}
                       target="_top"
                       rel="noopener noreferrer"
-                      className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:border-orange-500 hover:text-orange-200"
+                      className="block truncate text-sm font-medium text-neutral-100 hover:underline"
+                      title={p.title}
                     >
-                      ↗ Open on Reddit
+                      {p.title || '(no title)'}
                     </a>
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setOpenHistory(openHistory === p.authorName ? null : p.authorName)
+                        }
+                        className="text-neutral-300 underline-offset-2 hover:underline"
+                      >
+                        u/{p.authorName}
+                      </button>
+                      <span>·</span>
+                      <span>{relativeTime(p.createdAt)}</span>
+                      {p.driverId ? (
+                        <>
+                          <span>·</span>
+                          <DriverBadge id={p.driverId} taggedBy={p.taggedBy} />
+                        </>
+                      ) : null}
+                      {p.sentimentLabel ? (
+                        <>
+                          <span>·</span>
+                          <SentimentBadge
+                            label={p.sentimentLabel}
+                            score={p.sentimentScore}
+                            by={p.sentimentScoredBy}
+                          />
+                        </>
+                      ) : null}
+                      {p.status ? (
+                        <>
+                          <span>·</span>
+                          <StatusBadge status={p.status} />
+                        </>
+                      ) : null}
+                    </div>
+                    {p.reasoning ? (
+                      <div className="mt-1 text-xs italic text-neutral-500">"{p.reasoning}"</div>
+                    ) : null}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs">
+                      {p.status !== 'resolved' ? (
+                        <button
+                          type="button"
+                          onClick={() => mutate(p.postId, 'resolved')}
+                          className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
+                        >
+                          ✓ Resolve
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => mutate(p.postId, 'open')}
+                          className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+                        >
+                          Re-open
+                        </button>
+                      )}
+                      {p.status === 'open' ? (
+                        <button
+                          type="button"
+                          onClick={() => mutate(p.postId, 'in-progress')}
+                          className="rounded-full border border-blue-700 bg-blue-900/30 px-2 py-0.5 text-blue-200 transition hover:bg-blue-900/60"
+                        >
+                          Take ownership
+                        </button>
+                      ) : null}
+                      <button
+                        type="button"
+                        onClick={() => setOpenThread(openThread === p.postId ? null : p.postId)}
+                        className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+                      >
+                        {openThread === p.postId ? 'Hide thread' : 'View thread'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setOpenDraft(openDraft === p.postId ? null : p.postId)}
+                        className="rounded-full border border-violet-700 bg-violet-900/30 px-2 py-0.5 text-violet-200 transition hover:bg-violet-900/60"
+                      >
+                        {openDraft === p.postId ? 'Hide drafts' : '✨ Draft reply'}
+                      </button>
+                      <a
+                        href={p.url}
+                        target="_top"
+                        rel="noopener noreferrer"
+                        className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:border-orange-500 hover:text-orange-200"
+                      >
+                        ↗ Open on Reddit
+                      </a>
+                    </div>
                   </div>
                 </div>
-              </div>
-              {openHistory === p.authorName ? (
-                <div className="mt-4 border-t border-neutral-800 pt-4">
-                  <UserHistoryPanel username={p.authorName} currentPostId={p.postId} />
-                </div>
-              ) : null}
-              {openThread === p.postId ? (
-                <div className="mt-4 border-t border-neutral-800 pt-4">
-                  <ThreadPanel postId={p.postId} />
-                </div>
-              ) : null}
-              {openDraft === p.postId ? (
-                <div className="mt-4 border-t border-neutral-800 pt-4">
-                  <DraftReplyPanel postId={p.postId} />
-                </div>
-              ) : null}
-            </li>
-          ))}
-        </ol>
+                {openHistory === p.authorName ? (
+                  <div className="mt-4 border-t border-neutral-800 pt-4">
+                    <UserHistoryPanel username={p.authorName} currentPostId={p.postId} />
+                  </div>
+                ) : null}
+                {openThread === p.postId ? (
+                  <div className="mt-4 border-t border-neutral-800 pt-4">
+                    <ThreadPanel postId={p.postId} />
+                  </div>
+                ) : null}
+                {openDraft === p.postId ? (
+                  <div className="mt-4 border-t border-neutral-800 pt-4">
+                    <DraftReplyPanel postId={p.postId} />
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ol>
+        </>
       )}
     </section>
   );
@@ -1269,6 +1433,7 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
   const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy });
   const volumeQ = useQuery({ queryKey: ['drivers-volume'], queryFn: api.driverVolume });
   const [openDriver, setOpenDriver] = useState<string | null>(initialDriver ?? null);
+  const [driverFilter, setDriverFilter] = useState<string>('');
 
   if (taxonomyQ.isPending || volumeQ.isPending) return <SkeletonGrid />;
   if (taxonomyQ.isError || volumeQ.isError)
@@ -1296,6 +1461,17 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
 
   return (
     <section className="space-y-6">
+      <SavedViewsStrip
+        tab="drivers"
+        onApply={(params) => {
+          if (params.driver) setOpenDriver(params.driver);
+          if (params.driverFilter) setDriverFilter(params.driverFilter);
+        }}
+        currentParams={{
+          ...(openDriver ? { driver: openDriver } : {}),
+          ...(driverFilter ? { driverFilter } : {}),
+        }}
+      />
       <div>
         <h2 className="mb-4 text-sm uppercase tracking-wide text-neutral-400">
           Contact drivers · last 30 days · click to see posts
@@ -2026,6 +2202,373 @@ function AgentList({ agents }: { agents: Agent[] }) {
         </li>
       ))}
     </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Saved views — bookmarked filter combinations for Inbox + Drivers tabs
+// ---------------------------------------------------------------------------
+
+interface SavedViewsStripProps {
+  tab: 'inbox' | 'drivers';
+  currentParams: Record<string, string>;
+  onApply: (params: Record<string, string>) => void;
+}
+
+function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) {
+  const qc = useQueryClient();
+  const [saving, setSaving] = useState(false);
+  const [newName, setNewName] = useState('');
+  const nameInputRef = useRef<HTMLInputElement>(null);
+
+  const viewsQ = useQuery({
+    queryKey: ['saved-views', tab],
+    queryFn: async () => {
+      const data = await api.views.list();
+      return data.views.filter((v) => v.tab === tab);
+    },
+    staleTime: 60_000,
+  });
+
+  const saveView = useMutation({
+    mutationFn: (name: string) => api.views.save({ name, tab, params: currentParams }),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['saved-views', tab] });
+      setSaving(false);
+      setNewName('');
+    },
+  });
+
+  const deleteView = useMutation({
+    mutationFn: (id: string) => api.views.delete(id),
+    onSuccess: () => {
+      void qc.invalidateQueries({ queryKey: ['saved-views', tab] });
+    },
+  });
+
+  // Focus name input when save form opens
+  useEffect(() => {
+    if (saving) {
+      nameInputRef.current?.focus();
+    }
+  }, [saving]);
+
+  const views = viewsQ.data ?? [];
+
+  if (viewsQ.isPending && views.length === 0) return null;
+
+  return (
+    <div className="flex flex-wrap items-center gap-2 text-xs">
+      <span className="text-neutral-600">Views:</span>
+      {views.map((v) => (
+        <span
+          key={v.id}
+          className="group flex items-center gap-1 rounded-full border border-neutral-800 bg-neutral-900 pl-2.5 pr-1.5 py-0.5 text-neutral-300"
+        >
+          <button
+            type="button"
+            onClick={() => onApply(v.params)}
+            className="hover:text-orange-300 transition"
+            title={`Apply view: ${v.name}`}
+          >
+            {v.name}
+          </button>
+          <button
+            type="button"
+            onClick={() => deleteView.mutate(v.id)}
+            className="ml-0.5 rounded-full p-0.5 text-neutral-600 opacity-0 transition group-hover:opacity-100 hover:text-rose-400"
+            aria-label={`Delete view "${v.name}"`}
+            title="Delete view"
+          >
+            ✕
+          </button>
+        </span>
+      ))}
+      {saving ? (
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            const name = newName.trim();
+            if (name) saveView.mutate(name);
+          }}
+          className="flex items-center gap-1.5"
+        >
+          <input
+            ref={nameInputRef}
+            type="text"
+            value={newName}
+            onChange={(e) => setNewName(e.target.value)}
+            placeholder="View name"
+            maxLength={60}
+            className="w-36 rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200 outline-none focus:border-orange-500"
+            onKeyDown={(e) => {
+              if (e.key === 'Escape') {
+                setSaving(false);
+                setNewName('');
+              }
+            }}
+          />
+          <button
+            type="submit"
+            disabled={!newName.trim() || saveView.isPending}
+            className="rounded border border-orange-700 bg-orange-900/30 px-2 py-0.5 text-orange-200 transition hover:bg-orange-900/60 disabled:opacity-50"
+          >
+            {saveView.isPending ? 'Saving…' : 'Save'}
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setSaving(false);
+              setNewName('');
+            }}
+            className="text-neutral-600 hover:text-neutral-400"
+          >
+            Cancel
+          </button>
+        </form>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setSaving(true)}
+          className="rounded-full border border-dashed border-neutral-700 px-2.5 py-0.5 text-neutral-500 transition hover:border-orange-600 hover:text-orange-400"
+          title="Save current filters as a view"
+        >
+          + Save current
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Audit — mod action log with filters and expandable rows
+// ---------------------------------------------------------------------------
+
+const AUDIT_ACTIONS: AuditAction[] = [
+  'tag-issue',
+  'mark-resolved',
+  'mark-open',
+  'mark-agent',
+  'unmark-agent',
+  'settings-update',
+  'incident-resolve',
+  'theme-regenerate',
+  'bulk-status',
+];
+
+function auditActionBadgeStyle(action: AuditAction): string {
+  switch (action) {
+    case 'mark-resolved':
+    case 'incident-resolve':
+      return 'border-emerald-700 bg-emerald-900/40 text-emerald-200';
+    case 'mark-open':
+      return 'border-amber-700 bg-amber-900/40 text-amber-200';
+    case 'mark-agent':
+    case 'unmark-agent':
+    case 'settings-update':
+      return 'border-neutral-600 bg-neutral-800 text-neutral-300';
+    case 'tag-issue':
+    case 'bulk-status':
+    case 'theme-regenerate':
+      return 'border-blue-700 bg-blue-900/40 text-blue-200';
+  }
+}
+
+function AuditActionBadge({ action }: { action: AuditAction }) {
+  return (
+    <span
+      className={`inline-block rounded-full border px-2 py-0.5 text-[10px] font-medium ${auditActionBadgeStyle(action)}`}
+    >
+      {action}
+    </span>
+  );
+}
+
+function Audit() {
+  const [actionFilter, setActionFilter] = useState<AuditAction | ''>('');
+  const [actorFilter, setActorFilter] = useState('');
+  const [actorInput, setActorInput] = useState('');
+  const [expandedRow, setExpandedRow] = useState<number | null>(null);
+
+  const q = useQuery({
+    queryKey: ['audit', actionFilter, actorFilter],
+    queryFn: () =>
+      api.audit({
+        limit: 200,
+        ...(actionFilter ? { action: actionFilter } : {}),
+        ...(actorFilter ? { actor: actorFilter } : {}),
+      }),
+    staleTime: 30_000,
+  });
+
+  const commitActor = useCallback(() => {
+    setActorFilter(actorInput.trim());
+  }, [actorInput]);
+
+  return (
+    <section className="space-y-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Audit log</h2>
+          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+            Every mutating mod action, most recent first. Capped at 5 000 entries per installation.
+          </p>
+        </div>
+      </header>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-neutral-600">Action:</span>
+        <button
+          type="button"
+          onClick={() => setActionFilter('')}
+          className={`rounded-full border px-2.5 py-0.5 transition ${
+            actionFilter === ''
+              ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+              : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+          }`}
+        >
+          All
+        </button>
+        {AUDIT_ACTIONS.map((a) => (
+          <button
+            key={a}
+            type="button"
+            onClick={() => setActionFilter(actionFilter === a ? '' : a)}
+            className={`rounded-full border px-2.5 py-0.5 transition ${
+              actionFilter === a
+                ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+                : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            {a}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex items-center gap-2 text-xs">
+        <span className="text-neutral-600">Actor:</span>
+        <input
+          type="text"
+          value={actorInput}
+          onChange={(e) => setActorInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') commitActor();
+            if (e.key === 'Escape') {
+              setActorInput('');
+              setActorFilter('');
+            }
+          }}
+          placeholder="username…"
+          className="w-36 rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200 outline-none focus:border-orange-500"
+        />
+        <button
+          type="button"
+          onClick={commitActor}
+          className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:border-orange-500"
+        >
+          Filter
+        </button>
+        {actorFilter ? (
+          <button
+            type="button"
+            onClick={() => {
+              setActorInput('');
+              setActorFilter('');
+            }}
+            className="text-neutral-500 underline-offset-2 hover:text-neutral-300 hover:underline"
+          >
+            Clear
+          </button>
+        ) : null}
+      </div>
+
+      {q.isPending ? (
+        <SkeletonList />
+      ) : q.isError ? (
+        <ErrorMsg msg="Couldn't load audit log." retry={() => q.refetch()} />
+      ) : q.data.count === 0 ? (
+        <EmptyHint>
+          {actionFilter || actorFilter
+            ? 'No entries match the current filters.'
+            : 'No audit entries yet. Audit log is written when mods take actions.'}
+        </EmptyHint>
+      ) : (
+        <div className="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900">
+          <table className="w-full text-sm">
+            <thead className="bg-neutral-950/50 text-left text-xs uppercase tracking-wide text-neutral-400">
+              <tr>
+                <th className="px-4 py-2 w-36">Time</th>
+                <th className="px-4 py-2">Actor</th>
+                <th className="px-4 py-2">Action</th>
+                <th className="px-4 py-2">Target</th>
+                <th className="px-4 py-2 w-8" />
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-neutral-800">
+              {q.data.entries.map((entry, idx) => (
+                <AuditRow
+                  key={`${entry.ts}-${idx}`}
+                  entry={entry}
+                  expanded={expandedRow === idx}
+                  onToggle={() => setExpandedRow(expandedRow === idx ? null : idx)}
+                />
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function AuditRow({
+  entry,
+  expanded,
+  onToggle,
+}: {
+  entry: AuditEntry;
+  expanded: boolean;
+  onToggle: () => void;
+}) {
+  const hasMeta = entry.meta !== undefined && Object.keys(entry.meta).length > 0;
+  return (
+    <>
+      <tr
+        className={`cursor-pointer transition ${hasMeta ? 'hover:bg-neutral-800/40' : ''}`}
+        onClick={hasMeta ? onToggle : undefined}
+        aria-expanded={hasMeta ? expanded : undefined}
+      >
+        <td className="px-4 py-2 text-xs text-neutral-500 tabular-nums">
+          {relativeTime(entry.ts)}
+        </td>
+        <td className="px-4 py-2 text-xs text-neutral-300">
+          {entry.actor ? `u/${entry.actor}` : <span className="text-neutral-600">—</span>}
+        </td>
+        <td className="px-4 py-2">
+          <AuditActionBadge action={entry.action} />
+        </td>
+        <td className="px-4 py-2 text-xs text-neutral-400">
+          {entry.target ?? <span className="text-neutral-600">—</span>}
+        </td>
+        <td className="px-4 py-2 text-right">
+          {hasMeta ? (
+            <span className="text-neutral-600 transition hover:text-neutral-300">
+              {expanded ? '▲' : '▼'}
+            </span>
+          ) : null}
+        </td>
+      </tr>
+      {expanded && hasMeta ? (
+        <tr>
+          <td colSpan={5} className="bg-neutral-950/40 px-4 py-3">
+            <pre className="overflow-x-auto rounded border border-neutral-800 bg-neutral-900 p-3 text-[11px] text-neutral-300">
+              {JSON.stringify(entry.meta, null, 2)}
+            </pre>
+          </td>
+        </tr>
+      ) : null}
+    </>
   );
 }
 

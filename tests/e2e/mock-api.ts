@@ -141,6 +141,42 @@ export async function setupMocks(page: Page): Promise<void> {
       });
     }
 
+    // Audit log
+    if (pathname === '/api/audit') {
+      return route.fulfill({
+        json: {
+          count: 0,
+          entries: [],
+        },
+      });
+    }
+
+    // Bulk status mutation
+    if (pathname === '/api/posts/bulk-status' && method === 'POST') {
+      return route.fulfill({
+        json: { ok: true, results: [], succeeded: 0, failed: 0 },
+      });
+    }
+
+    // Saved views
+    if (pathname === '/api/views' && method === 'GET') {
+      return route.fulfill({ json: { views: [] } });
+    }
+    if (pathname === '/api/views' && method === 'PUT') {
+      return route.fulfill({
+        json: {
+          id: 'v_test',
+          name: 'Test view',
+          tab: 'inbox',
+          params: {},
+          createdAt: Date.now(),
+        },
+      });
+    }
+    if (pathname.match(/^\/api\/views\/[^/]+$/) && method === 'DELETE') {
+      return route.fulfill({ status: 200, json: { ok: true } });
+    }
+
     // Fallback: abort unknown API paths so tests get a clear failure signal
     console.warn(`[mock-api] Unhandled request: ${method} ${pathname}`);
     return route.fulfill({ status: 404, json: { error: `mock: no handler for ${pathname}` } });

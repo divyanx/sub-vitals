@@ -1067,6 +1067,79 @@ app.post('/api/settings/test-draft', async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// Saved views — GET/PUT/DELETE /api/views
+// ---------------------------------------------------------------------------
+
+const VIEWS_KEY = 'rl:views';
+const VIEWS_CAP = 20;
+
+const saveViewBodySchema = z.object({
+  name: z.string().min(1).max(60),
+  tab: z.enum(['inbox', 'drivers']),
+  params: z.record(z.string(), z.string()),
+});
+
+interface StoredView {
+  id: string;
+  name: string;
+  tab: 'inbox' | 'drivers';
+  params: Record<string, string>;
+  createdAt: number;
+}
+
+app.get('/api/views', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const raw = await redis.hGetAll(VIEWS_KEY);
+  const views: StoredView[] = Object.values(raw ?? {})
+    .map((v) => {
+      try {
+        return JSON.parse(v) as StoredView;
+      } catch {
+        return null;
+      }
+    })
+    .filter((v): v is StoredView => v !== null)
+    .sort((a, b) => a.createdAt - b.createdAt);
+  return c.json({ views });
+});
+
+app.put('/api/views', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+
+  let body: unknown;
+  try {
+    body = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON body' }, 400);
+  }
+
+  const parsed = saveViewBodySchema.safeParse(body);
+  if (!parsed.success) {
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+  }
+
+  // Enforce cap
+  const existing = await redis.hGetAll(VIEWS_KEY);
+  const count = Object.keys(existing ?? {}).length;
+  if (count >= VIEWS_CAP) {
+    return c.json({ error: 'view cap reached', limit: VIEWS_CAP }, 400);
+  }
+
+  const id = `v_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+  const view: StoredView = { id, ...parsed.data, createdAt: Date.now() };
+  await redis.hSet(VIEWS_KEY, { [id]: JSON.stringify(view) });
+  return c.json(view);
+});
+
+app.delete('/api/views/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  if (!id) return c.json({ error: 'missing id' }, 400);
+  await redis.hDel(VIEWS_KEY, [id]);
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
 // Boot
 // ---------------------------------------------------------------------------
 
