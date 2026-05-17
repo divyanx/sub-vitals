@@ -102,17 +102,83 @@ export const modActionMinimalSchema = z.object({
 // Settings values (post-parse from settings.get)
 // ---------------------------------------------------------------------------
 
-export const taxonomyArraySchema = z.array(
-  z.object({
-    id: z.string().min(1),
-    label: z.string().min(1),
-    color: z
-      .string()
-      .regex(/^#[0-9a-fA-F]{6}$/)
-      .optional(),
-    description: z.string().optional(),
-  }),
-);
+// ---------------------------------------------------------------------------
+// Hierarchy validation helpers (used by taxonomyArraySchema superRefine)
+// ---------------------------------------------------------------------------
+
+/** Walk up the parent chain and return the depth (root = 1). Returns Infinity on cycle. */
+function nodeDepth(id: string, parentMap: Map<string, string | null>): number {
+  let depth = 1;
+  let current: string | null | undefined = id;
+  const visited = new Set<string>();
+  while (current) {
+    if (visited.has(current)) return Infinity; // cycle
+    visited.add(current);
+    current = parentMap.get(current) ?? null;
+    if (current) depth++;
+  }
+  return depth;
+}
+
+export const taxonomyNodeSchema = z.object({
+  id: z.string().min(1),
+  label: z.string().min(1),
+  color: z
+    .string()
+    .regex(/^#[0-9a-fA-F]{6}$/)
+    .optional(),
+  description: z.string().optional(),
+  parentId: z.string().nullable().optional(),
+});
+
+export const taxonomyArraySchema = z.array(taxonomyNodeSchema).superRefine((nodes, ctx) => {
+  const ids = new Set(nodes.map((n) => n.id));
+  // Build parent map: id → parentId (null = root)
+  const parentMap = new Map<string, string | null>();
+  for (const node of nodes) {
+    parentMap.set(node.id, node.parentId ?? null);
+  }
+
+  for (const node of nodes) {
+    const pid = node.parentId;
+
+    // Self-parenting
+    if (pid === node.id) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Driver "${node.id}" has a self-cycle (parentId === id).`,
+        path: [node.id],
+      });
+      continue;
+    }
+
+    // Dangling parentId
+    if (pid && !ids.has(pid)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Driver "${node.id}" has a dangling parentId "${pid}" that does not exist in the taxonomy.`,
+        path: [node.id],
+      });
+      continue;
+    }
+
+    // Depth > 3
+    const depth = nodeDepth(node.id, parentMap);
+    if (depth === Infinity) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Driver "${node.id}" is part of a parentId cycle.`,
+        path: [node.id],
+      });
+    } else if (depth > 3) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: `Driver "${node.id}" exceeds maximum depth of 3 (actual depth: ${depth}).`,
+        path: [node.id],
+      });
+    }
+  }
+});
 
 export type TaxonomyArray = z.infer<typeof taxonomyArraySchema>;
 

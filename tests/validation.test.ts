@@ -100,3 +100,78 @@ describe('taxonomyArraySchema', () => {
     );
   });
 });
+
+describe('taxonomyArraySchema — hierarchy rules', () => {
+  it('accepts a flat taxonomy (no parentId fields) — backward compat', () => {
+    const r = taxonomyArraySchema.safeParse([
+      { id: 'bug', label: 'Bug' },
+      { id: 'billing', label: 'Billing', color: '#ff0000' },
+    ]);
+    expect(r.success).toBe(true);
+  });
+
+  it('accepts valid parent → child relationships', () => {
+    const r = taxonomyArraySchema.safeParse([
+      { id: 'bug', label: 'Bug' },
+      { id: 'bug.crash', label: 'Crash', parentId: 'bug' },
+      { id: 'bug.ui', label: 'UI Glitch', parentId: 'bug' },
+    ]);
+    expect(r.success).toBe(true);
+  });
+
+  it('accepts depth exactly 3 (root → child → grandchild)', () => {
+    const r = taxonomyArraySchema.safeParse([
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B', parentId: 'a' },
+      { id: 'c', label: 'C', parentId: 'b' },
+    ]);
+    expect(r.success).toBe(true);
+  });
+
+  it('rejects depth 4 (great-grandchild)', () => {
+    const r = taxonomyArraySchema.safeParse([
+      { id: 'a', label: 'A' },
+      { id: 'b', label: 'B', parentId: 'a' },
+      { id: 'c', label: 'C', parentId: 'b' },
+      { id: 'd', label: 'D', parentId: 'c' },
+    ]);
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(JSON.stringify(r.error.issues)).toContain('depth');
+    }
+  });
+
+  it('rejects self-parenting', () => {
+    const r = taxonomyArraySchema.safeParse([{ id: 'bug', label: 'Bug', parentId: 'bug' }]);
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(JSON.stringify(r.error.issues)).toMatch(/self|cycle/i);
+    }
+  });
+
+  it('rejects a dangling parentId (refers to non-existent node)', () => {
+    const r = taxonomyArraySchema.safeParse([
+      { id: 'bug', label: 'Bug', parentId: 'does-not-exist' },
+    ]);
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(JSON.stringify(r.error.issues)).toMatch(/dangling|parent/i);
+    }
+  });
+
+  it('rejects a cycle (a → b → a)', () => {
+    const r = taxonomyArraySchema.safeParse([
+      { id: 'a', label: 'A', parentId: 'b' },
+      { id: 'b', label: 'B', parentId: 'a' },
+    ]);
+    expect(r.success).toBe(false);
+    if (!r.success) {
+      expect(JSON.stringify(r.error.issues)).toMatch(/cycle/i);
+    }
+  });
+
+  it('parentId: null is treated as root (same as missing parentId)', () => {
+    const r = taxonomyArraySchema.safeParse([{ id: 'bug', label: 'Bug', parentId: null }]);
+    expect(r.success).toBe(true);
+  });
+});
