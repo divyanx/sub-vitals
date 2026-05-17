@@ -7,7 +7,11 @@
  */
 
 import { describe, expect, it } from 'vitest';
-import { DEFAULT_TAXONOMY } from '../src/shared/storage.ts';
+import {
+  addToSentimentLabelIndex,
+  DEFAULT_TAXONOMY,
+  getPostIdsByLabel,
+} from '../src/shared/storage.ts';
 
 describe('DEFAULT_TAXONOMY', () => {
   it('contains the seven Phase-1 contact-driver categories', () => {
@@ -25,5 +29,15 @@ describe('DEFAULT_TAXONOMY', () => {
     for (const node of DEFAULT_TAXONOMY) {
       expect(node.color).toMatch(/^#[0-9a-fA-F]{6}$/);
     }
+  });
+});
+
+describe('sentiment label index exports', () => {
+  it('addToSentimentLabelIndex is exported as a function', () => {
+    expect(typeof addToSentimentLabelIndex).toBe('function');
+  });
+
+  it('getPostIdsByLabel is exported as a function', () => {
+    expect(typeof getPostIdsByLabel).toBe('function');
   });
 });

@@ -349,6 +349,46 @@ export async function getSentimentRollup(date: string): Promise<SentimentRollup 
 }
 
 // ---------------------------------------------------------------------------
+// Sentiment — per-label post index for drill-through
+// ---------------------------------------------------------------------------
+
+const SENT_LABEL_INDEX_CAP = 500; // keep the 500 most recent per label
+
+/**
+ * Record a post (not a comment) in the per-label ZSET so the dashboard
+ * can page through "all negative posts" without a full scan.
+ * Score = createdAt ms, member = postId. Called from the sentiment module
+ * immediately after persisting the score.
+ */
+export async function addToSentimentLabelIndex(
+  postId: string,
+  label: 'positive' | 'neutral' | 'negative',
+  createdAt: number,
+): Promise<void> {
+  const key = K.sentimentLabelIndex(label);
+  await redis.zAdd(key, { score: createdAt, member: postId });
+  const count = await redis.zCard(key);
+  if (count > SENT_LABEL_INDEX_CAP) {
+    await redis.zRemRangeByRank(key, 0, count - SENT_LABEL_INDEX_CAP - 1);
+  }
+}
+
+/**
+ * Return up to `limit` post IDs for a given sentiment label, most-recent first.
+ * Uses the per-label ZSET which is maintained by the sentiment trigger.
+ */
+export async function getPostIdsByLabel(
+  label: 'positive' | 'neutral' | 'negative',
+  limit = 50,
+): Promise<string[]> {
+  const members = await redis.zRange(K.sentimentLabelIndex(label), 0, limit - 1, {
+    reverse: true,
+    by: 'rank',
+  });
+  return members.map((m) => m.member);
+}
+
+// ---------------------------------------------------------------------------
 // Crisis detection — incidents
 // ---------------------------------------------------------------------------
 
