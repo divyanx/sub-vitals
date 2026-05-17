@@ -24,10 +24,10 @@ test.describe('Agents tab', () => {
 
   test('agent roles are displayed', async ({ page }) => {
     // Fixture: alice=lead, beta=verified, charlie=verified
-    await expect(page.getByText('lead')).toBeVisible();
-    // There are 2 "verified" items
-    const verified = page.getByText('verified');
-    await expect(verified).toHaveCount(2);
+    // Scope to the roster list to avoid the leaderboard section header "Verified roster"
+    const roster = page.locator('ul.divide-y').last();
+    await expect(roster.getByText('lead')).toBeVisible();
+    await expect(roster.getByText('verified')).toHaveCount(2);
   });
 
   test('verified dates are displayed', async ({ page }) => {

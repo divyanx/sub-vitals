@@ -31,7 +31,16 @@ import {
 } from '../lib/api.ts';
 import { Settings } from './Settings.tsx';
 
-type Tab = 'inbox' | 'overview' | 'drivers' | 'sentiment' | 'agents' | 'export' | 'settings';
+type Tab =
+  | 'inbox'
+  | 'overview'
+  | 'drivers'
+  | 'sentiment'
+  | 'incidents'
+  | 'themes'
+  | 'agents'
+  | 'export'
+  | 'settings';
 
 export interface DashboardProps {
   initialTab?: Tab;
@@ -51,6 +60,8 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         {tab === 'drivers' &&
           (initialDriver ? <Drivers initialDriver={initialDriver} /> : <Drivers />)}
         {tab === 'sentiment' && <SentimentTab />}
+        {tab === 'incidents' && <Incidents />}
+        {tab === 'themes' && <Themes />}
         {tab === 'agents' && <Agents />}
         {tab === 'export' && <ExportTab />}
         {tab === 'settings' && <Settings />}
@@ -78,6 +89,8 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'overview', label: 'Pulse' },
   { id: 'drivers', label: 'Contact drivers' },
   { id: 'sentiment', label: 'Sentiment' },
+  { id: 'incidents', label: 'Incidents' },
+  { id: 'themes', label: 'Themes' },
   { id: 'agents', label: 'Agents' },
   { id: 'export', label: 'Export' },
   { id: 'settings', label: 'Settings' },
@@ -1165,15 +1178,323 @@ function SentimentChart({ series }: { series: SentimentRollup[] }) {
 }
 
 // ---------------------------------------------------------------------------
+// Incidents — crisis-detection auto-grouped alerts
+// ---------------------------------------------------------------------------
+
+function Incidents() {
+  const qc = useQueryClient();
+  const [filter, setFilter] = useState<'active' | 'resolved' | 'all'>('active');
+  const q = useQuery({
+    queryKey: ['incidents', filter],
+    queryFn: () => api.incidents(filter),
+  });
+
+  const resolve = async (id: string) => {
+    try {
+      await api.resolveIncident(id);
+      await qc.invalidateQueries({ queryKey: ['incidents'] });
+    } catch (err) {
+      console.warn('resolve failed', err);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Incidents</h2>
+          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+            Auto-grouped when comment volume or negative-sentiment ratio spikes vs the 14-day
+            baseline. Resolves automatically after 30 min of quiet.
+          </p>
+        </div>
+        <div className="flex gap-2 text-xs">
+          {(['active', 'resolved', 'all'] as const).map((f) => (
+            <button
+              type="button"
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`rounded-full border px-3 py-1 transition ${
+                filter === f
+                  ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+                  : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+              }`}
+            >
+              {f}
+            </button>
+          ))}
+        </div>
+      </header>
+      {q.isPending ? (
+        <SkeletonList />
+      ) : q.isError ? (
+        <ErrorMsg msg="Couldn't load incidents." retry={() => q.refetch()} />
+      ) : q.data.incidents.length === 0 ? (
+        <EmptyHint>No incidents — your sub is calm right now.</EmptyHint>
+      ) : (
+        <ul className="space-y-2">
+          {q.data.incidents.map((inc) => (
+            <li key={inc.id} className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div>
+                  <div className="font-medium text-rose-200">{inc.reason}</div>
+                  <div className="mt-1 text-xs text-neutral-500">
+                    started {relativeTime(inc.startedAt)} · {inc.postIds.length} posts ·{' '}
+                    {inc.commentIds.length} comments
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 text-xs">
+                  <span
+                    className={`rounded-full border px-2 py-0.5 ${
+                      inc.status === 'resolved'
+                        ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
+                        : 'border-rose-700 bg-rose-900/40 text-rose-200'
+                    }`}
+                  >
+                    {inc.status}
+                  </span>
+                  {inc.status === 'open' ? (
+                    <button
+                      type="button"
+                      onClick={() => resolve(inc.id)}
+                      className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
+                    >
+                      Resolve
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+              {inc.postIds.length > 0 ? (
+                <div className="mt-3 flex flex-wrap gap-1 text-xs">
+                  {inc.postIds.slice(0, 6).map((pid) => (
+                    <span
+                      key={pid}
+                      className="rounded border border-neutral-800 bg-neutral-950 px-2 py-0.5 text-neutral-400"
+                    >
+                      {pid}
+                    </span>
+                  ))}
+                  {inc.postIds.length > 6 ? (
+                    <span className="px-2 py-0.5 text-neutral-500">
+                      +{inc.postIds.length - 6} more
+                    </span>
+                  ) : null}
+                </div>
+              ) : null}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Themes — AI-clustered emerging issues
+// ---------------------------------------------------------------------------
+
+function Themes() {
+  const qc = useQueryClient();
+  const q = useQuery({ queryKey: ['themes'], queryFn: api.themes });
+  const [regenerating, setRegenerating] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const regenerate = async () => {
+    setRegenerating(true);
+    setError(null);
+    try {
+      await api.regenerateThemes();
+      await qc.invalidateQueries({ queryKey: ['themes'] });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setRegenerating(false);
+    }
+  };
+
+  return (
+    <section className="space-y-4">
+      <header className="flex flex-wrap items-baseline justify-between gap-3">
+        <div>
+          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Emerging themes</h2>
+          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+            LLM-clustered themes from the most recent negative posts. Regenerated daily; click below
+            to refresh on-demand.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={regenerate}
+          disabled={regenerating}
+          className="rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1 text-xs text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+        >
+          {regenerating ? 'Regenerating…' : '✨ Regenerate now'}
+        </button>
+      </header>
+      {error ? (
+        <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">
+          {error}
+        </div>
+      ) : null}
+      {q.isPending ? (
+        <SkeletonList />
+      ) : q.isError ? (
+        <ErrorMsg msg="Couldn't load themes." retry={() => q.refetch()} />
+      ) : q.data.themes.length === 0 ? (
+        <EmptyHint>
+          No themes yet. Either no negative posts to cluster, or click Regenerate to compute now.
+        </EmptyHint>
+      ) : (
+        <>
+          <div className="text-xs text-neutral-500">
+            generated {q.data.generatedAt ? relativeTime(q.data.generatedAt) : 'recently'} · last 7
+            days
+          </div>
+          <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+            {q.data.themes.map((t) => (
+              <li key={t.name} className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+                <div className="flex items-baseline justify-between gap-2">
+                  <h3 className="font-medium text-neutral-100">{t.name}</h3>
+                  <span className="text-xs text-neutral-500">
+                    {t.postCount} post{t.postCount === 1 ? '' : 's'} ·{' '}
+                    <span
+                      className={
+                        t.avgSentiment < -0.2
+                          ? 'text-rose-300'
+                          : t.avgSentiment > 0.2
+                            ? 'text-emerald-300'
+                            : 'text-neutral-300'
+                      }
+                    >
+                      {t.avgSentiment.toFixed(2)}
+                    </span>
+                  </span>
+                </div>
+                <p className="mt-2 text-sm text-neutral-400">{t.summary}</p>
+                {t.samplePostIds.length > 0 ? (
+                  <div className="mt-3 flex flex-wrap gap-1 text-xs">
+                    {t.samplePostIds.slice(0, 4).map((pid) => (
+                      <span
+                        key={pid}
+                        className="rounded border border-neutral-800 bg-neutral-950 px-2 py-0.5 text-neutral-400"
+                      >
+                        {pid}
+                      </span>
+                    ))}
+                  </div>
+                ) : null}
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Agents
 // ---------------------------------------------------------------------------
 
 function Agents() {
   const agentsQ = useQuery({ queryKey: ['agents'], queryFn: api.agents });
-  if (agentsQ.isPending) return <SkeletonList />;
+  const leaderboardQ = useQuery({
+    queryKey: ['agent-leaderboard'],
+    queryFn: () => api.agentLeaderboard(30),
+  });
+  if (agentsQ.isPending || leaderboardQ.isPending) return <SkeletonList />;
   if (agentsQ.isError)
     return <ErrorMsg msg="Couldn't load agents." retry={() => agentsQ.refetch()} />;
-  return <AgentList agents={agentsQ.data.agents} />;
+  const lb = leaderboardQ.isError ? { rows: [] as never[], count: 0, days: 30 } : leaderboardQ.data;
+  return (
+    <div className="space-y-8">
+      <section>
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">
+          Performance · last {lb.days}d
+        </h2>
+        <AgentLeaderboard rows={lb.rows} />
+      </section>
+      <section>
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">Verified roster</h2>
+        <AgentList agents={agentsQ.data.agents} />
+      </section>
+    </div>
+  );
+}
+
+function AgentLeaderboard({
+  rows,
+}: {
+  rows: Array<{
+    username: string;
+    replies: number;
+    firstResponses: number;
+    avgLatencyMs: number | null;
+    avgSentimentDelta: number | null;
+    firstResponseRate: number | null;
+  }>;
+}) {
+  if (rows.length === 0) {
+    return (
+      <EmptyHint>
+        No agent activity recorded in this window yet. Agents need to comment on tagged posts for
+        metrics to appear.
+      </EmptyHint>
+    );
+  }
+  return (
+    <div className="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900">
+      <table className="w-full text-sm">
+        <thead className="bg-neutral-950/50 text-left text-xs uppercase tracking-wide text-neutral-400">
+          <tr>
+            <th className="px-4 py-2">Agent</th>
+            <th className="px-4 py-2 text-right">Replies</th>
+            <th className="px-4 py-2 text-right">First responses</th>
+            <th className="px-4 py-2 text-right">First-response rate</th>
+            <th className="px-4 py-2 text-right">Avg first-response latency</th>
+            <th className="px-4 py-2 text-right">Sentiment lift</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-neutral-800">
+          {rows.map((r) => (
+            <tr key={r.username}>
+              <td className="px-4 py-2 font-medium text-neutral-100">u/{r.username}</td>
+              <td className="px-4 py-2 text-right tabular-nums">{r.replies}</td>
+              <td className="px-4 py-2 text-right tabular-nums">{r.firstResponses}</td>
+              <td className="px-4 py-2 text-right tabular-nums text-neutral-300">
+                {r.firstResponseRate != null ? `${(r.firstResponseRate * 100).toFixed(0)}%` : '—'}
+              </td>
+              <td className="px-4 py-2 text-right tabular-nums text-neutral-300">
+                {r.avgLatencyMs != null ? formatLatency(r.avgLatencyMs) : '—'}
+              </td>
+              <td
+                className={`px-4 py-2 text-right tabular-nums ${
+                  r.avgSentimentDelta == null
+                    ? 'text-neutral-500'
+                    : r.avgSentimentDelta > 0.05
+                      ? 'text-emerald-300'
+                      : r.avgSentimentDelta < -0.05
+                        ? 'text-rose-300'
+                        : 'text-neutral-300'
+                }`}
+                title="Avg change in thread sentiment in the 5 comments following the agent's reply"
+              >
+                {r.avgSentimentDelta != null
+                  ? `${r.avgSentimentDelta > 0 ? '+' : ''}${r.avgSentimentDelta.toFixed(2)}`
+                  : '—'}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function formatLatency(ms: number): string {
+  if (ms < 60_000) return `${Math.round(ms / 1000)}s`;
+  if (ms < 3_600_000) return `${Math.round(ms / 60_000)}m`;
+  if (ms < 86_400_000) return `${(ms / 3_600_000).toFixed(1)}h`;
+  return `${(ms / 86_400_000).toFixed(1)}d`;
 }
 
 function AgentList({ agents }: { agents: Agent[] }) {

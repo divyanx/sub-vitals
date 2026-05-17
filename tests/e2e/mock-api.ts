@@ -75,6 +75,38 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ json: fixture('agents') });
     }
 
+    // Agent leaderboard
+    if (pathname === '/api/agents/leaderboard') {
+      return route.fulfill({ json: { days: 30, count: 0, rows: [] } });
+    }
+
+    // Incidents
+    if (pathname === '/api/incidents') {
+      return route.fulfill({ json: { count: 0, incidents: [] } });
+    }
+    if (pathname.match(/^\/api\/incidents\/[^/]+\/resolve$/) && method === 'POST') {
+      return route.fulfill({ status: 200, json: {} });
+    }
+
+    // Themes
+    if (pathname === '/api/themes/latest') {
+      return route.fulfill({ json: { generatedAt: null, themes: null } });
+    }
+    if (pathname === '/api/themes/regenerate' && method === 'POST') {
+      return route.fulfill({ json: { generatedAt: Date.now(), themes: [] } });
+    }
+
+    // Settings
+    if (pathname === '/api/settings' && method === 'GET') {
+      return route.fulfill({ json: { openrouterKeyConfigured: true } });
+    }
+    if (pathname === '/api/settings' && method === 'PUT') {
+      return route.fulfill({ json: { openrouterKeyConfigured: true } });
+    }
+    if (pathname === '/api/settings/test-draft' && method === 'POST') {
+      return route.fulfill({ json: fixture('draft-reply') });
+    }
+
     // Triage queue
     if (pathname === '/api/triage/queue') {
       return route.fulfill({ json: fixture('triage-queue') });

@@ -204,6 +204,66 @@ export const api = {
     if (!r.ok) throw new Error(`status update failed: HTTP ${r.status}`);
   },
   agents: () => getJson<{ agents: Agent[] }>('/api/agents'),
+  agentLeaderboard: (days = 30) =>
+    getJson<{
+      days: number;
+      count: number;
+      rows: Array<{
+        username: string;
+        replies: number;
+        firstResponses: number;
+        latencyMsSum: number;
+        latencyCount: number;
+        sentBeforeSum: number;
+        sentAfterSum: number;
+        sentDeltaN: number;
+        avgLatencyMs: number | null;
+        avgSentimentDelta: number | null;
+        firstResponseRate: number | null;
+      }>;
+    }>(`/api/agents/leaderboard?days=${days}`),
+  incidents: (status: 'active' | 'resolved' | 'all' = 'active') =>
+    getJson<{
+      count: number;
+      incidents: Array<{
+        id: string;
+        startedAt: number;
+        reason: string;
+        postIds: string[];
+        commentIds: string[];
+        status: 'open' | 'resolved';
+        resolvedAt?: number;
+        resolvedBy?: string;
+      }>;
+    }>(`/api/incidents?status=${status}`),
+  resolveIncident: async (id: string): Promise<void> => {
+    const r = await fetch(`/api/incidents/${encodeURIComponent(id)}/resolve`, { method: 'POST' });
+    if (!r.ok) throw new Error(`resolve failed: HTTP ${r.status}`);
+  },
+  themes: async () => {
+    const raw = await getJson<{
+      generatedAt: number | null;
+      themes: Array<{
+        name: string;
+        summary: string;
+        samplePostIds: string[];
+        postCount: number;
+        avgSentiment: number;
+      }> | null;
+    }>('/api/themes/latest');
+    return {
+      generatedAt: raw.generatedAt,
+      themes: raw.themes ?? [],
+    };
+  },
+  regenerateThemes: async () => {
+    const r = await fetch('/api/themes/regenerate', { method: 'POST' });
+    if (!r.ok) {
+      const body = await r.json().catch(() => ({}));
+      throw new Error((body as { error?: string }).error ?? `HTTP ${r.status}`);
+    }
+    return (await r.json()) as Awaited<ReturnType<typeof api.themes>>;
+  },
   sentimentRollup: () =>
     getJson<{ from: string; to: string; series: SentimentRollup[] }>('/api/sentiment/rollup'),
   settings: {

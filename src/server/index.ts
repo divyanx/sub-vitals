@@ -18,6 +18,7 @@
 
 import { context, createServer, getServerPort, reddit, redis, settings } from '@devvit/web/server';
 import { serve } from '@hono/node-server';
+import { agentMetricsModule } from '@modules/agent-metrics/index.js';
 import {
   agentVerificationModule,
   handleMarkAgentMenu,
@@ -85,6 +86,7 @@ registerModule(dashboardOrchestratorModule);
 registerModule(impostorDetectionModule);
 registerModule(crisisDetectionModule);
 registerModule(themeClusteringModule);
+registerModule(agentMetricsModule);
 
 // ---------------------------------------------------------------------------
 // App
@@ -627,6 +629,7 @@ for (const mod of [
   impostorDetectionModule,
   crisisDetectionModule,
   themeClusteringModule,
+  agentMetricsModule,
 ]) {
   mod.apiRoutes?.(app);
 }
