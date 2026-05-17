@@ -1004,10 +1004,12 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
   const kpis = useMemo(() => {
     if (!summaryQ.data || !volumeQ.data || !sentimentQ.data) return null;
     const summary = summaryQ.data;
+    const volumeSeries = Array.isArray(volumeQ.data.series) ? volumeQ.data.series : [];
+    const sentSeries = Array.isArray(sentimentQ.data.series) ? sentimentQ.data.series : [];
 
     // Posts today + delta vs 7d avg
-    const today = summary.drivers.today?.totalPosts ?? 0;
-    const last7 = volumeQ.data.series.slice(-8, -1); // previous 7 days (not today)
+    const today = summary.drivers?.today?.totalPosts ?? 0;
+    const last7 = volumeSeries.slice(-8, -1); // previous 7 days (not today)
     const avg7 = last7.length > 0 ? last7.reduce((s, d) => s + d.totalPosts, 0) / last7.length : 0;
     const postsDelta = avg7 > 0 ? ((today - avg7) / avg7) * 100 : 0;
 
@@ -1016,7 +1018,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
       summary.sentiment && summary.sentiment.total > 0
         ? summary.sentiment.negative / summary.sentiment.total
         : 0;
-    const last7Sent = sentimentQ.data.series.slice(-8, -1);
+    const last7Sent = sentSeries.slice(-8, -1);
     const avg7negShare =
       last7Sent.length > 0
         ? last7Sent.reduce((s, d) => s + (d.total > 0 ? d.negative / d.total : 0), 0) /
@@ -1039,20 +1041,22 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
       postsDelta,
       negShare,
       negDelta,
-      topDriver: summary.drivers.topDriverLabel ?? '—',
-      topDriverCount: summary.drivers.topDriverCount,
+      topDriver: summary.drivers?.topDriverLabel ?? '—',
+      topDriverCount: summary.drivers?.topDriverCount ?? 0,
       activeIncidents: incidentsQ.data?.count ?? 0,
       avgLatencyMs,
-      llmSpend: summary.llm.monthCents,
+      llmSpend: summary.llm?.monthCents ?? 0,
     };
   }, [summaryQ.data, volumeQ.data, sentimentQ.data, incidentsQ.data, leaderboardQ.data]);
 
   // --- Sparklines data (14-day window per driver) ---
   const sparklines = useMemo(() => {
     if (!volumeQ.data || !taxonomyQ.data) return null;
-    const series = volumeQ.data.series.slice(-14); // last 14 days
-    return taxonomyQ.data.taxonomy.map((node) => {
-      const values = series.map((d) => d.counts[node.id] ?? 0);
+    const rawSeries = Array.isArray(volumeQ.data.series) ? volumeQ.data.series : [];
+    const taxonomy = Array.isArray(taxonomyQ.data.taxonomy) ? taxonomyQ.data.taxonomy : [];
+    const series = rawSeries.slice(-14);
+    return taxonomy.map((node) => {
+      const values = series.map((d) => d.counts?.[node.id] ?? 0);
       const current = values.at(-1) ?? 0;
       return { node, values, current };
     });
@@ -1061,9 +1065,10 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
   // --- Heatmap data: bin recentPosts by day-of-week (0=Mon) x hour ---
   const heatmap = useMemo(() => {
     if (!recentQ.data) return null;
+    const items = Array.isArray(recentQ.data.items) ? recentQ.data.items : [];
     // grid[dow][hour] where dow 0=Mon..6=Sun
     const grid: number[][] = Array.from({ length: 7 }, () => new Array<number>(24).fill(0));
-    for (const post of recentQ.data.items) {
+    for (const post of items) {
       const d = new Date(post.createdAt);
       // getDay: 0=Sun,1=Mon..6=Sat → convert to 0=Mon..6=Sun
       const jsDay = d.getDay();
