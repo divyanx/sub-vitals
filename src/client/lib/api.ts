@@ -391,6 +391,20 @@ export const api = {
     );
     return { ...raw, series: arr<SentimentRollup>(raw.series) };
   },
+
+  sentimentPosts: async (
+    label: 'positive' | 'neutral' | 'negative',
+    opts: { days?: number; limit?: number } = {},
+  ) => {
+    const q = new URLSearchParams();
+    q.set('label', label);
+    if (opts.days) q.set('days', String(opts.days));
+    if (opts.limit) q.set('limit', String(opts.limit));
+    const raw = await getJson<{ label: string; count: number; posts: RecentPost[] }>(
+      `/api/sentiment/posts?${q.toString()}`,
+    );
+    return { ...raw, posts: arr<RecentPost>(raw.posts) };
+  },
   audit: async (opts: { limit?: number; action?: AuditAction; actor?: string } = {}) => {
     const q = new URLSearchParams();
     if (opts.limit) q.set('limit', String(opts.limit));
