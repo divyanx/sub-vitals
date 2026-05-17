@@ -56,9 +56,10 @@ test.describe('Sentiment tab', () => {
   });
 
   test('all 3 area paths are rendered (positive, neutral, negative)', async ({ page }) => {
-    // Recharts stacked AreaChart renders paths for each dataKey
+    // SentimentChart is lazy-loaded via React.lazy → wait for chunk + render
+    await expect(page.locator('.recharts-wrapper')).toBeVisible({ timeout: 15000 });
     const paths = page.locator('.recharts-area-area');
-    // Expect at least 3 area fill paths
+    await expect(paths.first()).toBeVisible({ timeout: 5000 });
     const count = await paths.count();
     expect(count).toBeGreaterThanOrEqual(3);
   });

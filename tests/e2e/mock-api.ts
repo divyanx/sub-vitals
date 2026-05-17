@@ -44,6 +44,37 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ json: fixture('summary') });
     }
 
+    // Pulse stats (Sprint 10)
+    if (pathname === '/api/dashboard/pulse-stats') {
+      return route.fulfill({
+        json: {
+          today: '2026-05-17',
+          postsToday: 14,
+          topDriver: { id: 'bug', label: 'Bug / broken experience', count: 6 },
+          negativeShare: 0.36,
+          negativeShareTrend: 'up',
+          activeIncidents: 1,
+          sentimentTrend: Array.from({ length: 7 }, (_, i) => ({
+            date: `2026-05-${String(10 + i).padStart(2, '0')}`,
+            positive: 4 + i,
+            neutral: 6,
+            negative: 3 + (i % 3),
+          })),
+        },
+      });
+    }
+
+    // Onboarding (Sprint 10)
+    if (pathname === '/api/onboarding/status') {
+      return route.fulfill({ json: { onboarded: true } });
+    }
+    if (pathname === '/api/onboarding/complete' && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname === '/api/onboarding/reset' && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+
     // Recent posts
     if (pathname === '/api/dashboard/recent-posts') {
       return route.fulfill({ json: fixture('recent-posts') });

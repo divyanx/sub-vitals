@@ -2,7 +2,7 @@
  * pulse.spec.ts
  *
  * Tests the Pulse view (?view=pulse) — the Daily Pulse pinned-post widget.
- * 3 stat cards should render with values sourced from the summary fixture.
+ * 4 stat cards should render with values sourced from the pulse-stats fixture.
  */
 
 import { expect, test } from '@playwright/test';
@@ -13,28 +13,27 @@ test.describe('Pulse view', () => {
     await setupMocks(page);
   });
 
-  test('three stat cards render with fixture values', async ({ page }) => {
+  test('four stat cards render with fixture values', async ({ page }) => {
     await page.goto('/?view=pulse');
 
     // Wait for skeleton to disappear (data is loaded)
     await expect(page.getByRole('article').first()).toBeVisible({ timeout: 8000 });
 
-    // All 3 stat cards should exist
+    // All 4 stat cards should exist (Posts today / Top driver / Negative share / Active incidents)
     const cards = page.getByRole('article');
-    await expect(cards).toHaveCount(3);
+    await expect(cards).toHaveCount(4);
 
-    // "Top contact driver" card — fixture has topDriverLabel = "Bug / broken experience"
-    const topDriverCard = page.getByText('Bug / broken experience');
-    await expect(topDriverCard).toBeVisible();
+    // "Top driver" card — fixture has label "Bug / broken experience"
+    await expect(page.getByText('Bug / broken experience')).toBeVisible();
 
-    // "Today's posts" card — fixture has totalPosts = 14
-    // Use .first() since "14" may appear in multiple contexts
-    const postCount = page.getByText('14').first();
-    await expect(postCount).toBeVisible();
+    // "Posts today" card — fixture has postsToday = 14
+    await expect(page.getByText('14').first()).toBeVisible();
 
-    // "Sentiment" card — fixture averageScore = -0.18
-    const sentimentScore = page.getByText('-0.18').first();
-    await expect(sentimentScore).toBeVisible();
+    // "Negative share" card — fixture has 0.36 → "36%"
+    await expect(page.getByText('36%').first()).toBeVisible();
+
+    // "Active incidents" card — fixture has 1 incident
+    await expect(page.getByText('needs attention')).toBeVisible();
   });
 
   test('"Open full dashboard" CTA is visible and clickable', async ({ page }) => {
