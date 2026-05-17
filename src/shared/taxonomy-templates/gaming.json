@@ -1,0 +1,122 @@
+[
+  {
+    "id": "gm.bug",
+    "label": "Bug",
+    "color": "#ef4444",
+    "description": "In-game bugs and technical issues",
+    "keywords": ["bug", "glitch", "broken", "not working", "issue"],
+    "parentId": null
+  },
+  {
+    "id": "gm.bug.crash",
+    "label": "Crash",
+    "color": "#f87171",
+    "description": "Game crashes",
+    "keywords": ["crash", "crashes", "freeze", "BSOD", "force close"],
+    "parentId": "gm.bug"
+  },
+  {
+    "id": "gm.bug.exploit",
+    "label": "Exploit",
+    "color": "#f87171",
+    "description": "Exploitable game bugs",
+    "keywords": ["exploit", "duplication", "glitch exploit", "abuse", "infinite"],
+    "parentId": "gm.bug"
+  },
+  {
+    "id": "gm.bug.visual",
+    "label": "Visual Glitch",
+    "color": "#f87171",
+    "description": "Graphical display errors",
+    "keywords": ["visual glitch", "graphical bug", "texture", "clipping", "invisible"],
+    "parentId": "gm.bug"
+  },
+  {
+    "id": "gm.bug.audio",
+    "label": "Audio Glitch",
+    "color": "#f87171",
+    "description": "Sound and audio issues",
+    "keywords": ["audio glitch", "sound bug", "no sound", "audio cut", "muffled"],
+    "parentId": "gm.bug"
+  },
+  {
+    "id": "gm.balance",
+    "label": "Balance",
+    "color": "#f97316",
+    "description": "Game balance discussions",
+    "keywords": ["balance", "overpowered", "underpowered", "broken OP", "nerf"],
+    "parentId": null
+  },
+  {
+    "id": "gm.balance.op",
+    "label": "OP",
+    "color": "#fb923c",
+    "description": "Overpowered content",
+    "keywords": ["overpowered", "OP", "too strong", "needs nerf", "broken"],
+    "parentId": "gm.balance"
+  },
+  {
+    "id": "gm.balance.underpowered",
+    "label": "Underpowered",
+    "color": "#fb923c",
+    "description": "Underpowered content",
+    "keywords": ["underpowered", "weak", "useless", "buff needed", "too weak"],
+    "parentId": "gm.balance"
+  },
+  {
+    "id": "gm.cheating",
+    "label": "Cheating Report",
+    "color": "#dc2626",
+    "description": "Cheating and hacking reports",
+    "keywords": ["cheater", "hacker", "aimbot", "wallhack", "cheating"],
+    "parentId": null
+  },
+  {
+    "id": "gm.account",
+    "label": "Account",
+    "color": "#8b5cf6",
+    "description": "Account issues",
+    "keywords": ["account", "ban", "suspended", "hacked"],
+    "parentId": null
+  },
+  {
+    "id": "gm.account.hack",
+    "label": "Hack",
+    "color": "#a78bfa",
+    "description": "Account compromised",
+    "keywords": ["hacked", "compromised", "unauthorized access", "stolen account"],
+    "parentId": "gm.account"
+  },
+  {
+    "id": "gm.account.ban-appeal",
+    "label": "Ban Appeal",
+    "color": "#a78bfa",
+    "description": "Ban dispute or appeal",
+    "keywords": ["ban appeal", "wrongfully banned", "false ban", "unban", "appeal"],
+    "parentId": "gm.account"
+  },
+  {
+    "id": "gm.account.recovery",
+    "label": "Recovery",
+    "color": "#a78bfa",
+    "description": "Account recovery help",
+    "keywords": ["account recovery", "lost access", "recover account", "forgot"],
+    "parentId": "gm.account"
+  },
+  {
+    "id": "gm.feature",
+    "label": "Feature Request",
+    "color": "#0ea5e9",
+    "description": "New feature ideas",
+    "keywords": ["feature request", "add", "would be cool", "suggestion", "idea"],
+    "parentId": null
+  },
+  {
+    "id": "gm.lore",
+    "label": "Lore Discussion",
+    "color": "#10b981",
+    "description": "Story and lore conversations",
+    "keywords": ["lore", "story", "canon", "theory", "universe"],
+    "parentId": null
+  }
+]

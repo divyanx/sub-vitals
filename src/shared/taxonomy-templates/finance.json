@@ -1,0 +1,130 @@
+[
+  {
+    "id": "fin.transaction",
+    "label": "Transaction Issue",
+    "color": "#ef4444",
+    "description": "Payment and transaction problems",
+    "keywords": ["transaction", "payment", "transfer", "charge", "failed"],
+    "parentId": null
+  },
+  {
+    "id": "fin.transaction.failed",
+    "label": "Failed",
+    "color": "#f87171",
+    "description": "Failed transactions",
+    "keywords": ["failed", "declined", "rejected", "wouldn't process", "error"],
+    "parentId": "fin.transaction"
+  },
+  {
+    "id": "fin.transaction.pending",
+    "label": "Pending",
+    "color": "#f87171",
+    "description": "Stuck pending transactions",
+    "keywords": ["pending", "processing", "stuck", "not cleared", "on hold"],
+    "parentId": "fin.transaction"
+  },
+  {
+    "id": "fin.transaction.disputed",
+    "label": "Disputed",
+    "color": "#f87171",
+    "description": "Transaction disputes",
+    "keywords": ["dispute", "chargeback", "unauthorized", "didn't authorize", "fraud"],
+    "parentId": "fin.transaction"
+  },
+  {
+    "id": "fin.security",
+    "label": "Account Security",
+    "color": "#dc2626",
+    "description": "Account security concerns",
+    "keywords": ["security", "hacked", "fraud", "unauthorized", "suspicious"],
+    "parentId": null
+  },
+  {
+    "id": "fin.security.2fa",
+    "label": "2FA",
+    "color": "#f87171",
+    "description": "Two-factor authentication issues",
+    "keywords": ["2FA", "two factor", "authenticator", "SMS code", "OTP"],
+    "parentId": "fin.security"
+  },
+  {
+    "id": "fin.security.login",
+    "label": "Login",
+    "color": "#f87171",
+    "description": "Login and access issues",
+    "keywords": ["login", "locked out", "can't access", "password reset"],
+    "parentId": "fin.security"
+  },
+  {
+    "id": "fin.security.suspicious",
+    "label": "Suspicious Activity",
+    "color": "#f87171",
+    "description": "Suspicious account activity",
+    "keywords": ["suspicious", "unknown transaction", "didn't do this", "fraud alert"],
+    "parentId": "fin.security"
+  },
+  {
+    "id": "fin.fees",
+    "label": "Fees",
+    "color": "#f59e0b",
+    "description": "Fee inquiries and disputes",
+    "keywords": ["fee", "charge", "cost", "maintenance fee", "commission"],
+    "parentId": null
+  },
+  {
+    "id": "fin.withdrawal",
+    "label": "Withdrawal / Deposit",
+    "color": "#0ea5e9",
+    "description": "Money movement issues",
+    "keywords": ["withdrawal", "deposit", "transfer", "send money", "receive money"],
+    "parentId": null
+  },
+  {
+    "id": "fin.withdrawal.bank",
+    "label": "Bank Transfer",
+    "color": "#38bdf8",
+    "description": "ACH and bank transfer issues",
+    "keywords": ["bank transfer", "ACH", "bank account", "wire"],
+    "parentId": "fin.withdrawal"
+  },
+  {
+    "id": "fin.withdrawal.crypto",
+    "label": "Crypto",
+    "color": "#38bdf8",
+    "description": "Cryptocurrency withdrawal issues",
+    "keywords": ["crypto", "bitcoin", "ethereum", "wallet", "blockchain"],
+    "parentId": "fin.withdrawal"
+  },
+  {
+    "id": "fin.withdrawal.wire",
+    "label": "Wire",
+    "color": "#38bdf8",
+    "description": "Wire transfer issues",
+    "keywords": ["wire transfer", "wire", "international transfer", "SWIFT"],
+    "parentId": "fin.withdrawal"
+  },
+  {
+    "id": "fin.compliance",
+    "label": "Compliance Question",
+    "color": "#6366f1",
+    "description": "Regulatory and compliance questions",
+    "keywords": ["compliance", "regulation", "KYC", "AML", "tax", "legal"],
+    "parentId": null
+  },
+  {
+    "id": "fin.investment",
+    "label": "Investment Help",
+    "color": "#10b981",
+    "description": "Investment product questions",
+    "keywords": ["investment", "portfolio", "stocks", "ETF", "returns", "risk"],
+    "parentId": null
+  },
+  {
+    "id": "fin.feedback",
+    "label": "Praise / Complaint",
+    "color": "#8b5cf6",
+    "description": "General feedback",
+    "keywords": ["feedback", "great service", "terrible", "disappointed", "impressed"],
+    "parentId": null
+  }
+]

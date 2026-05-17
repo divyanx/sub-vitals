@@ -1,0 +1,130 @@
+[
+  {
+    "id": "hw.defect",
+    "label": "Defect",
+    "color": "#ef4444",
+    "description": "Hardware defects and failures",
+    "keywords": ["defect", "broken", "faulty", "doesn't work", "dead on arrival"],
+    "parentId": null
+  },
+  {
+    "id": "hw.defect.doa",
+    "label": "DOA",
+    "color": "#f87171",
+    "description": "Dead on arrival",
+    "keywords": ["dead on arrival", "DOA", "never worked", "out of box failure"],
+    "parentId": "hw.defect"
+  },
+  {
+    "id": "hw.defect.wear",
+    "label": "Wear",
+    "color": "#f87171",
+    "description": "Premature wear and degradation",
+    "keywords": ["wearing out", "degrading", "scratched", "peeling", "fading"],
+    "parentId": "hw.defect"
+  },
+  {
+    "id": "hw.defect.component",
+    "label": "Component Failure",
+    "color": "#f87171",
+    "description": "Specific component failure",
+    "keywords": ["button", "port", "screen", "battery", "speaker", "failed"],
+    "parentId": "hw.defect"
+  },
+  {
+    "id": "hw.setup",
+    "label": "Setup",
+    "color": "#f59e0b",
+    "description": "Device setup and configuration",
+    "keywords": ["setup", "configure", "pair", "connect", "install"],
+    "parentId": null
+  },
+  {
+    "id": "hw.setup.pairing",
+    "label": "Pairing",
+    "color": "#fbbf24",
+    "description": "Pairing and connection issues",
+    "keywords": ["pairing", "pair", "bluetooth", "connect", "not connecting"],
+    "parentId": "hw.setup"
+  },
+  {
+    "id": "hw.setup.network",
+    "label": "Network",
+    "color": "#fbbf24",
+    "description": "Wi-Fi and network setup",
+    "keywords": ["wifi", "network", "internet", "router", "connection"],
+    "parentId": "hw.setup"
+  },
+  {
+    "id": "hw.setup.firmware",
+    "label": "Firmware",
+    "color": "#fbbf24",
+    "description": "Firmware update issues",
+    "keywords": ["firmware", "update", "upgrade", "flashing", "version"],
+    "parentId": "hw.setup"
+  },
+  {
+    "id": "hw.compatibility",
+    "label": "Compatibility",
+    "color": "#8b5cf6",
+    "description": "Compatibility questions",
+    "keywords": ["compatible", "works with", "support", "compatibility"],
+    "parentId": null
+  },
+  {
+    "id": "hw.compatibility.app",
+    "label": "App",
+    "color": "#a78bfa",
+    "description": "App compatibility issues",
+    "keywords": ["app", "application", "software", "mobile app", "desktop app"],
+    "parentId": "hw.compatibility"
+  },
+  {
+    "id": "hw.compatibility.os",
+    "label": "OS",
+    "color": "#a78bfa",
+    "description": "Operating system compatibility",
+    "keywords": ["OS", "Windows", "Mac", "Linux", "Android", "iOS"],
+    "parentId": "hw.compatibility"
+  },
+  {
+    "id": "hw.compatibility.accessory",
+    "label": "Accessory",
+    "color": "#a78bfa",
+    "description": "Third-party accessory support",
+    "keywords": ["accessory", "case", "adapter", "cable", "third party"],
+    "parentId": "hw.compatibility"
+  },
+  {
+    "id": "hw.warranty",
+    "label": "Warranty Claim",
+    "color": "#10b981",
+    "description": "Warranty claims and coverage",
+    "keywords": ["warranty", "guarantee", "coverage", "claim", "replacement"],
+    "parentId": null
+  },
+  {
+    "id": "hw.repair",
+    "label": "Repair Status",
+    "color": "#14b8a6",
+    "description": "Repair tracking and status",
+    "keywords": ["repair", "fix", "RMA", "service", "repair status"],
+    "parentId": null
+  },
+  {
+    "id": "hw.trade-in",
+    "label": "Trade-In",
+    "color": "#0ea5e9",
+    "description": "Trade-in program questions",
+    "keywords": ["trade in", "trade-in", "upgrade program", "turn in old"],
+    "parentId": null
+  },
+  {
+    "id": "hw.praise",
+    "label": "Praise",
+    "color": "#22c55e",
+    "description": "Positive product feedback",
+    "keywords": ["great", "love it", "excellent", "amazing build", "impressed"],
+    "parentId": null
+  }
+]

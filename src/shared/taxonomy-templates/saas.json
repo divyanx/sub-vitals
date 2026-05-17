@@ -1,0 +1,154 @@
+[
+  {
+    "id": "saas.bug",
+    "label": "Bug",
+    "color": "#ef4444",
+    "description": "Software defects and errors",
+    "keywords": ["bug", "error", "broken", "not working", "issue"],
+    "parentId": null
+  },
+  {
+    "id": "saas.bug.crash",
+    "label": "Crash",
+    "color": "#f87171",
+    "description": "App crashes or freezes",
+    "keywords": ["crash", "freeze", "hangs", "unresponsive", "force close"],
+    "parentId": "saas.bug"
+  },
+  {
+    "id": "saas.bug.data-loss",
+    "label": "Data Loss",
+    "color": "#f87171",
+    "description": "Data missing or corrupted",
+    "keywords": ["data loss", "lost data", "missing data", "corrupted", "deleted"],
+    "parentId": "saas.bug"
+  },
+  {
+    "id": "saas.bug.performance",
+    "label": "Performance",
+    "color": "#f87171",
+    "description": "Slow or lagging product",
+    "keywords": ["slow", "lag", "performance", "loading", "timeout"],
+    "parentId": "saas.bug"
+  },
+  {
+    "id": "saas.bug.ui-glitch",
+    "label": "UI Glitch",
+    "color": "#f87171",
+    "description": "Visual display issues",
+    "keywords": ["ui glitch", "display bug", "visual", "rendering", "layout broken"],
+    "parentId": "saas.bug"
+  },
+  {
+    "id": "saas.feature",
+    "label": "Feature Request",
+    "color": "#8b5cf6",
+    "description": "New feature suggestions",
+    "keywords": ["feature request", "add", "would be great", "wish", "suggest"],
+    "parentId": null
+  },
+  {
+    "id": "saas.billing",
+    "label": "Billing",
+    "color": "#f59e0b",
+    "description": "Subscription and payment issues",
+    "keywords": ["billing", "invoice", "charge", "payment", "subscription"],
+    "parentId": null
+  },
+  {
+    "id": "saas.billing.pricing",
+    "label": "Pricing",
+    "color": "#fbbf24",
+    "description": "Plan pricing questions",
+    "keywords": ["pricing", "plan", "cost", "how much", "tier"],
+    "parentId": "saas.billing"
+  },
+  {
+    "id": "saas.billing.invoice",
+    "label": "Invoice",
+    "color": "#fbbf24",
+    "description": "Invoice and receipt issues",
+    "keywords": ["invoice", "receipt", "billing statement", "tax"],
+    "parentId": "saas.billing"
+  },
+  {
+    "id": "saas.billing.refund",
+    "label": "Refund",
+    "color": "#fbbf24",
+    "description": "Refund requests",
+    "keywords": ["refund", "money back", "cancel and refund"],
+    "parentId": "saas.billing"
+  },
+  {
+    "id": "saas.integration",
+    "label": "Integration",
+    "color": "#14b8a6",
+    "description": "Third-party integrations",
+    "keywords": ["integration", "API", "webhook", "connect", "sync"],
+    "parentId": null
+  },
+  {
+    "id": "saas.onboarding",
+    "label": "Onboarding",
+    "color": "#0ea5e9",
+    "description": "Getting started issues",
+    "keywords": ["onboarding", "setup", "getting started", "new user", "first time"],
+    "parentId": null
+  },
+  {
+    "id": "saas.onboarding.setup",
+    "label": "Setup",
+    "color": "#38bdf8",
+    "description": "Initial configuration help",
+    "keywords": ["setup", "configure", "install", "getting started"],
+    "parentId": "saas.onboarding"
+  },
+  {
+    "id": "saas.onboarding.auth",
+    "label": "Auth",
+    "color": "#38bdf8",
+    "description": "Authentication setup problems",
+    "keywords": ["auth", "SSO", "OAuth", "login setup", "SAML"],
+    "parentId": "saas.onboarding"
+  },
+  {
+    "id": "saas.onboarding.migration",
+    "label": "Migration",
+    "color": "#38bdf8",
+    "description": "Migrating from another tool",
+    "keywords": ["migration", "import", "export", "move from", "transfer"],
+    "parentId": "saas.onboarding"
+  },
+  {
+    "id": "saas.account",
+    "label": "Account",
+    "color": "#6366f1",
+    "description": "Account management",
+    "keywords": ["account", "settings", "profile", "admin"],
+    "parentId": null
+  },
+  {
+    "id": "saas.account.login",
+    "label": "Login",
+    "color": "#818cf8",
+    "description": "Sign in issues",
+    "keywords": ["login", "sign in", "password reset", "can't log in"],
+    "parentId": "saas.account"
+  },
+  {
+    "id": "saas.account.permissions",
+    "label": "Permissions",
+    "color": "#818cf8",
+    "description": "Access control issues",
+    "keywords": ["permissions", "access", "role", "can't access", "unauthorized"],
+    "parentId": "saas.account"
+  },
+  {
+    "id": "saas.account.quota",
+    "label": "Quota",
+    "color": "#818cf8",
+    "description": "Usage limits questions",
+    "keywords": ["quota", "limit", "usage", "exceeded", "cap"],
+    "parentId": "saas.account"
+  }
+]

@@ -1,0 +1,186 @@
+[
+  {
+    "id": "ec.order",
+    "label": "Order Issue",
+    "color": "#ef4444",
+    "description": "Problems with orders",
+    "keywords": ["order", "purchase", "buy", "checkout"],
+    "parentId": null
+  },
+  {
+    "id": "ec.order.shipping-delay",
+    "label": "Shipping Delay",
+    "color": "#f87171",
+    "description": "Late delivery",
+    "keywords": ["delayed", "late", "shipping", "delivery", "hasn't arrived"],
+    "parentId": "ec.order"
+  },
+  {
+    "id": "ec.order.damaged",
+    "label": "Damaged Item",
+    "color": "#f87171",
+    "description": "Item arrived damaged",
+    "keywords": ["damaged", "broken", "crushed", "smashed"],
+    "parentId": "ec.order"
+  },
+  {
+    "id": "ec.order.wrong-item",
+    "label": "Wrong Item",
+    "color": "#f87171",
+    "description": "Received wrong product",
+    "keywords": ["wrong item", "incorrect", "not what I ordered"],
+    "parentId": "ec.order"
+  },
+  {
+    "id": "ec.order.lost",
+    "label": "Lost Package",
+    "color": "#f87171",
+    "description": "Package lost in transit",
+    "keywords": ["lost", "missing", "not delivered", "never arrived"],
+    "parentId": "ec.order"
+  },
+  {
+    "id": "ec.returns",
+    "label": "Returns",
+    "color": "#f97316",
+    "description": "Return and refund requests",
+    "keywords": ["return", "refund", "exchange", "send back"],
+    "parentId": null
+  },
+  {
+    "id": "ec.returns.refund",
+    "label": "Refund Request",
+    "color": "#fb923c",
+    "description": "Customer wants money back",
+    "keywords": ["refund", "money back", "charge back"],
+    "parentId": "ec.returns"
+  },
+  {
+    "id": "ec.returns.exchange",
+    "label": "Exchange",
+    "color": "#fb923c",
+    "description": "Swap for different item",
+    "keywords": ["exchange", "swap", "replace", "different size"],
+    "parentId": "ec.returns"
+  },
+  {
+    "id": "ec.returns.late-return",
+    "label": "Late Return",
+    "color": "#fb923c",
+    "description": "Return window questions",
+    "keywords": ["return window", "return policy", "past the deadline"],
+    "parentId": "ec.returns"
+  },
+  {
+    "id": "ec.product",
+    "label": "Product",
+    "color": "#f59e0b",
+    "description": "Product information questions",
+    "keywords": ["product", "item", "specs", "features"],
+    "parentId": null
+  },
+  {
+    "id": "ec.product.stock",
+    "label": "Stock Question",
+    "color": "#fbbf24",
+    "description": "Availability inquiries",
+    "keywords": ["in stock", "available", "restock", "back in stock"],
+    "parentId": "ec.product"
+  },
+  {
+    "id": "ec.product.compatibility",
+    "label": "Compatibility",
+    "color": "#fbbf24",
+    "description": "Works with X question",
+    "keywords": ["compatible", "works with", "fit", "support"],
+    "parentId": "ec.product"
+  },
+  {
+    "id": "ec.product.sizing",
+    "label": "Sizing",
+    "color": "#fbbf24",
+    "description": "Size and fit questions",
+    "keywords": ["size", "sizing", "fit", "dimensions", "measurements"],
+    "parentId": "ec.product"
+  },
+  {
+    "id": "ec.account",
+    "label": "Account",
+    "color": "#8b5cf6",
+    "description": "Account management issues",
+    "keywords": ["account", "login", "password", "profile"],
+    "parentId": null
+  },
+  {
+    "id": "ec.account.login",
+    "label": "Login",
+    "color": "#a78bfa",
+    "description": "Can't sign in",
+    "keywords": ["login", "sign in", "password", "locked out"],
+    "parentId": "ec.account"
+  },
+  {
+    "id": "ec.account.payment",
+    "label": "Payment Method",
+    "color": "#a78bfa",
+    "description": "Payment info issues",
+    "keywords": ["payment", "credit card", "billing address", "payment method"],
+    "parentId": "ec.account"
+  },
+  {
+    "id": "ec.account.subscription",
+    "label": "Subscription",
+    "color": "#a78bfa",
+    "description": "Subscription management",
+    "keywords": ["subscription", "membership", "renew", "cancel"],
+    "parentId": "ec.account"
+  },
+  {
+    "id": "ec.pricing",
+    "label": "Pricing",
+    "color": "#10b981",
+    "description": "Pricing and discount questions",
+    "keywords": ["price", "cost", "discount", "sale", "coupon"],
+    "parentId": null
+  },
+  {
+    "id": "ec.pricing.discount",
+    "label": "Discount Code",
+    "color": "#34d399",
+    "description": "Promo code issues",
+    "keywords": ["discount", "coupon", "promo code", "code doesn't work"],
+    "parentId": "ec.pricing"
+  },
+  {
+    "id": "ec.pricing.match",
+    "label": "Price Match",
+    "color": "#34d399",
+    "description": "Competitor price match",
+    "keywords": ["price match", "cheaper", "found it cheaper", "beat the price"],
+    "parentId": "ec.pricing"
+  },
+  {
+    "id": "ec.feedback",
+    "label": "Feedback",
+    "color": "#0ea5e9",
+    "description": "Customer feedback",
+    "keywords": ["feedback", "review", "opinion", "experience"],
+    "parentId": null
+  },
+  {
+    "id": "ec.feedback.praise",
+    "label": "Praise",
+    "color": "#38bdf8",
+    "description": "Positive customer feedback",
+    "keywords": ["great", "excellent", "love", "amazing", "thank you"],
+    "parentId": "ec.feedback"
+  },
+  {
+    "id": "ec.feedback.complaint",
+    "label": "Complaint",
+    "color": "#38bdf8",
+    "description": "Negative customer feedback",
+    "keywords": ["terrible", "awful", "disappointed", "worst", "never again"],
+    "parentId": "ec.feedback"
+  }
+]

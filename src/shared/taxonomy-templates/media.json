@@ -1,0 +1,122 @@
+[
+  {
+    "id": "med.content",
+    "label": "Content Question",
+    "color": "#0ea5e9",
+    "description": "Questions about content availability",
+    "keywords": ["content", "show", "movie", "episode", "available", "when"],
+    "parentId": null
+  },
+  {
+    "id": "med.subscription",
+    "label": "Subscription",
+    "color": "#8b5cf6",
+    "description": "Subscription management",
+    "keywords": ["subscription", "plan", "account", "billing"],
+    "parentId": null
+  },
+  {
+    "id": "med.subscription.cancel",
+    "label": "Cancel",
+    "color": "#a78bfa",
+    "description": "Cancellation requests",
+    "keywords": ["cancel", "unsubscribe", "stop subscription", "discontinue"],
+    "parentId": "med.subscription"
+  },
+  {
+    "id": "med.subscription.pause",
+    "label": "Pause",
+    "color": "#a78bfa",
+    "description": "Subscription pause requests",
+    "keywords": ["pause", "suspend", "hold", "freeze subscription"],
+    "parentId": "med.subscription"
+  },
+  {
+    "id": "med.subscription.upgrade",
+    "label": "Upgrade",
+    "color": "#a78bfa",
+    "description": "Plan upgrade inquiries",
+    "keywords": ["upgrade", "premium", "higher plan", "add on", "more features"],
+    "parentId": "med.subscription"
+  },
+  {
+    "id": "med.streaming",
+    "label": "Streaming Issue",
+    "color": "#ef4444",
+    "description": "Playback and streaming problems",
+    "keywords": ["streaming", "playback", "buffering", "won't play", "video issue"],
+    "parentId": null
+  },
+  {
+    "id": "med.streaming.buffering",
+    "label": "Buffering",
+    "color": "#f87171",
+    "description": "Buffering and loading issues",
+    "keywords": ["buffering", "loading", "spinning", "slow stream", "keeps pausing"],
+    "parentId": "med.streaming"
+  },
+  {
+    "id": "med.streaming.quality",
+    "label": "Quality",
+    "color": "#f87171",
+    "description": "Video quality problems",
+    "keywords": ["quality", "resolution", "pixelated", "blurry", "low quality"],
+    "parentId": "med.streaming"
+  },
+  {
+    "id": "med.streaming.subtitles",
+    "label": "Subtitles",
+    "color": "#f87171",
+    "description": "Subtitle and caption issues",
+    "keywords": ["subtitles", "captions", "closed captions", "out of sync", "no subtitles"],
+    "parentId": "med.streaming"
+  },
+  {
+    "id": "med.recommendation",
+    "label": "Recommendation",
+    "color": "#10b981",
+    "description": "Content recommendations and discovery",
+    "keywords": ["recommendation", "suggest", "similar to", "what to watch", "like this"],
+    "parentId": null
+  },
+  {
+    "id": "med.creator",
+    "label": "Creator Feedback",
+    "color": "#f59e0b",
+    "description": "Feedback about creators and shows",
+    "keywords": ["creator", "showrunner", "director", "writer", "actor", "creator feedback"],
+    "parentId": null
+  },
+  {
+    "id": "med.moderation",
+    "label": "Community Moderation",
+    "color": "#6366f1",
+    "description": "Community rule violations",
+    "keywords": ["spam", "harassment", "report", "toxic", "rules"],
+    "parentId": null
+  },
+  {
+    "id": "med.moderation.spam",
+    "label": "Spam",
+    "color": "#818cf8",
+    "description": "Spam reports",
+    "keywords": ["spam", "bot", "promotional", "scam", "unsolicited"],
+    "parentId": "med.moderation"
+  },
+  {
+    "id": "med.moderation.harassment",
+    "label": "Harassment",
+    "color": "#818cf8",
+    "description": "Harassment reports",
+    "keywords": ["harassment", "hate speech", "threats", "bullying", "abuse"],
+    "parentId": "med.moderation"
+  },
+  {
+    "id": "med.moderation.off-topic",
+    "label": "Off-topic",
+    "color": "#818cf8",
+    "description": "Off-topic content",
+    "keywords": ["off topic", "unrelated", "wrong sub", "not relevant"],
+    "parentId": "med.moderation"
+  }
+]
