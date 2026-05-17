@@ -132,22 +132,38 @@ async function getJson<T>(path: string): Promise<T> {
   return (await r.json()) as T;
 }
 
+/** Guarantee a value is an array; otherwise return []. */
+function arr<T>(v: unknown): T[] {
+  return Array.isArray(v) ? (v as T[]) : [];
+}
+
 export const api = {
   health: () => getJson<{ ok: boolean; ts: number }>('/api/health'),
   summary: () => getJson<DashboardSummary>('/api/dashboard/summary'),
-  recentPosts: (limit = 25) =>
-    getJson<{ items: RecentPost[]; count: number }>(`/api/dashboard/recent-posts?limit=${limit}`),
-  taxonomy: () => getJson<{ taxonomy: TaxonomyNode[] }>('/api/drivers/taxonomy'),
-  driverVolume: () => getJson<DriverVolume>('/api/drivers/volume'),
-  triageQueue: (opts: { limit?: number; status?: PostStatus | 'all' } = {}) => {
+  recentPosts: async (limit = 25) => {
+    const raw = await getJson<{ items: RecentPost[]; count: number }>(
+      `/api/dashboard/recent-posts?limit=${limit}`,
+    );
+    return { ...raw, items: arr<RecentPost>(raw.items) };
+  },
+  taxonomy: async () => {
+    const raw = await getJson<{ taxonomy: TaxonomyNode[] }>('/api/drivers/taxonomy');
+    return { taxonomy: arr<TaxonomyNode>(raw.taxonomy) };
+  },
+  driverVolume: async () => {
+    const raw = await getJson<DriverVolume>('/api/drivers/volume');
+    return { ...raw, series: arr<DriverVolume['series'][number]>(raw.series) };
+  },
+  triageQueue: async (opts: { limit?: number; status?: PostStatus | 'all' } = {}) => {
     const q = new URLSearchParams();
     q.set('limit', String(opts.limit ?? 50));
     if (opts.status) q.set('status', opts.status);
-    return getJson<{
+    const raw = await getJson<{
       items: Array<RecentPost & { priority: number; status: PostStatus | null }>;
       count: number;
       generatedAt: number;
     }>(`/api/triage/queue?${q.toString()}`);
+    return { ...raw, items: arr<(typeof raw.items)[number]>(raw.items) };
   },
   userHistory: (username: string, limit = 20) =>
     getJson<{
@@ -199,13 +215,14 @@ export const api = {
       }>;
       heat: { sampleSize: number; negativeShare: number; isHot: boolean };
     }>(`/api/posts/${encodeURIComponent(postId)}/thread`),
-  driverPosts: (driverId: string, opts: { limit?: number; status?: PostStatus } = {}) => {
+  driverPosts: async (driverId: string, opts: { limit?: number; status?: PostStatus } = {}) => {
     const q = new URLSearchParams();
     q.set('limit', String(opts.limit ?? 50));
     if (opts.status) q.set('status', opts.status);
-    return getJson<{ driverId: string; posts: DriverPost[]; count: number }>(
+    const raw = await getJson<{ driverId: string; posts: DriverPost[]; count: number }>(
       `/api/drivers/${encodeURIComponent(driverId)}/posts?${q.toString()}`,
     );
+    return { ...raw, posts: arr<DriverPost>(raw.posts) };
   },
   draftReply: async (postId: string) => {
     const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/draft-reply`, {
@@ -242,39 +259,52 @@ export const api = {
     });
     if (!r.ok) throw new Error(`status update failed: HTTP ${r.status}`);
   },
-  agents: () => getJson<{ agents: Agent[] }>('/api/agents'),
-  agentLeaderboard: (days = 30) =>
-    getJson<{
-      days: number;
-      count: number;
-      rows: Array<{
-        username: string;
-        replies: number;
-        firstResponses: number;
-        latencyMsSum: number;
-        latencyCount: number;
-        sentBeforeSum: number;
-        sentAfterSum: number;
-        sentDeltaN: number;
-        avgLatencyMs: number | null;
-        avgSentimentDelta: number | null;
-        firstResponseRate: number | null;
-      }>;
-    }>(`/api/agents/leaderboard?days=${days}`),
-  incidents: (status: 'active' | 'resolved' | 'all' = 'active') =>
-    getJson<{
-      count: number;
-      incidents: Array<{
-        id: string;
-        startedAt: number;
-        reason: string;
-        postIds: string[];
-        commentIds: string[];
-        status: 'open' | 'resolved';
-        resolvedAt?: number;
-        resolvedBy?: string;
-      }>;
-    }>(`/api/incidents?status=${status}`),
+  agents: async () => {
+    const raw = await getJson<{ agents: Agent[] }>('/api/agents');
+    return { agents: arr<Agent>(raw.agents) };
+  },
+  agentLeaderboard: async (days = 30) => {
+    type Row = {
+      username: string;
+      replies: number;
+      firstResponses: number;
+      latencyMsSum: number;
+      latencyCount: number;
+      sentBeforeSum: number;
+      sentAfterSum: number;
+      sentDeltaN: number;
+      avgLatencyMs: number | null;
+      avgSentimentDelta: number | null;
+      firstResponseRate: number | null;
+    };
+    const raw = await getJson<{ days: number; count: number; rows: Row[] }>(
+      `/api/agents/leaderboard?days=${days}`,
+    );
+    return { ...raw, rows: arr<Row>(raw.rows) };
+  },
+  incidents: async (status: 'active' | 'resolved' | 'all' = 'active') => {
+    type Inc = {
+      id: string;
+      startedAt: number;
+      reason: string;
+      postIds: string[];
+      commentIds: string[];
+      status: 'open' | 'resolved';
+      resolvedAt?: number;
+      resolvedBy?: string;
+    };
+    const raw = await getJson<{ count: number; incidents: Inc[] }>(
+      `/api/incidents?status=${status}`,
+    );
+    return {
+      ...raw,
+      incidents: arr<Inc>(raw.incidents).map((i) => ({
+        ...i,
+        postIds: arr<string>(i.postIds),
+        commentIds: arr<string>(i.commentIds),
+      })),
+    };
+  },
   resolveIncident: async (id: string): Promise<void> => {
     const r = await fetch(`/api/incidents/${encodeURIComponent(id)}/resolve`, { method: 'POST' });
     if (!r.ok) throw new Error(`resolve failed: HTTP ${r.status}`);
@@ -292,7 +322,13 @@ export const api = {
     }>('/api/themes/latest');
     return {
       generatedAt: raw.generatedAt,
-      themes: raw.themes ?? [],
+      themes: arr<{
+        name: string;
+        summary: string;
+        samplePostIds: string[];
+        postCount: number;
+        avgSentiment: number;
+      }>(raw.themes).map((t) => ({ ...t, samplePostIds: arr<string>(t.samplePostIds) })),
     };
   },
   regenerateThemes: async () => {
@@ -318,15 +354,22 @@ export const api = {
         ).themes ?? [],
     } satisfies Awaited<ReturnType<typeof api.themes>>;
   },
-  sentimentRollup: () =>
-    getJson<{ from: string; to: string; series: SentimentRollup[] }>('/api/sentiment/rollup'),
-  audit: (opts: { limit?: number; action?: AuditAction; actor?: string } = {}) => {
+  sentimentRollup: async () => {
+    const raw = await getJson<{ from: string; to: string; series: SentimentRollup[] }>(
+      '/api/sentiment/rollup',
+    );
+    return { ...raw, series: arr<SentimentRollup>(raw.series) };
+  },
+  audit: async (opts: { limit?: number; action?: AuditAction; actor?: string } = {}) => {
     const q = new URLSearchParams();
     if (opts.limit) q.set('limit', String(opts.limit));
     if (opts.action) q.set('action', opts.action);
     if (opts.actor) q.set('actor', opts.actor);
     const qs = q.toString();
-    return getJson<{ count: number; entries: AuditEntry[] }>(`/api/audit${qs ? `?${qs}` : ''}`);
+    const raw = await getJson<{ count: number; entries: AuditEntry[] }>(
+      `/api/audit${qs ? `?${qs}` : ''}`,
+    );
+    return { ...raw, entries: arr<AuditEntry>(raw.entries) };
   },
   bulkSetStatus: async (
     postIds: string[],
