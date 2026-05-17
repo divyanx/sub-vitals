@@ -3,6 +3,10 @@
  *
  * End-to-end tests for the Settings tab.
  * Settings.tsx is implemented and renders under the Settings nav tab.
+ *
+ * Note (Sprint 11 IA refactor): Taxonomy editor tests now navigate to the
+ * Contact drivers tab, where TaxonomyConfigSection and RoutingConfigSection
+ * live after the IA refactor.
  */
 
 import { expect, test } from '@playwright/test';
@@ -38,19 +42,26 @@ test.describe('Settings tab', () => {
   });
 });
 
+// Helper: navigate to the Contact Drivers tab and open the config panel
+async function openDriversConfigPanel(page: import('@playwright/test').Page) {
+  await page.getByRole('tab', { name: 'Contact drivers' }).click();
+  await page.getByTestId('drivers-config-toggle').click();
+  await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
+}
+
 test.describe('Taxonomy editor', () => {
   test('taxonomy section renders in visual mode by default', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
-    await expect(page.getByText(/contact driver taxonomy/i)).toBeVisible({ timeout: 8000 });
+    await openDriversConfigPanel(page);
+    await expect(page.getByText(/contact driver taxonomy/i)).toBeVisible({ timeout: 4000 });
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible();
   });
 
   test('can switch to JSON mode', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
     await page.getByTestId('taxonomy-json-toggle').click();
     await expect(page.getByTestId('taxonomy-json-editor')).toBeVisible();
@@ -60,7 +71,7 @@ test.describe('Taxonomy editor', () => {
   test('can add a new driver in visual mode', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
 
     const cardsBefore = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
@@ -73,7 +84,7 @@ test.describe('Taxonomy editor', () => {
   test('delete button shows confirmation modal', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
 
     // Click the first delete button (trash icon)
@@ -90,7 +101,7 @@ test.describe('Taxonomy editor', () => {
   test('confirming delete removes the driver card', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
 
     const cardsBefore = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
@@ -111,7 +122,7 @@ test.describe('Taxonomy editor', () => {
   test('cancelling delete keeps the driver card', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
 
     const cardsBefore = await page.getByTestId('taxonomy-driver-list').locator('> div').count();
@@ -130,7 +141,7 @@ test.describe('Taxonomy editor', () => {
   test('live preview shows colored chips for each driver', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
     // The preview section should contain "Current drivers:"
     await expect(page.getByText(/current drivers:/i)).toBeVisible();
@@ -139,7 +150,7 @@ test.describe('Taxonomy editor', () => {
   test('JSON mode textarea contains valid JSON', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
     await page.getByTestId('taxonomy-json-toggle').click();
     await expect(page.getByTestId('taxonomy-json-editor')).toBeVisible();
@@ -164,12 +175,18 @@ test.describe('Taxonomy editor', () => {
     });
 
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    await openDriversConfigPanel(page);
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 8000 });
 
-    // Click the taxonomy-section Save button (second Save button on the page)
-    const saveButtons = page.getByRole('button', { name: /^save$/i });
-    await saveButtons.nth(1).click();
+    // Find the Save button inside the taxonomy section
+    const taxonomySection = page
+      .locator('section')
+      .filter({ hasText: /contact driver taxonomy/i })
+      .first();
+    await taxonomySection
+      .getByRole('button', { name: /^save$/i })
+      .first()
+      .click();
     await page.waitForTimeout(500);
 
     expect(taxonomyPutFired).toBe(true);

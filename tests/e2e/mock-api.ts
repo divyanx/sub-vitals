@@ -129,7 +129,20 @@ export async function setupMocks(page: Page): Promise<void> {
 
     // Settings
     if (pathname === '/api/settings' && method === 'GET') {
-      return route.fulfill({ json: { openrouterKeyConfigured: true } });
+      return route.fulfill({
+        json: {
+          openrouterKeyConfigured: true,
+          'taxonomy-json': JSON.stringify([
+            { id: 'bug', label: 'Bug / broken experience', color: '#f43f5e' },
+            { id: 'bug.crash', label: 'Crash', color: '#f43f5e', parentId: 'bug' },
+            { id: 'praise', label: 'Praise / positive feedback', color: '#10b981' },
+            { id: 'feature-request', label: 'Feature request', color: '#8b5cf6' },
+            { id: 'billing', label: 'Billing / pricing', color: '#f59e0b' },
+            { id: 'onboarding', label: 'Onboarding / setup', color: '#3b82f6' },
+          ]),
+          'routing-json': '{}',
+        },
+      });
     }
     if (pathname === '/api/settings' && method === 'PUT') {
       return route.fulfill({ json: { openrouterKeyConfigured: true } });
