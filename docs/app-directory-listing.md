@@ -38,9 +38,9 @@ RedLattice is a Devvit-native customer experience analytics suite built for bran
 
 What it does:
 
-• Contact-driver tagging — every new post is classified into your issue taxonomy (Bug, Billing, Feature request, Shipping, etc.) using a keyword pass followed by LLM fallback. Mods see the category, confidence score, and AI reasoning in a live activity feed.
+• Contact-driver tagging — every new post is classified into your issue taxonomy (Bug, Billing, Feature request, Shipping, etc.) using a keyword pass followed by AI fallback. Mods see the category, confidence score, and AI reasoning in a live activity feed.
 
-• Sentiment scoring — AFINN lexicon scores every post and comment; ambiguous cases go to an LLM judge. Negative thread spikes trigger a modmail alert before they escalate.
+• Sentiment scoring — AFINN lexicon scores every post and comment; ambiguous cases go to an AI judge. Negative thread spikes trigger a modmail alert before they escalate.
 
 • Verified-agent identity — mark brand employees via the comment menu. Verified agents get Reddit user flair automatically. The Agents tab tracks their response latency and first-reply SLA.
 
@@ -70,8 +70,8 @@ From `devvit.json`:
 |---|---|
 | `reddit` (moderator scope) | Required to read posts and comments for classification, send modmail alerts, apply user flair to verified agents, and create the pinned Daily Pulse post. |
 | `redis` | All application state (driver tags, sentiment scores, agent whitelist, daily rollups, incident records) is stored in Devvit Redis — the only persistence layer available on the platform. |
-| `http` — `api.openai.com`, `openrouter.ai` | Calls OpenRouter for LLM-assisted contact-driver classification and sentiment judgment. OpenAI-compatible API. Only fired when the lexicon confidence is below threshold; subject to a per-installation monthly cost cap. |
-| `http` — `generativelanguage.googleapis.com` | Alternative LLM provider endpoint (Google Gemini via OpenRouter) — same traffic as above, routed through OpenRouter's multi-provider gateway. |
+| `http` — `api.openai.com`, `openrouter.ai` | Calls OpenRouter for AI-assisted contact-driver classification and sentiment judgment. OpenAI-compatible API. Only fired when the lexicon confidence is below threshold; subject to a per-installation monthly cost cap. |
+| `http` — `generativelanguage.googleapis.com` | Alternative AI provider endpoint (Google Gemini via OpenRouter) — same traffic as above, routed through OpenRouter's multi-provider gateway. |
 | `http` — `studio.redlattice.app` | Optional outbound webhook to the RedLattice Studio cross-community analytics webapp. Disabled by default; only activates when a Studio integration token is configured by the mod. |
 | `media` | Required by Devvit Web for the custom post iframe surface that hosts the React analytics dashboard. |
 
