@@ -265,7 +265,13 @@ app.get('/api/triage/queue', async (c) => {
 
   // Pull from recent posts (most active first). For Phase 1 this is a global
   // pool; per-agent assignment lives in a later sprint.
-  const ids = await getRecentPostIds(200);
+  const [rawIds, dashboardPostId] = await Promise.all([
+    getRecentPostIds(200),
+    redis.get(K.pulsePostId()),
+  ]);
+  // Exclude RedLattice's own dashboard post — it's a system post, not
+  // customer content, and clicking actions on it 404s.
+  const ids = rawIds.filter((id) => id !== dashboardPostId);
   const [metas, tags, sents] = await Promise.all([
     getPostMetaMany(ids),
     Promise.all(ids.map((id) => getPostTag(id))),
@@ -552,7 +558,12 @@ app.get('/api/posts/:postId/thread', async (c) => {
  */
 app.get('/api/dashboard/recent-posts', async (c) => {
   const limit = Math.min(Math.max(Number.parseInt(c.req.query('limit') ?? '25', 10) || 25, 1), 100);
-  const ids = await getRecentPostIds(limit);
+  // Same exclusion as the triage queue — system posts pollute the feed.
+  const [rawIds, dashboardPostId] = await Promise.all([
+    getRecentPostIds(limit + 5),
+    redis.get(K.pulsePostId()),
+  ]);
+  const ids = rawIds.filter((id) => id !== dashboardPostId).slice(0, limit);
   const [metas, tags, sents] = await Promise.all([
     getPostMetaMany(ids),
     Promise.all(ids.map((id) => getPostTag(id))),

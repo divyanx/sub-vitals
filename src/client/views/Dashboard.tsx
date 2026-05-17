@@ -125,17 +125,35 @@ function Inbox() {
     queryFn: () => api.triageQueue({ status: statusFilter }),
   });
 
+  const [actionError, setActionError] = useState<string | null>(null);
   const mutate = async (postId: string, status: PostStatus) => {
-    await api.setPostStatus(postId, status);
-    await Promise.all([
-      qc.invalidateQueries({ queryKey: ['triage-queue'] }),
-      qc.invalidateQueries({ queryKey: ['recent-posts'] }),
-      qc.invalidateQueries({ queryKey: ['driver-posts'] }),
-    ]);
+    setActionError(null);
+    try {
+      await api.setPostStatus(postId, status);
+      await Promise.all([
+        qc.invalidateQueries({ queryKey: ['triage-queue'] }),
+        qc.invalidateQueries({ queryKey: ['recent-posts'] }),
+        qc.invalidateQueries({ queryKey: ['driver-posts'] }),
+      ]);
+    } catch (err) {
+      setActionError(err instanceof Error ? err.message : String(err));
+    }
   };
 
   return (
     <section className="space-y-5">
+      {actionError ? (
+        <div className="flex items-center justify-between rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
+          <span>{actionError}</span>
+          <button
+            type="button"
+            onClick={() => setActionError(null)}
+            className="text-xs underline-offset-2 hover:underline"
+          >
+            dismiss
+          </button>
+        </div>
+      ) : null}
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h2 className="text-sm uppercase tracking-wide text-neutral-400">Triage inbox</h2>
