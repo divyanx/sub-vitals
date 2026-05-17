@@ -1,25 +1,22 @@
 /**
  * settings.spec.ts
  *
- * Settings tab — skipped because Settings.tsx does not yet exist in the
- * Dashboard. When the feature lands, remove the test.skip calls and implement
- * assertions against the Settings tab sections and PUT request mutations.
+ * End-to-end tests for the Settings tab.
+ * Settings.tsx is implemented and renders under the Settings nav tab.
  */
 
 import { expect, test } from '@playwright/test';
 import { setupMocks } from './mock-api.ts';
 
 test.describe('Settings tab', () => {
-  test.skip(
-    true,
-    'Settings tab not yet implemented in Dashboard.tsx. Re-enable when Settings.tsx is added.',
-  );
-
   test('settings sections load', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
-    await expect(page.getByText(/settings/i)).toBeVisible({ timeout: 8000 });
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    // The Settings H2 heading should be visible
+    await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible({ timeout: 8000 });
+    // Brand identity section should render
+    await expect(page.getByText(/brand identity/i)).toBeVisible({ timeout: 8000 });
   });
 
   test('Save button triggers PUT request', async ({ page }) => {
@@ -30,8 +27,12 @@ test.describe('Settings tab', () => {
     });
 
     await page.goto('/');
-    await page.getByRole('button', { name: 'Settings' }).click();
-    await page.getByRole('button', { name: /save/i }).click();
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    // Click the first Save button (Brand identity section)
+    await page
+      .getByRole('button', { name: /^save$/i })
+      .first()
+      .click();
     await page.waitForTimeout(500);
     expect(putFired).toBe(true);
   });

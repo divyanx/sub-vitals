@@ -185,3 +185,26 @@ We could build these as two separate apps, or as one React app with different vi
 
 **Consequences.** RedLattice positions cleanly as "the on-Reddit analytics tier"; customers wire the CSV pull into their existing CX stack in 30 minutes. No partnership negotiation needed.
 
+---
+
+## ADR-07 · Vite build warnings from @devvit/start are upstream, not actionable
+
+**Date:** 2026-05-17
+**Status:** Accepted
+
+**Context.** `npm run build` emits two warnings on every run:
+
+```
+Warning: Invalid output options (1 issue found)
+ - For the "sourcemapFileNames". Invalid key: Expected never but received "sourcemapFileNames".
+WARN  inlineDynamicImports option is deprecated, please use codeSplitting: false instead.
+```
+
+Both originate inside `@devvit/start/vite` — specifically its `rollupOptions` and `inlineDynamicImports` config. We are already on the latest `next` dist-tag (`0.12.24-next-2026-05-14-23-46-48-630b04b92.0`). There is no newer version to upgrade to.
+
+**Decision.** Accept the warnings as upstream noise. Do not patch `@devvit/start` internals. Do not suppress them with a wrapper config (which would risk breaking Devvit's build pipeline). Re-evaluate when a newer `@devvit/start` is published.
+
+**Why.** Attempting to override `@devvit/start`'s Vite config is fragile and unsupported. The warnings do not break the build or affect runtime behavior. The cost of maintaining a local patch far exceeds the benefit.
+
+**Consequences.** CI contributors will see these two warnings. They are documented here so they are not confused for actionable failures. Filter them from CI warning-as-error rules if needed.
+

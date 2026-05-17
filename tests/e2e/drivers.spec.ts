@@ -15,7 +15,7 @@ test.describe('Drivers tab', () => {
 
   test('bar list renders all 5 drivers from taxonomy fixture', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Contact drivers' }).click();
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
     // Wait for data
     await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
@@ -30,7 +30,7 @@ test.describe('Drivers tab', () => {
 
   test('clicking "praise" bar expands post list with correct posts', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Contact drivers' }).click();
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
     await expect(page.getByText('Praise / positive feedback')).toBeVisible({ timeout: 10000 });
 
@@ -46,7 +46,7 @@ test.describe('Drivers tab', () => {
 
   test('status filter chips appear in driver post panel', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Contact drivers' }).click();
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
     await expect(page.getByText('Praise / positive feedback')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /Praise \/ positive feedback/i }).click();
@@ -60,7 +60,7 @@ test.describe('Drivers tab', () => {
 
   test('"Show thread" in driver post list expands ThreadPanel', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Contact drivers' }).click();
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
     await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /Bug \/ broken experience/i }).click();
@@ -86,7 +86,7 @@ test.describe('Drivers tab', () => {
     });
 
     await page.goto('/');
-    await page.getByRole('button', { name: 'Contact drivers' }).click();
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
     await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
     await page.getByRole('button', { name: /Bug \/ broken experience/i }).click();
 
@@ -103,7 +103,7 @@ test.describe('Drivers tab', () => {
 
   test('drivers are sorted by count (bug first with highest volume)', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('button', { name: 'Contact drivers' }).click();
+    await page.getByRole('tab', { name: 'Contact drivers' }).click();
 
     await expect(page.getByText('Bug / broken experience')).toBeVisible({ timeout: 10000 });
 

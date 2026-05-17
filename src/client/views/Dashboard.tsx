@@ -52,7 +52,32 @@ export interface DashboardProps {
 }
 
 export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProps) {
-  const [tab, setTab] = useState<Tab>(initialTab);
+  const [tab, setTabState] = useState<Tab>(initialTab);
+  const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
+
+  // Keep URL in sync whenever the tab changes, and listen to popstate for
+  // browser back/forward support.
+  const setTab = useCallback((t: Tab, extra?: Record<string, string>) => {
+    setTabState(t);
+    const params = new URLSearchParams({ tab: t, ...extra });
+    history.pushState({ tab: t, ...extra }, '', `?${params.toString()}`);
+  }, []);
+
+  useEffect(() => {
+    const onPop = (e: PopStateEvent) => {
+      const state = e.state as { tab?: Tab } | null;
+      if (state?.tab) {
+        setTabState(state.tab);
+      } else {
+        // Fallback: parse from URL
+        const params = new URLSearchParams(window.location.search);
+        const t = params.get('tab') as Tab | null;
+        setTabState(t ?? 'inbox');
+      }
+    };
+    window.addEventListener('popstate', onPop);
+    return () => window.removeEventListener('popstate', onPop);
+  }, []);
 
   return (
     <div className="flex min-h-full flex-col">
@@ -60,9 +85,15 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
       <Nav tab={tab} setTab={setTab} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         {tab === 'inbox' && <Inbox />}
-        {tab === 'overview' && <Overview />}
-        {tab === 'drivers' &&
-          (initialDriver ? <Drivers initialDriver={initialDriver} /> : <Drivers />)}
+        {tab === 'overview' && (
+          <Overview
+            onNavigate={(t, driver) => {
+              if (driver) setActiveDriver(driver);
+              setTab(t, driver ? { driver } : undefined);
+            }}
+          />
+        )}
+        {tab === 'drivers' && <Drivers initialDriver={activeDriver} />}
         {tab === 'sentiment' && <SentimentTab />}
         {tab === 'incidents' && <Incidents />}
         {tab === 'themes' && <Themes />}
@@ -104,14 +135,29 @@ const TABS: { id: Tab; label: string }[] = [
 
 function Nav({ tab, setTab }: { tab: Tab; setTab: (t: Tab) => void }) {
   return (
-    <nav className="border-b border-neutral-800 bg-neutral-950 px-6">
-      <div className="mx-auto flex max-w-6xl gap-1">
+    <nav
+      className="relative border-b border-neutral-800 bg-neutral-950"
+      style={{
+        /* Gradient fade on the right edge hints at hidden tabs on mobile */
+        WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 2rem), transparent 100%)',
+        maskImage: 'linear-gradient(to right, black calc(100% - 2rem), transparent 100%)',
+      }}
+    >
+      <div
+        role="tablist"
+        aria-label="Dashboard tabs"
+        className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-6"
+        style={{ scrollbarWidth: 'none' }}
+        /* Hide WebKit scrollbar via global CSS fallback (see index.css) */
+      >
         {TABS.map((t) => (
           <button
             type="button"
+            role="tab"
             key={t.id}
+            aria-selected={tab === t.id}
             onClick={() => setTab(t.id)}
-            className={`-mb-px border-b-2 px-4 py-3 text-sm font-medium transition ${
+            className={`-mb-px flex-shrink-0 border-b-2 px-4 py-3 text-sm font-medium transition ${
               tab === t.id
                 ? 'border-orange-500 text-white'
                 : 'border-transparent text-neutral-400 hover:text-neutral-200'
@@ -758,12 +804,6 @@ function DraftReplyPanel({ postId }: { postId: string }) {
 // Overview (renamed to "Pulse" in nav) — dense enterprise analytics surface
 // ---------------------------------------------------------------------------
 
-/** Navigate to a different tab programmatically via query string. */
-function navigateTo(tab: Tab, extra?: Record<string, string>) {
-  const params = new URLSearchParams({ tab, ...extra });
-  window.location.search = params.toString();
-}
-
 // --- KPI strip helpers ----------------------------------------------------
 
 interface KpiTileProps {
@@ -912,7 +952,15 @@ function HeatmapCell({ count, max, label }: { count: number; max: number; label:
 
 // --- Main Overview ---------------------------------------------------------
 
-function Overview() {
+function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => void }) {
+  const navigateTo = useCallback(
+    (tab: Tab, extra?: Record<string, string>) => {
+      if (onNavigate) {
+        onNavigate(tab, extra?.driver);
+      }
+    },
+    [onNavigate],
+  );
   // --- data queries (all independent, staleTime 60s) ---
   const summaryQ = useQuery({ queryKey: ['summary'], queryFn: api.summary, staleTime: 60_000 });
   const recentQ = useQuery({
@@ -1897,6 +1945,7 @@ function Incidents() {
             <button
               type="button"
               key={f}
+              aria-pressed={filter === f}
               onClick={() => setFilter(f)}
               className={`rounded-full border px-3 py-1 transition ${
                 filter === f
@@ -2421,6 +2470,7 @@ function Audit() {
         <span className="text-neutral-600">Action:</span>
         <button
           type="button"
+          aria-pressed={actionFilter === ''}
           onClick={() => setActionFilter('')}
           className={`rounded-full border px-2.5 py-0.5 transition ${
             actionFilter === ''
@@ -2434,6 +2484,7 @@ function Audit() {
           <button
             key={a}
             type="button"
+            aria-pressed={actionFilter === a}
             onClick={() => setActionFilter(actionFilter === a ? '' : a)}
             className={`rounded-full border px-2.5 py-0.5 transition ${
               actionFilter === a

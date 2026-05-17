@@ -90,7 +90,7 @@ export async function setupMocks(page: Page): Promise<void> {
 
     // Themes
     if (pathname === '/api/themes/latest') {
-      return route.fulfill({ json: { generatedAt: null, themes: null } });
+      return route.fulfill({ json: fixture('themes') });
     }
     if (pathname === '/api/themes/regenerate' && method === 'POST') {
       return route.fulfill({ json: { generatedAt: Date.now(), themes: [] } });

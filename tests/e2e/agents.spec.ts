@@ -11,7 +11,7 @@ test.describe('Agents tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('button', { name: 'Agents' }).click();
+    await page.getByRole('tab', { name: 'Agents' }).click();
     // Wait for agent list
     await expect(page.getByText('u/brand_agent_alice')).toBeVisible({ timeout: 10000 });
   });

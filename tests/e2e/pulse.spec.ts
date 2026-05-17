@@ -45,7 +45,7 @@ test.describe('Pulse view', () => {
     await cta.click();
 
     // After clicking, the dashboard nav should appear (Inbox tab is default)
-    await expect(page.getByRole('button', { name: 'Inbox' })).toBeVisible({ timeout: 5000 });
+    await expect(page.getByRole('tab', { name: 'Inbox' })).toBeVisible({ timeout: 5000 });
   });
 
   test('header shows RedLattice brand name', async ({ page }) => {

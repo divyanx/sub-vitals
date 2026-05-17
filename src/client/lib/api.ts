@@ -301,7 +301,22 @@ export const api = {
       const body = await r.json().catch(() => ({}));
       throw new Error((body as { error?: string }).error ?? `HTTP ${r.status}`);
     }
-    return (await r.json()) as Awaited<ReturnType<typeof api.themes>>;
+    const raw = await r.json().catch(() => ({}) as Record<string, unknown>);
+    return {
+      generatedAt: (raw as { generatedAt?: number | null }).generatedAt ?? null,
+      themes:
+        (
+          raw as {
+            themes?: Array<{
+              name: string;
+              summary: string;
+              samplePostIds: string[];
+              postCount: number;
+              avgSentiment: number;
+            }> | null;
+          }
+        ).themes ?? [],
+    } satisfies Awaited<ReturnType<typeof api.themes>>;
   },
   sentimentRollup: () =>
     getJson<{ from: string; to: string; series: SentimentRollup[] }>('/api/sentiment/rollup'),

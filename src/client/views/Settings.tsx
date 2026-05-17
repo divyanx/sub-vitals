@@ -191,11 +191,14 @@ export function Settings() {
 
   if (settingsQ.isError) {
     return (
-      <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
-        Failed to load settings.{' '}
-        <button type="button" onClick={() => settingsQ.refetch()} className="underline">
-          Retry
-        </button>
+      <div className="space-y-4">
+        <h2 className="text-sm uppercase tracking-wide text-neutral-400">Settings</h2>
+        <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
+          Failed to load settings.{' '}
+          <button type="button" onClick={() => settingsQ.refetch()} className="underline">
+            Retry
+          </button>
+        </div>
       </div>
     );
   }

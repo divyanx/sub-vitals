@@ -20,3 +20,8 @@ body,
 body {
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
+
+/* Hide scrollbar in webkit browsers for nav scroll containers */
+[role="tablist"]::-webkit-scrollbar {
+  display: none;
+}

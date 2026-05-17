@@ -15,7 +15,7 @@ async function goToAuditTab(page: Page): Promise<void> {
   await expect(page.getByText('App crashes every time I try to checkout')).toBeVisible({
     timeout: 10000,
   });
-  await page.getByRole('button', { name: 'Audit' }).click();
+  await page.getByRole('tab', { name: 'Audit' }).click();
 }
 
 test.describe('Audit tab', () => {
