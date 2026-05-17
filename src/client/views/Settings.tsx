@@ -34,6 +34,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { useId, useState } from 'react';
 import { api } from '../lib/api.ts';
+import { OnboardingSettingsSection } from './Onboarding.tsx';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -82,20 +83,23 @@ function useToast() {
 }
 
 function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
-  if (toasts.length === 0) return null;
   return (
-    <div className="pointer-events-none fixed top-4 right-4 z-50 flex flex-col gap-2">
+    <div
+      aria-live="polite"
+      aria-atomic="false"
+      className="pointer-events-none fixed top-4 right-4 z-50 flex flex-col gap-2"
+    >
       {toasts.map((t) => (
-        <div
+        <output
           key={t.id}
-          className={`pointer-events-auto max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg transition-all ${
+          className={`pointer-events-auto block max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg transition-all ${
             t.type === 'success'
               ? 'border-emerald-700 bg-emerald-950 text-emerald-100'
               : 'border-rose-700 bg-rose-950 text-rose-100'
           }`}
         >
           {t.msg}
-        </div>
+        </output>
       ))}
     </div>
   );
@@ -117,7 +121,7 @@ function Section({
   return (
     <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
       <h3 className="mb-1 text-sm font-semibold text-neutral-100">{title}</h3>
-      {description ? <p className="mb-4 text-xs text-neutral-500">{description}</p> : null}
+      {description ? <p className="mb-4 text-xs text-neutral-400">{description}</p> : null}
       {children}
     </section>
   );
@@ -137,7 +141,7 @@ function SaveButton({
       type="button"
       onClick={onClick}
       disabled={loading || disabled}
-      className="mt-4 rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
+      className="mt-4 rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
     >
       {loading ? 'Saving…' : 'Save'}
     </button>
@@ -153,28 +157,38 @@ function FieldError({ msg }: { msg: string | null }) {
   );
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return <span className="mb-1 block text-xs font-medium text-neutral-300">{children}</span>;
+function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
+  return (
+    <label htmlFor={htmlFor} className="mb-1 block text-xs font-medium text-neutral-300">
+      {children}
+    </label>
+  );
 }
 
 function Input({
+  id,
   value,
   onChange,
   placeholder,
   type = 'text',
+  'aria-label': ariaLabel,
 }: {
+  id?: string;
   value: string;
   onChange: (v: string) => void;
   placeholder?: string;
   type?: string;
+  'aria-label'?: string;
 }) {
   return (
     <input
+      id={id}
       type={type}
       value={value}
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
-      className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+      aria-label={ariaLabel}
+      className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
     />
   );
 }
@@ -228,7 +242,7 @@ export function Settings() {
       <ToastContainer toasts={toasts} />
       <header>
         <h2 className="text-sm uppercase tracking-wide text-neutral-400">Settings</h2>
-        <p className="mt-1 max-w-2xl text-xs text-neutral-500">
+        <p className="mt-1 max-w-2xl text-xs text-neutral-400">
           Changes take effect immediately. All values are stored in Redis and override Devvit
           settings defaults. The OpenRouter API key must be set via{' '}
           <code className="rounded bg-neutral-800 px-1">
@@ -245,6 +259,7 @@ export function Settings() {
       <ThresholdsSection data={data} toast={toast} onSaved={invalidate} />
       <AISection data={data} toast={toast} onSaved={invalidate} />
       <StudioSection data={data} toast={toast} onSaved={invalidate} />
+      <OnboardingSettingsSection />
     </div>
   );
 }
@@ -269,6 +284,8 @@ function BrandIdentitySection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
+  const brandNameId = useId();
+  const brandVoiceId = useId();
   const [brandName, setBrandName] = useState(String(data['brand-name'] ?? ''));
   const [brandVoice, setBrandVoice] = useState(String(data['brand-voice'] ?? ''));
   const [error, setError] = useState<string | null>(null);
@@ -316,30 +333,32 @@ function BrandIdentitySection({
     >
       <div className="space-y-4">
         <div>
-          <Label>Brand name</Label>
+          <Label htmlFor={brandNameId}>Brand name</Label>
           <Input
+            id={brandNameId}
             value={brandName}
             onChange={setBrandName}
             placeholder="e.g. Acme, Sonos, Duolingo"
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Used in impostor detection. Leave blank to disable.
           </p>
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <Label>Brand voice</Label>
-            <span className="text-[10px] text-neutral-500">{brandVoice.length}/2000</span>
+            <Label htmlFor={brandVoiceId}>Brand voice</Label>
+            <span className="text-[10px] text-neutral-400">{brandVoice.length}/2000</span>
           </div>
           <textarea
+            id={brandVoiceId}
             value={brandVoice}
             onChange={(e) => setBrandVoice(e.target.value)}
             rows={5}
             maxLength={2000}
             placeholder="Friendly, empathetic, never defensive. Acknowledge frustration first. Sign off as the Acme support team."
-            className="w-full resize-y rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+            className="w-full resize-y rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Shapes AI draft replies. Describe tone, things to avoid, sign-off style.
           </p>
         </div>
@@ -365,7 +384,7 @@ function BrandIdentitySection({
         <div className="mt-4 space-y-3">
           <p className="text-xs text-neutral-400">
             Draft against: <span className="text-neutral-200">"{draftData.postTitle}"</span>
-            <span className="ml-2 text-neutral-500">
+            <span className="ml-2 text-neutral-400">
               · {draftData.tokensIn + draftData.tokensOut} tokens · $
               {(draftData.costCents / 100).toFixed(4)}
               {draftData.cached ? ' · cached' : ''}
@@ -383,7 +402,7 @@ function BrandIdentitySection({
                   >
                     {c.tone}
                   </span>
-                  <span className="text-neutral-500">{c.rationale}</span>
+                  <span className="text-neutral-400">{c.rationale}</span>
                 </div>
                 <p className="whitespace-pre-wrap text-sm text-neutral-200">{c.reply}</p>
               </li>
@@ -587,7 +606,7 @@ function KeywordsInput({
           onKeyDown={handleKeyDown}
           onBlur={addKeyword}
           placeholder={keywords.length === 0 ? 'Type keyword, press Enter' : ''}
-          className="min-w-24 flex-1 bg-transparent text-xs text-neutral-100 outline-none placeholder:text-neutral-600"
+          className="min-w-24 flex-1 bg-transparent text-xs text-neutral-100 outline-none placeholder:text-neutral-400"
         />
       </div>
     </div>
@@ -639,7 +658,7 @@ export function DriverCard({
             {...attributes}
             {...listeners}
             aria-label="Drag to reorder"
-            className="mt-1 cursor-grab touch-none text-neutral-600 hover:text-neutral-400 active:cursor-grabbing"
+            className="mt-1 cursor-grab touch-none text-neutral-400 hover:text-neutral-400 active:cursor-grabbing"
           >
             <svg width="14" height="14" viewBox="0 0 14 14" fill="currentColor" aria-hidden="true">
               <circle cx="4" cy="3" r="1.2" />
@@ -685,7 +704,7 @@ export function DriverCard({
                       onChange={(e) => onUpdate(row._uid, 'color', e.target.value)}
                       className="h-7 w-10 cursor-pointer rounded border border-neutral-700 bg-neutral-800 p-0.5"
                     />
-                    <span className="text-xs text-neutral-500">{row.color}</span>
+                    <span className="text-xs text-neutral-400">{row.color}</span>
                   </div>
                 </label>
               </div>
@@ -712,7 +731,7 @@ export function DriverCard({
             type="button"
             onClick={() => setConfirmDelete(true)}
             aria-label={`Delete driver ${row.label || row.id}`}
-            className="mt-1 text-xs text-neutral-600 hover:text-rose-400"
+            className="mt-1 text-xs text-neutral-400 hover:text-rose-400"
             title="Delete driver"
           >
             🗑
@@ -728,7 +747,7 @@ function TaxonomyPreview({ rows }: { rows: TaxRow[] }) {
   if (rows.length === 0) return null;
   return (
     <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-950/40 px-3 py-2">
-      <span className="text-xs text-neutral-500">Current drivers:</span>
+      <span className="text-xs text-neutral-400">Current drivers:</span>
       {rows
         .filter((r) => r.label || r.id)
         .map((r) => (
@@ -1027,12 +1046,12 @@ function RoutingSection({
       description="When a post is auto-tagged with a driver, send a modmail to the listed team members."
     >
       {rows.length === 0 ? (
-        <p className="mb-3 text-xs text-neutral-500">No routing rules yet.</p>
+        <p className="mb-3 text-xs text-neutral-400">No routing rules yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-neutral-800 text-left text-neutral-500">
+              <tr className="border-b border-neutral-800 text-left text-neutral-400">
                 <th className="pb-2 pr-3 font-medium">Driver ID</th>
                 <th className="pb-2 pr-3 font-medium">Modmail subject</th>
                 <th className="pb-2 pr-3 font-medium">Mentions (comma-sep usernames)</th>
@@ -1070,7 +1089,7 @@ function RoutingSection({
                     <button
                       type="button"
                       onClick={() => removeRow(r._uid)}
-                      className="text-neutral-600 hover:text-rose-400"
+                      className="text-neutral-400 hover:text-rose-400"
                     >
                       ×
                     </button>
@@ -1107,6 +1126,10 @@ function IdentityTrustSection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
+  const patternId = useId();
+  const testFlairId = useId();
+  const flairTextId = useId();
+  const flairColorId = useId();
   const [pattern, setPattern] = useState(String(data['agent-flair-pattern'] ?? ''));
   const [flairText, setFlairText] = useState(String(data['agent-flair-text'] ?? 'Verified Agent'));
   const [flairColor, setFlairColor] = useState(String(data['agent-flair-color'] ?? '#1e3a8a'));
@@ -1148,19 +1171,24 @@ function IdentityTrustSection({
     >
       <div className="space-y-4">
         <div>
-          <Label>Verified-agent flair regex</Label>
+          <Label htmlFor={patternId}>Verified-agent flair regex</Label>
           <Input
+            id={patternId}
             value={pattern}
             onChange={setPattern}
             placeholder="^(Verified|Brand Team|Acme Support)$"
           />
           <div className="mt-1 flex items-center gap-2">
+            <label htmlFor={testFlairId} className="sr-only">
+              Test flair text
+            </label>
             <input
+              id={testFlairId}
               type="text"
               value={testFlair}
               onChange={(e) => setTestFlair(e.target.value)}
               placeholder="Test flair text…"
-              className="flex-1 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+              className="flex-1 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
             />
             {regexResult ? (
               <span
@@ -1176,21 +1204,28 @@ function IdentityTrustSection({
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Commenters whose flair matches this regex are treated as verified agents.
           </p>
         </div>
         <div>
-          <Label>Flair text to apply on verification</Label>
-          <Input value={flairText} onChange={setFlairText} placeholder="Verified Agent" />
+          <Label htmlFor={flairTextId}>Flair text to apply on verification</Label>
+          <Input
+            id={flairTextId}
+            value={flairText}
+            onChange={setFlairText}
+            placeholder="Verified Agent"
+          />
         </div>
         <div>
-          <Label>Flair background color</Label>
+          <Label htmlFor={flairColorId}>Flair background color</Label>
           <div className="flex items-center gap-3">
             <input
+              id={flairColorId}
               type="color"
               value={flairColor}
               onChange={(e) => setFlairColor(e.target.value)}
+              aria-label="Flair background color picker"
               className="h-9 w-14 cursor-pointer rounded border border-neutral-700 bg-neutral-800 p-0.5"
             />
             <span className="text-xs text-neutral-400">{flairColor}</span>
@@ -1216,6 +1251,9 @@ function ThresholdsSection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
+  const sentThreshId = useId();
+  const slaMinutesId = useId();
+  const costCapId = useId();
   const [sentThreshold, setSentThreshold] = useState(Number(data['sentiment-threshold'] ?? 5));
   const [slaMinutes, setSlaMinutes] = useState(Number(data['sla-minutes'] ?? 120));
   const [costCapCents, setCostCapCents] = useState(
@@ -1249,49 +1287,54 @@ function ThresholdsSection({
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <Label>Negative comment alert threshold</Label>
+          <Label htmlFor={sentThreshId}>Negative comment alert threshold</Label>
           <input
+            id={sentThreshId}
             type="number"
             min={2}
             max={50}
             value={sentThreshold}
             onChange={(e) => setSentThreshold(Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Modmail fires when a thread has this many negative comments in the last{' '}
             {Math.round(sentThreshold)} sampled.
           </p>
         </div>
         <div>
-          <Label>First-response SLA (minutes)</Label>
+          <Label htmlFor={slaMinutesId}>First-response SLA (minutes)</Label>
           <input
+            id={slaMinutesId}
             type="number"
             min={15}
             max={1440}
             value={slaMinutes}
             onChange={(e) => setSlaMinutes(Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Posts unanswered beyond this SLA appear in the breach feed.
           </p>
         </div>
         <div>
-          <Label>Monthly AI cost cap</Label>
+          <Label htmlFor={costCapId}>Monthly AI cost cap</Label>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-400">$</span>
+            <span className="text-sm text-neutral-400" aria-hidden="true">
+              $
+            </span>
             <input
+              id={costCapId}
               type="number"
               min={0}
               max={1000}
               step={0.01}
               value={(costCapCents / 100).toFixed(2)}
               onChange={(e) => setCostCapCents(Math.round(Number(e.target.value) * 100))}
-              className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
             />
           </div>
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             When exceeded, AI tagging falls back to lexicon-only. Current value: {costCapCents}{' '}
             cents.
           </p>
@@ -1316,6 +1359,7 @@ function AISection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
+  const modelId = useId();
   const [model, setModel] = useState(String(data['llm-model'] ?? 'anthropic/claude-haiku-4.5'));
   const [error, setError] = useState<string | null>(null);
 
@@ -1360,9 +1404,14 @@ function AISection({
           )}
         </div>
         <div>
-          <Label>OpenRouter model slug</Label>
-          <Input value={model} onChange={setModel} placeholder="anthropic/claude-haiku-4.5" />
-          <p className="mt-1 text-xs text-neutral-500">
+          <Label htmlFor={modelId}>OpenRouter model slug</Label>
+          <Input
+            id={modelId}
+            value={model}
+            onChange={setModel}
+            placeholder="anthropic/claude-haiku-4.5"
+          />
+          <p className="mt-1 text-xs text-neutral-400">
             e.g. anthropic/claude-haiku-4.5, openai/gpt-5-mini, google/gemini-2.5-flash
           </p>
         </div>
@@ -1398,6 +1447,8 @@ function StudioSection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
+  const studioUrlId = useId();
+  const studioTokenId = useId();
   const [studioUrl, setStudioUrl] = useState(
     String(data['studio-url'] ?? 'https://studio.redlattice.app'),
   );
@@ -1491,25 +1542,27 @@ function StudioSection({
 
       <div className="space-y-4">
         <div>
-          <Label>Studio URL</Label>
+          <Label htmlFor={studioUrlId}>Studio URL</Label>
           <Input
+            id={studioUrlId}
             value={studioUrl}
             onChange={setStudioUrl}
             placeholder="https://studio.redlattice.app"
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Base URL of your RedLattice Studio instance.
           </p>
         </div>
         <div>
-          <Label>Connection token</Label>
+          <Label htmlFor={studioTokenId}>Connection token</Label>
           <Input
+            id={studioTokenId}
             type="password"
             value={token}
             onChange={setToken}
             placeholder="Paste the token from Studio > Settings > Connections"
           />
-          <p className="mt-1 text-xs text-neutral-500">
+          <p className="mt-1 text-xs text-neutral-400">
             Issued by Studio. Stored encrypted in Redis per installation.
           </p>
         </div>

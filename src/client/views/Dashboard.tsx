@@ -324,7 +324,7 @@ function Inbox() {
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h2 className="text-sm uppercase tracking-wide text-neutral-400">Triage inbox</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+          <p className="mt-1 max-w-xl text-xs text-neutral-400">
             Auto-prioritized by driver severity × sentiment × thread heat × age. Top of list is what
             should get your attention first.
           </p>
@@ -355,7 +355,7 @@ function Inbox() {
           className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border border-orange-700 bg-neutral-950/95 px-4 py-2.5 text-sm backdrop-blur"
         >
           <span className="font-medium text-orange-200">{selected.size} selected</span>
-          <span className="text-neutral-600">·</span>
+          <span className="text-neutral-400">·</span>
           <select
             value={bulkStatus}
             onChange={(e) => setBulkStatus(e.target.value as PostStatus)}
@@ -379,7 +379,7 @@ function Inbox() {
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="ml-auto text-xs text-neutral-500 underline-offset-2 hover:text-neutral-300 hover:underline"
+            className="ml-auto text-xs text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
           >
             Clear (Esc)
           </button>
@@ -406,7 +406,7 @@ function Inbox() {
       ) : (
         <>
           {/* Select-all header */}
-          <div className="flex items-center gap-2 pb-1 text-xs text-neutral-500">
+          <div className="flex items-center gap-2 pb-1 text-xs text-neutral-400">
             <input
               type="checkbox"
               aria-label="Select all"
@@ -449,7 +449,7 @@ function Inbox() {
                     >
                       {p.title || '(no title)'}
                     </a>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
                       <button
                         type="button"
                         onClick={() =>
@@ -485,7 +485,7 @@ function Inbox() {
                       ) : null}
                     </div>
                     {p.reasoning ? (
-                      <div className="mt-1 text-xs italic text-neutral-500">"{p.reasoning}"</div>
+                      <div className="mt-1 text-xs italic text-neutral-400">"{p.reasoning}"</div>
                     ) : null}
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       {p.status !== 'resolved' ? (
@@ -651,7 +651,7 @@ function UserHistoryPanel({
               >
                 {p.title || '(no title)'}
               </a>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
                 <span>{relativeTime(p.createdAt)}</span>
                 {p.driverId ? (
                   <>
@@ -725,7 +725,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
         <div className="flex items-center gap-2 text-xs text-neutral-400">
           <span className="font-medium text-violet-300">✨ AI draft replies</span>
           {data ? (
-            <span className="text-neutral-500">
+            <span className="text-neutral-400">
               · {data.candidates.length} candidates · {data.tokensIn + data.tokensOut} tokens · $
               {(data.costCents / 100).toFixed(4)}
               {data.cached ? ' · cached' : ''}
@@ -772,7 +772,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
                     >
                       {c.tone}
                     </span>
-                    <span className="text-neutral-500">{c.rationale}</span>
+                    <span className="text-neutral-400">{c.rationale}</span>
                   </div>
                   <button
                     type="button"
@@ -802,7 +802,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
           })}
         </ul>
       ) : null}
-      <p className="text-xs text-neutral-500">
+      <p className="text-xs text-neutral-400">
         Edits stay local — copy the version you like and paste it into Reddit's reply box. Brand
         voice is configurable via the subreddit setting <code>brand-voice</code>.
       </p>
@@ -847,14 +847,14 @@ function KpiTile({
 
   const inner = (
     <>
-      <div className="text-[10px] uppercase tracking-widest text-neutral-500">{label}</div>
+      <div className="text-[10px] uppercase tracking-widest text-neutral-400">{label}</div>
       <div
         className={`mt-1.5 truncate text-xl font-semibold tabular-nums leading-none ${valueColor}`}
       >
         {value}
       </div>
       <div className="mt-1 flex items-center gap-2">
-        {sub ? <span className="text-[11px] text-neutral-500">{sub}</span> : null}
+        {sub ? <span className="text-[11px] text-neutral-400">{sub}</span> : null}
         {delta ? (
           <span className={`ml-auto text-[11px] tabular-nums ${deltaColor}`}>{delta}</span>
         ) : null}
@@ -1146,7 +1146,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
 
       {/* ── KPI strip ────────────────────────────────────────────────────── */}
       <section aria-label="Key performance indicators">
-        <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+        <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
           Pulse — today at a glance
         </h2>
         {summaryQ.isPending ? (
@@ -1223,7 +1223,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
         <div className="min-w-0 space-y-6">
           {/* ── Per-driver sparklines ───────────────────────────────────── */}
           <section aria-label="Driver volume sparklines">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
               Contact drivers · 14-day trend
             </h2>
             {volumeQ.isPending || taxonomyQ.isPending ? (
@@ -1247,11 +1247,15 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                     aria-label={`${node.label}: ${current} posts today. Click to view driver.`}
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span
-                        className="truncate text-xs font-medium text-neutral-200 group-hover:text-white"
-                        style={{ color: node.color }}
-                      >
-                        {node.label}
+                      <span className="flex min-w-0 items-center gap-1.5">
+                        <span
+                          aria-hidden="true"
+                          className="block h-2 w-2 shrink-0 rounded-full"
+                          style={{ background: node.color }}
+                        />
+                        <span className="truncate text-xs font-medium text-neutral-200 group-hover:text-white">
+                          {node.label}
+                        </span>
                       </span>
                       <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-100">
                         {current}
@@ -1265,7 +1269,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                         height={28}
                       />
                     </div>
-                    <div className="text-[10px] text-neutral-600">14d trend · click to drill</div>
+                    <div className="text-[10px] text-neutral-400">14d trend · click to drill</div>
                   </button>
                 ))}
               </div>
@@ -1276,7 +1280,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
 
           {/* ── Hour-of-day heatmap ─────────────────────────────────────── */}
           <section aria-label="Posts by day and hour of week">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
               Activity heatmap · day × hour
             </h2>
             {recentQ.isPending ? (
@@ -1316,7 +1320,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                     '22',
                     '23',
                   ].map((h) => (
-                    <div key={h} className="text-center text-[9px] text-neutral-600">
+                    <div key={h} className="text-center text-[9px] text-neutral-400">
                       {HOUR_LABELS.includes(h.padStart(2, '0')) ? h.padStart(2, '0') : ''}
                     </div>
                   ))}
@@ -1325,7 +1329,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                 <div className="space-y-0.5">
                   {DOW_LABELS.map((day, dow) => (
                     <div key={day} className="flex items-center gap-2">
-                      <span className="w-8 shrink-0 text-right text-[10px] text-neutral-500">
+                      <span className="w-8 shrink-0 text-right text-[10px] text-neutral-400">
                         {day}
                       </span>
                       <div
@@ -1347,7 +1351,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                     </div>
                   ))}
                 </div>
-                <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-600">
+                <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-400">
                   <span>fewer</span>
                   <div className="flex gap-0.5">
                     {[0, 20, 40, 60, 80, 100].map((op) => (
@@ -1365,7 +1369,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
 
           {/* ── Top themes ──────────────────────────────────────────────── */}
           <section aria-label="Emerging themes">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
               Emerging themes
             </h2>
             {themesQ.isPending ? (
@@ -1373,7 +1377,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
             ) : themesQ.isError ? (
               <ErrorMsg msg="Couldn't load themes." retry={() => themesQ.refetch()} />
             ) : themesQ.data.themes.length === 0 ? (
-              <div className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-500">
+              <div className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-400">
                 <span>No themes generated yet.</span>
                 <button
                   type="button"
@@ -1405,7 +1409,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                         {t.avgSentiment.toFixed(2)}
                       </span>
                     </div>
-                    <div className="mt-1 text-[10px] text-neutral-500">
+                    <div className="mt-1 text-[10px] text-neutral-400">
                       {t.postCount} post{t.postCount === 1 ? '' : 's'}
                     </div>
                     <p className="mt-1.5 line-clamp-2 text-xs text-neutral-400">{t.summary}</p>
@@ -1418,7 +1422,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
 
         {/* ── Activity ticker (sidebar on lg+) ─────────────────────────── */}
         <aside aria-label="Recent activity">
-          <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-500">
+          <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
             Recent activity
           </h2>
           {recentQ.isPending ? (
@@ -1450,7 +1454,7 @@ function ActivityTicker({ items }: { items: RecentPost[] }) {
           >
             {p.title || '(no title)'}
           </a>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-neutral-600">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-neutral-400">
             <span>{relativeTime(p.createdAt)}</span>
             {p.driverId ? (
               <>
@@ -1583,8 +1587,13 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
                     : 'border-transparent hover:border-neutral-800 hover:bg-neutral-900/60'
                 }`}
               >
-                <span className="w-40 truncate text-sm" style={{ color: d.color }}>
-                  {d.label}
+                <span className="flex w-40 min-w-0 items-center gap-1.5">
+                  <span
+                    aria-hidden="true"
+                    className="block h-2 w-2 shrink-0 rounded-full"
+                    style={{ background: d.color }}
+                  />
+                  <span className="truncate text-sm text-neutral-200">{d.label}</span>
                 </span>
                 <span className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-900">
                   <span
@@ -1633,7 +1642,7 @@ function DriverPostsPanel({ driver }: { driver: TaxonomyNode }) {
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-neutral-500">Filter:</span>
+        <span className="text-neutral-400">Filter:</span>
         {STATUS_FILTERS.map((f) => (
           <button
             type="button"
@@ -1687,7 +1696,7 @@ function DriverPostList({ posts, driverId }: { posts: DriverPost[]; driverId: st
           >
             {p.title || '(no title)'}
           </a>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
             <span>u/{p.authorName}</span>
             <span>·</span>
             <span>{relativeTime(p.createdAt)}</span>
@@ -1705,7 +1714,7 @@ function DriverPostList({ posts, driverId }: { posts: DriverPost[]; driverId: st
             ) : null}
           </div>
           {p.reasoning ? (
-            <div className="mt-1 text-xs italic text-neutral-500">"{p.reasoning}"</div>
+            <div className="mt-1 text-xs italic text-neutral-400">"{p.reasoning}"</div>
           ) : null}
           <div className="mt-2 flex gap-2 text-xs">
             <StatusBadge status={p.status} />
@@ -1779,7 +1788,7 @@ function ThreadPanel({ postId }: { postId: string }) {
             🔥 thread heating up ({(heat.negativeShare * 100).toFixed(0)}% recent negative)
           </span>
         ) : (
-          <span className="text-neutral-500">
+          <span className="text-neutral-400">
             {(heat.negativeShare * 100).toFixed(0)}% recent negative
           </span>
         )}
@@ -1792,7 +1801,7 @@ function ThreadPanel({ postId }: { postId: string }) {
               c.isAgent ? 'border-blue-800 bg-blue-950/30' : 'border-neutral-800 bg-neutral-900'
             }`}
           >
-            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-500">
+            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
               <span className={c.isAgent ? 'font-medium text-blue-300' : 'text-neutral-300'}>
                 u/{c.authorName}
               </span>
@@ -1938,7 +1947,7 @@ function Incidents() {
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h2 className="text-sm uppercase tracking-wide text-neutral-400">Incidents</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+          <p className="mt-1 max-w-xl text-xs text-neutral-400">
             Auto-grouped when comment volume or negative-sentiment ratio spikes vs the 14-day
             baseline. Resolves automatically after 30 min of quiet.
           </p>
@@ -1974,7 +1983,7 @@ function Incidents() {
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <div className="font-medium text-rose-200">{inc.reason}</div>
-                  <div className="mt-1 text-xs text-neutral-500">
+                  <div className="mt-1 text-xs text-neutral-400">
                     started {relativeTime(inc.startedAt)} · {inc.postIds.length} posts ·{' '}
                     {inc.commentIds.length} comments
                   </div>
@@ -2011,7 +2020,7 @@ function Incidents() {
                     </span>
                   ))}
                   {inc.postIds.length > 6 ? (
-                    <span className="px-2 py-0.5 text-neutral-500">
+                    <span className="px-2 py-0.5 text-neutral-400">
                       +{inc.postIds.length - 6} more
                     </span>
                   ) : null}
@@ -2052,7 +2061,7 @@ function Themes() {
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h2 className="text-sm uppercase tracking-wide text-neutral-400">Emerging themes</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+          <p className="mt-1 max-w-xl text-xs text-neutral-400">
             LLM-clustered themes from the most recent negative posts. Regenerated daily; click below
             to refresh on-demand.
           </p>
@@ -2081,7 +2090,7 @@ function Themes() {
         </EmptyHint>
       ) : (
         <>
-          <div className="text-xs text-neutral-500">
+          <div className="text-xs text-neutral-400">
             generated {q.data.generatedAt ? relativeTime(q.data.generatedAt) : 'recently'} · last 7
             days
           </div>
@@ -2090,7 +2099,7 @@ function Themes() {
               <li key={t.name} className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
                 <div className="flex items-baseline justify-between gap-2">
                   <h3 className="font-medium text-neutral-100">{t.name}</h3>
-                  <span className="text-xs text-neutral-500">
+                  <span className="text-xs text-neutral-400">
                     {t.postCount} post{t.postCount === 1 ? '' : 's'} ·{' '}
                     <span
                       className={
@@ -2216,7 +2225,7 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300"
+        className="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-300"
         aria-expanded={open}
         data-testid={`pipeline-stats-toggle-${moduleKey}`}
       >
@@ -2228,21 +2237,21 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
       {open ? (
         <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
           {debugQ.isPending ? (
-            <span className="col-span-3 text-neutral-500">Loading…</span>
+            <span className="col-span-3 text-neutral-400">Loading…</span>
           ) : debugQ.isError ? (
             <span className="col-span-3 text-rose-400">Failed to load stats.</span>
           ) : (
             <>
               <div className="rounded bg-neutral-800 px-2 py-1">
-                <div className="text-neutral-500">Received</div>
+                <div className="text-neutral-400">Received</div>
                 <div className="font-medium text-neutral-200">{stats.events_received ?? '—'}</div>
               </div>
               <div className="rounded bg-neutral-800 px-2 py-1">
-                <div className="text-neutral-500">Processed</div>
+                <div className="text-neutral-400">Processed</div>
                 <div className="font-medium text-neutral-200">{stats.events_processed ?? '—'}</div>
               </div>
               <div className="rounded bg-neutral-800 px-2 py-1">
-                <div className="text-neutral-500">Failed</div>
+                <div className="text-neutral-400">Failed</div>
                 <div
                   className={`font-medium ${(stats.events_failed ?? 0) > 0 ? 'text-rose-400' : 'text-neutral-200'}`}
                 >
@@ -2297,13 +2306,13 @@ export function PipelineCard({
 
       <dl className="flex flex-col gap-1.5 text-xs">
         <div className="flex gap-2">
-          <dt className="w-14 shrink-0 text-neutral-500">Trigger</dt>
+          <dt className="w-14 shrink-0 text-neutral-400">Trigger</dt>
           <dd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-neutral-300">
             {pipeline.trigger}
           </dd>
         </div>
         <div className="flex gap-2">
-          <dt className="w-14 shrink-0 text-neutral-500">Logic</dt>
+          <dt className="w-14 shrink-0 text-neutral-400">Logic</dt>
           <dd className="text-neutral-400">{pipeline.logic}</dd>
         </div>
       </dl>
@@ -2326,7 +2335,7 @@ export function StubPipelineCard({ onOpen }: { onOpen: () => void }) {
         +
       </span>
       <h3 className="text-sm font-semibold text-neutral-400">Custom pipeline</h3>
-      <p className="mt-1 text-xs text-neutral-600">RedLattice Studio</p>
+      <p className="mt-1 text-xs text-neutral-400">RedLattice Studio</p>
       <p className="mt-3 text-xs text-orange-400 underline underline-offset-2">
         Build custom pipelines in Studio →
       </p>
@@ -2363,7 +2372,7 @@ function StudioModal({ onClose }: { onClose: () => void }) {
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-neutral-600 hover:text-neutral-300"
+            className="text-neutral-400 hover:text-neutral-300"
           >
             ×
           </button>
@@ -2411,7 +2420,7 @@ function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
 
       <header>
         <h2 className="text-sm uppercase tracking-wide text-neutral-400">Active pipelines</h2>
-        <p className="mt-1 max-w-2xl text-xs text-neutral-500">
+        <p className="mt-1 max-w-2xl text-xs text-neutral-400">
           Every classification and analysis pipeline running on this subreddit. Each pipeline is
           event-driven, failure-isolated, and writes to Redis.
         </p>
@@ -2508,7 +2517,7 @@ function AgentLeaderboard({
               <td
                 className={`px-4 py-2 text-right tabular-nums ${
                   r.avgSentimentDelta == null
-                    ? 'text-neutral-500'
+                    ? 'text-neutral-400'
                     : r.avgSentimentDelta > 0.05
                       ? 'text-emerald-300'
                       : r.avgSentimentDelta < -0.05
@@ -2551,7 +2560,7 @@ function AgentList({ agents }: { agents: Agent[] }) {
         <li key={a.username} className="flex items-center justify-between px-4 py-3">
           <span className="font-medium">u/{a.username}</span>
           <span className="text-xs uppercase tracking-wide text-neutral-400">{a.role}</span>
-          <span className="text-xs text-neutral-500">
+          <span className="text-xs text-neutral-400">
             {new Date(a.verifiedAt).toLocaleDateString()}
           </span>
         </li>
@@ -2614,7 +2623,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-neutral-600">Views:</span>
+      <span className="text-neutral-400">Views:</span>
       {views.map((v) => (
         <span
           key={v.id}
@@ -2631,7 +2640,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
           <button
             type="button"
             onClick={() => deleteView.mutate(v.id)}
-            className="ml-0.5 rounded-full p-0.5 text-neutral-600 opacity-0 transition group-hover:opacity-100 hover:text-rose-400"
+            className="ml-0.5 rounded-full p-0.5 text-neutral-400 opacity-0 transition group-hover:opacity-100 hover:text-rose-400"
             aria-label={`Delete view "${v.name}"`}
             title="Delete view"
           >
@@ -2676,7 +2685,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
               setSaving(false);
               setNewName('');
             }}
-            className="text-neutral-600 hover:text-neutral-400"
+            className="text-neutral-400 hover:text-neutral-400"
           >
             Cancel
           </button>
@@ -2685,7 +2694,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
         <button
           type="button"
           onClick={() => setSaving(true)}
-          className="rounded-full border border-dashed border-neutral-700 px-2.5 py-0.5 text-neutral-500 transition hover:border-orange-600 hover:text-orange-400"
+          className="rounded-full border border-dashed border-neutral-700 px-2.5 py-0.5 text-neutral-400 transition hover:border-orange-600 hover:text-orange-400"
           title="Save current filters as a view"
         >
           + Save current
@@ -2765,7 +2774,7 @@ function Audit() {
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
           <h2 className="text-sm uppercase tracking-wide text-neutral-400">Audit log</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-500">
+          <p className="mt-1 max-w-xl text-xs text-neutral-400">
             Every mutating mod action, most recent first. Capped at 5 000 entries per installation.
           </p>
         </div>
@@ -2773,7 +2782,7 @@ function Audit() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-neutral-600">Action:</span>
+        <span className="text-neutral-400">Action:</span>
         <button
           type="button"
           aria-pressed={actionFilter === ''}
@@ -2804,7 +2813,7 @@ function Audit() {
       </div>
 
       <div className="flex items-center gap-2 text-xs">
-        <span className="text-neutral-600">Actor:</span>
+        <span className="text-neutral-400">Actor:</span>
         <input
           type="text"
           value={actorInput}
@@ -2833,7 +2842,7 @@ function Audit() {
               setActorInput('');
               setActorFilter('');
             }}
-            className="text-neutral-500 underline-offset-2 hover:text-neutral-300 hover:underline"
+            className="text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
           >
             Clear
           </button>
@@ -2896,21 +2905,21 @@ function AuditRow({
         onClick={hasMeta ? onToggle : undefined}
         aria-expanded={hasMeta ? expanded : undefined}
       >
-        <td className="px-4 py-2 text-xs text-neutral-500 tabular-nums">
+        <td className="px-4 py-2 text-xs text-neutral-400 tabular-nums">
           {relativeTime(entry.ts)}
         </td>
         <td className="px-4 py-2 text-xs text-neutral-300">
-          {entry.actor ? `u/${entry.actor}` : <span className="text-neutral-600">—</span>}
+          {entry.actor ? `u/${entry.actor}` : <span className="text-neutral-400">—</span>}
         </td>
         <td className="px-4 py-2">
           <AuditActionBadge action={entry.action} />
         </td>
         <td className="px-4 py-2 text-xs text-neutral-400">
-          {entry.target ?? <span className="text-neutral-600">—</span>}
+          {entry.target ?? <span className="text-neutral-400">—</span>}
         </td>
         <td className="px-4 py-2 text-right">
           {hasMeta ? (
-            <span className="text-neutral-600 transition hover:text-neutral-300">
+            <span className="text-neutral-400 transition hover:text-neutral-300">
               {expanded ? '▲' : '▼'}
             </span>
           ) : null}
@@ -2974,7 +2983,7 @@ function ExportTab() {
           <div>GET /api/agents</div>
           <div>GET /api/export/posts.csv?limit=N</div>
         </div>
-        <p className="mt-3 max-w-2xl text-xs text-neutral-500">
+        <p className="mt-3 max-w-2xl text-xs text-neutral-400">
           All routes are mod-protected and return JSON unless otherwise noted. Phase 2 will add
           bearer-token auth so external services can pull directly without a mod session.
         </p>
@@ -3008,7 +3017,7 @@ function Card({
     <article className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
       <div className="text-xs uppercase tracking-wide text-neutral-400">{label}</div>
       <div className={`mt-2 truncate text-2xl font-semibold ${accent}`}>{value}</div>
-      <div className="mt-1 text-xs text-neutral-500">{sub}</div>
+      <div className="mt-1 text-xs text-neutral-400">{sub}</div>
     </article>
   );
 }

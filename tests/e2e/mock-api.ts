@@ -213,6 +213,17 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ status: 200, json: { ok: true } });
     }
 
+    // Onboarding
+    if (pathname === '/api/onboarding/status') {
+      return route.fulfill({ json: { onboarded: true } });
+    }
+    if (pathname === '/api/onboarding/complete' && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname === '/api/onboarding/reset' && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+
     // Fallback: abort unknown API paths so tests get a clear failure signal
     console.warn(`[mock-api] Unhandled request: ${method} ${pathname}`);
     return route.fulfill({ status: 404, json: { error: `mock: no handler for ${pathname}` } });
