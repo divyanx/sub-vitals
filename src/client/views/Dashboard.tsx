@@ -983,11 +983,7 @@ function ThreadPanel({ postId }: { postId: string }) {
               <span className={c.isAgent ? 'font-medium text-blue-300' : 'text-neutral-300'}>
                 u/{c.authorName}
               </span>
-              {c.isAgent ? (
-                <span className="rounded-full border border-blue-700 bg-blue-900/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-blue-200">
-                  Verified agent
-                </span>
-              ) : null}
+              {c.isAgent ? <AgentSourceBadge source={c.agentSource} /> : null}
               <span>·</span>
               <span>{relativeTime(c.createdAt)}</span>
               {c.sentimentLabel ? (
@@ -1006,6 +1002,43 @@ function ThreadPanel({ postId }: { postId: string }) {
         ))}
       </ul>
     </div>
+  );
+}
+
+function AgentSourceBadge({
+  source,
+}: {
+  source: 'distinguished' | 'mod-list' | 'flair' | 'record' | null;
+}) {
+  // Distinguished comments get the green "MOD" treatment to match Reddit's
+  // own visual convention — that's the strongest "I'm speaking officially"
+  // signal. Other sources get a neutral "Verified" badge.
+  if (source === 'distinguished') {
+    return (
+      <span
+        className="rounded-full border border-emerald-600 bg-emerald-900/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200"
+        title="Reddit's own distinguished moderator/admin comment"
+      >
+        🛡 MOD
+      </span>
+    );
+  }
+  const meta: Record<
+    Exclude<NonNullable<typeof source>, 'distinguished'>,
+    { label: string; title: string }
+  > = {
+    'mod-list': { label: 'Mod team', title: 'Subreddit moderator (presumed brand employee)' },
+    flair: { label: 'Verified · flair', title: 'Brand-team flair detected on author' },
+    record: { label: 'Verified', title: 'Mod-marked or whitelist-seeded as verified agent' },
+  };
+  const m = source ? meta[source] : meta.record;
+  return (
+    <span
+      className="rounded-full border border-blue-700 bg-blue-900/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-blue-200"
+      title={m.title}
+    >
+      ✓ {m.label}
+    </span>
   );
 }
 

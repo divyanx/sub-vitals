@@ -31,6 +31,7 @@ import {
   handleTagIssueMenu,
 } from '@modules/contact-drivers/index.js';
 import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/index.js';
+import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
 import { K, today, yyyymm } from '@shared/keys.js';
@@ -62,6 +63,7 @@ registerModule(agentVerificationModule);
 registerModule(contactDriversModule);
 registerModule(sentimentModule);
 registerModule(dashboardOrchestratorModule);
+registerModule(impostorDetectionModule);
 
 // ---------------------------------------------------------------------------
 // App
@@ -509,6 +511,7 @@ app.get('/api/posts/:postId/thread', async (c) => {
         body: cm.body,
         createdAt: cm.createdAt,
         isAgent: cm.isAgent,
+        agentSource: cm.agentSource ?? null,
         sentimentLabel: s?.label ?? null,
         sentimentScore: s?.score ?? null,
         sentimentScoredBy: s?.scoredBy ?? null,
@@ -589,6 +592,7 @@ for (const mod of [
   contactDriversModule,
   sentimentModule,
   dashboardOrchestratorModule,
+  impostorDetectionModule,
 ]) {
   mod.apiRoutes?.(app);
 }

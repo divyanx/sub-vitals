@@ -153,6 +153,7 @@ export const api = {
         body: string;
         createdAt: number;
         isAgent: boolean;
+        agentSource: 'distinguished' | 'mod-list' | 'flair' | 'record' | null;
         sentimentLabel: 'positive' | 'neutral' | 'negative' | null;
         sentimentScore: number | null;
         sentimentScoredBy: 'lexicon' | 'ai' | null;

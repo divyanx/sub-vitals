@@ -14,7 +14,7 @@ import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, K, today } from '@shared/keys.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
-import { requireMod } from '@shared/permissions.js';
+import { isUserMod, requireMod } from '@shared/permissions.js';
 import {
   ensureCommentMeta,
   getSentimentRollup,
@@ -24,6 +24,7 @@ import {
   setSentimentScore,
 } from '@shared/storage.js';
 import {
+  type CommentMeta,
   type OnCommentCreateRequest,
   type OnPostCreateRequest,
   type RedLatticeModule,
@@ -96,15 +97,13 @@ export const sentimentModule: RedLatticeModule = {
     if (!(await processedOnce(HANDLER_COMMENT, comment.id))) return;
 
     // Persist comment metadata up-front so the dashboard's thread view has
-    // everything it needs without re-fetching from Reddit. Best-effort agent
-    // lookup — falls back to false on any error.
+    // everything it needs without re-fetching from Reddit.
     if (comment.postId) {
-      let agentMarker = false;
-      try {
-        agentMarker = comment.authorName ? await isAgent(comment.authorName) : false;
-      } catch (err) {
-        log.warn('sentiment: agent lookup failed (non-fatal)', { err: String(err) });
-      }
+      const detected = await detectAgent({
+        username: comment.authorName,
+        flairText: comment.authorFlair?.text,
+        distinguishedBy: comment.distinguishedBy,
+      });
       await ensureCommentMeta({
         commentId: comment.id,
         postId: comment.postId,
@@ -112,7 +111,8 @@ export const sentimentModule: RedLatticeModule = {
         authorName: comment.authorName ?? 'unknown',
         body: comment.body,
         createdAt: Date.now(),
-        isAgent: agentMarker,
+        isAgent: detected.isAgent,
+        ...(detected.source ? { agentSource: detected.source } : {}),
       });
     }
 
@@ -301,6 +301,73 @@ async function checkForEscalation(postId: string): Promise<void> {
     expiration: new Date(Date.now() + ESCALATION_COOLDOWN_SEC * 1000),
   });
   log.info('escalation: modmail sent', { postId, negativeCount, threshold });
+}
+
+/**
+ * Multi-signal agent detection at comment time. Combines four signals,
+ * checked in order of strength (the strongest wins):
+ *
+ *   1. distinguishedBy — Reddit's native "this mod or admin is speaking
+ *      officially" signal. Strongest because it's an intentional, visible-
+ *      to-everyone act by the comment author themselves.
+ *   2. Cached subreddit moderator list — mods are presumed brand employees.
+ *   3. Mod-controlled author flair matching the configured pattern.
+ *   4. Explicit AgentRecord (mod-marked or whitelist-seeded).
+ *
+ * Returns `{ isAgent, source }` so the dashboard can show *why* we trust the
+ * comment as official.
+ *
+ * Best-effort — any error returns false (fail-closed: better to under-tag
+ * an agent than to mistakenly mark a random user as one).
+ */
+async function detectAgent(args: {
+  username?: string | undefined;
+  flairText?: string | undefined;
+  distinguishedBy?: string | undefined;
+}): Promise<{ isAgent: boolean; source?: CommentMeta['agentSource'] }> {
+  // 1. Reddit-native distinguish — strongest.
+  if (args.distinguishedBy === 'moderator' || args.distinguishedBy === 'admin') {
+    return { isAgent: true, source: 'distinguished' };
+  }
+  if (!args.username) return { isAgent: false };
+
+  // 2. Cached mod list.
+  try {
+    if (await isUserMod(args.username)) {
+      return { isAgent: true, source: 'mod-list' };
+    }
+  } catch (err) {
+    log.warn('agent-detect: mod-list check failed (non-fatal)', { err: String(err) });
+  }
+
+  // 3. Flair pattern.
+  if (args.flairText) {
+    try {
+      const pattern = (await settings.get('agent-flair-pattern').catch(() => undefined)) as
+        | string
+        | undefined;
+      if (typeof pattern === 'string' && pattern.trim().length > 0) {
+        if (new RegExp(pattern, 'i').test(args.flairText)) {
+          return { isAgent: true, source: 'flair' };
+        }
+      }
+    } catch (err) {
+      log.warn('agent-detect: flair pattern check failed (non-fatal)', {
+        err: String(err),
+      });
+    }
+  }
+
+  // 4. Explicit record (whitelist or mod-marked).
+  try {
+    if (await isAgent(args.username)) {
+      return { isAgent: true, source: 'record' };
+    }
+  } catch (err) {
+    log.warn('agent-detect: isAgent failed (non-fatal)', { err: String(err) });
+  }
+
+  return { isAgent: false };
 }
 
 async function getThreshold(): Promise<number> {

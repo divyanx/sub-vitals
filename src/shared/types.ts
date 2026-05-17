@@ -112,6 +112,18 @@ export interface CommentMeta {
   body: string;
   createdAt: number;
   isAgent: boolean;
+  /**
+   * Why this comment was treated as agent-authored, if it was:
+   *   - 'distinguished' — `distinguishedBy === 'moderator'|'admin'` on the
+   *      Reddit comment itself. Strongest native Reddit signal.
+   *   - 'mod-list'      — author is currently a mod of this subreddit.
+   *   - 'flair'         — author's flair text matches the configured
+   *                       agent-flair-pattern regex.
+   *   - 'record'        — explicit AgentRecord exists for this user
+   *                       (mod-marked or whitelist-seeded).
+   *   - undefined       — comment is not from a verified agent.
+   */
+  agentSource?: 'distinguished' | 'mod-list' | 'flair' | 'record' | undefined;
 }
 
 export type SentimentLabel = 'positive' | 'neutral' | 'negative';

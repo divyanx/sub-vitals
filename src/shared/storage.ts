@@ -247,9 +247,23 @@ export async function getAgent(username: string): Promise<AgentRecord | null> {
   return raw ? (JSON.parse(raw) as AgentRecord) : null;
 }
 
+/**
+ * Multi-signal agent detection. Returns true when ANY of the following holds:
+ *   1. The user has an explicit AgentRecord (mod-marked or app-install-seeded)
+ *   2. The user is a moderator of the current subreddit (mods are presumed
+ *      to be brand employees — they have the keys to the sub)
+ *
+ * Flair-based detection is checked separately in the trigger path (we read
+ * the comment's authorFlair from the event payload there; this function only
+ * knows the username).
+ */
 export async function isAgent(username: string): Promise<boolean> {
+  if (!username) return false;
   const agent = await getAgent(username);
-  return agent !== null && agent.role !== 'removed';
+  if (agent !== null && agent.role !== 'removed') return true;
+  // Defer-imported to avoid circular: storage → permissions → reddit.
+  const { isUserMod } = await import('./permissions.js');
+  return isUserMod(username);
 }
 
 export async function listAgents(): Promise<AgentRecord[]> {

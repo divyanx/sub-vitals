@@ -69,6 +69,15 @@ export const commentCreateMinimalSchema = z.object({
       authorName: z.string().optional(),
       postId: z.string().optional(),
       parentId: z.string().optional(),
+      authorFlair: z
+        .object({
+          text: z.string().optional(),
+        })
+        .passthrough()
+        .optional(),
+      // distinguishedBy is Reddit's strongest native "speaking-officially"
+      // signal — a mod or admin explicitly elects to mark this comment.
+      distinguishedBy: z.string().optional(),
     })
     .optional(),
   subreddit: z

@@ -11,7 +11,7 @@
  *   3. (Phase 2) Subreddit moderator status
  */
 
-import { reddit, settings } from '@devvit/web/server';
+import { context, reddit, settings } from '@devvit/web/server';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import { getAgent, listAgents, setAgent } from '@shared/storage.js';
@@ -112,6 +112,11 @@ export async function handleMarkAgentMenu(c: Context): Promise<Response> {
     verifiedAt: Date.now(),
     verifiedBy: 'menu-action',
   });
+
+  // Best-effort: apply a Reddit user flair so the verification is visible
+  // to everyone reading the sub, not just in our dashboard.
+  await applyVerifiedFlair(username);
+
   return c.json({
     showToast: { text: `✓ Marked u/${username} as verified agent.`, appearance: 'success' },
   });
@@ -136,9 +141,63 @@ export async function handleUnmarkAgentMenu(c: Context): Promise<Response> {
     return c.json({ showToast: `u/${username} is not currently verified.` });
   }
   await setAgent({ ...existing, role: 'removed' });
+  // Clear the visible Reddit flair when revoking verification.
+  await clearVerifiedFlair(username);
   return c.json({
     showToast: { text: `Removed agent status for u/${username}.`, appearance: 'success' },
   });
+}
+
+// ---------------------------------------------------------------------------
+// Visible-in-Reddit verification badge — apply / clear user flair.
+// ---------------------------------------------------------------------------
+
+async function applyVerifiedFlair(username: string): Promise<void> {
+  const subredditName = context.subredditName;
+  if (!subredditName) return;
+  let text = 'Verified Agent';
+  let color = '#1e3a8a';
+  try {
+    const cfgText = await settings.get('agent-flair-text').catch(() => undefined);
+    const cfgColor = await settings.get('agent-flair-color').catch(() => undefined);
+    if (typeof cfgText === 'string' && cfgText.trim().length > 0) text = cfgText.trim();
+    if (typeof cfgColor === 'string' && /^#[0-9a-fA-F]{6}$/.test(cfgColor.trim())) {
+      color = cfgColor.trim();
+    }
+  } catch (err) {
+    log.warn('agent-flair: settings read failed (non-fatal)', { err: String(err) });
+  }
+  // Empty text means the mod has explicitly disabled flair sync.
+  if (!text) return;
+  try {
+    await reddit.setUserFlair({
+      subredditName,
+      username,
+      text,
+      backgroundColor: color,
+      textColor: 'light',
+    });
+    log.info('agent-flair: applied', { username, text });
+  } catch (err) {
+    log.warn('agent-flair: setUserFlair failed (non-fatal)', {
+      err: err instanceof Error ? err.message : String(err),
+      username,
+    });
+  }
+}
+
+async function clearVerifiedFlair(username: string): Promise<void> {
+  const subredditName = context.subredditName;
+  if (!subredditName) return;
+  try {
+    await reddit.setUserFlair({ subredditName, username, text: '' });
+    log.info('agent-flair: cleared', { username });
+  } catch (err) {
+    log.warn('agent-flair: clear failed (non-fatal)', {
+      err: err instanceof Error ? err.message : String(err),
+      username,
+    });
+  }
 }
 
 // ---------------------------------------------------------------------------

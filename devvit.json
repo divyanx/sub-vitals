@@ -152,6 +152,28 @@
         "type": "paragraph",
         "label": "Brand voice for AI response drafts",
         "helpText": "Free-form note describing your brand's tone of voice. Used by the \"Draft reply\" feature to shape candidate replies. e.g. \"Friendly, empathetic, never defensive. Acknowledge the user's frustration first. Avoid corporate-speak. Sign off as the Sonos community team.\""
+      },
+      "brand-name": {
+        "type": "string",
+        "label": "Brand name (for impostor detection)",
+        "helpText": "The brand or company name customers mention, e.g. \"Sonos\". Used to detect impersonation: comments from non-verified users claiming \"I work at Sonos / I'm from Sonos support / as a Sonos engineer\" get flagged for mod review. Leave blank to disable impostor detection."
+      },
+      "agent-flair-pattern": {
+        "type": "string",
+        "label": "Verified-agent flair pattern (regex)",
+        "helpText": "Optional regex that matches your subreddit's official agent flair text. Anyone commenting with a flair matching this is automatically treated as a verified agent. Mod-controlled flair is the standard Reddit way to mark brand employees. Example: ^(Verified|Sonos Team|Brand Employee)$"
+      },
+      "agent-flair-text": {
+        "type": "string",
+        "label": "Verified-agent flair text to apply",
+        "helpText": "When a mod marks a comment author as a verified agent, RedLattice also applies this Reddit user flair so everyone in the sub can see who's official. e.g. \"Sonos Team\" or \"Verified Agent\". Leave blank to skip the flair sync.",
+        "defaultValue": "Verified Agent"
+      },
+      "agent-flair-color": {
+        "type": "string",
+        "label": "Verified-agent flair background color",
+        "helpText": "Hex color for the verified-agent user flair background, e.g. #1e3a8a. Defaults to a dark blue.",
+        "defaultValue": "#1e3a8a"
       }
     }
   },
