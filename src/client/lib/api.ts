@@ -394,9 +394,19 @@ export const api = {
     const r = await fetch('/api/themes/regenerate', { method: 'POST' });
     if (!r.ok) {
       const body = await r.json().catch(() => ({}));
-      throw new Error((body as { error?: string }).error ?? `HTTP ${r.status}`);
+      throw new Error(
+        (body as { hint?: string; error?: string }).hint ??
+          (body as { error?: string }).error ??
+          `HTTP ${r.status}`,
+      );
     }
-    const raw = await r.json().catch(() => ({}) as Record<string, unknown>);
+    const raw = (await r.json().catch(() => ({}))) as Record<string, unknown>;
+    // The server now returns 200 with a `hint` field when there's no data to
+    // cluster (rather than 503). Throw a friendly error so the UI surfaces it
+    // via the existing error path.
+    if (raw.ok === false && typeof raw.hint === 'string') {
+      throw new Error(raw.hint);
+    }
     return {
       generatedAt: (raw as { generatedAt?: number | null }).generatedAt ?? null,
       themes:

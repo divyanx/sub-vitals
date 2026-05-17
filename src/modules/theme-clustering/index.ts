@@ -79,10 +79,27 @@ export const themeClusteringModule: RedLatticeModule = {
     /** POST /api/themes/regenerate  (mod-only) */
     app.post('/api/themes/regenerate', async (c) => {
       if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
-      const snapshot = await regenerateThemes();
-      if (!snapshot) {
-        return c.json({ error: 'regeneration failed — check AI settings or logs' }, 503);
+      const result = await regenerateThemesDetailed();
+      if (!result.ok) {
+        const hint =
+          result.reason === 'no-negative-posts'
+            ? `No negative posts to cluster yet (found ${result.count}). Submit some test posts and wait ~5 sec for sentiment scoring, then try again.`
+            : result.reason === 'no-post-metas'
+              ? `Found negative posts but couldn't read their metadata. Try again in a moment.`
+              : `AI call failed — check your OpenRouter key and monthly cost cap in Settings.`;
+        return c.json(
+          {
+            ok: false,
+            reason: result.reason,
+            count: result.count,
+            hint,
+            themes: [],
+            generatedAt: null,
+          },
+          200,
+        );
       }
+      const { snapshot } = result;
       void recordAudit('theme-regenerate', null, { themeCount: snapshot.themes.length });
       // Forward to Studio (best-effort).
       void forwardToStudio('theme-regenerate', {
@@ -103,6 +120,15 @@ export const themeClusteringModule: RedLatticeModule = {
  * Returns null if there are not enough posts or the LLM call fails.
  */
 export async function regenerateThemes(): Promise<ThemeSnapshot | null> {
+  const detailed = await regenerateThemesDetailed();
+  return detailed.ok ? detailed.snapshot : null;
+}
+
+export type RegenerateResult =
+  | { ok: true; snapshot: ThemeSnapshot }
+  | { ok: false; reason: 'no-negative-posts' | 'no-post-metas' | 'ai-failed'; count: number };
+
+export async function regenerateThemesDetailed(): Promise<RegenerateResult> {
   // 1. Gather negative posts
   const allIds = await getRecentPostIds(200);
   const sentiments = await Promise.all(allIds.map((id) => getSentimentScore(id)));
@@ -112,7 +138,7 @@ export async function regenerateThemes(): Promise<ThemeSnapshot | null> {
     log.info('theme-clustering: not enough negative posts, skipping', {
       count: negativeIds.length,
     });
-    return null;
+    return { ok: false, reason: 'no-negative-posts', count: negativeIds.length };
   }
 
   const sampleIds = negativeIds.slice(0, MAX_POSTS);
@@ -121,7 +147,7 @@ export async function regenerateThemes(): Promise<ThemeSnapshot | null> {
 
   if (validMetas.length < 2) {
     log.info('theme-clustering: not enough post metas', { count: validMetas.length });
-    return null;
+    return { ok: false, reason: 'no-post-metas', count: validMetas.length };
   }
 
   // 2. Build prompt
@@ -163,8 +189,8 @@ export async function regenerateThemes(): Promise<ThemeSnapshot | null> {
   });
 
   if (!result.ok) {
-    log.warn('theme-clustering: LLM failed', { reason: result.reason });
-    return null;
+    log.warn('theme-clustering: AI failed', { reason: result.reason });
+    return { ok: false, reason: 'ai-failed', count: validMetas.length };
   }
 
   // 4. Enrich clusters with computed fields
@@ -202,5 +228,5 @@ export async function regenerateThemes(): Promise<ThemeSnapshot | null> {
     costCents: result.ok ? Number(result.costCents.toFixed(4)) : 0,
   });
 
-  return snapshot;
+  return { ok: true, snapshot };
 }

@@ -325,16 +325,18 @@ function BrandIdentitySection({
         </div>
       </div>
       <FieldError msg={error} />
-      <div className="mt-4 flex flex-wrap gap-3">
-        <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
+      <div className="mt-4">
         <button
           type="button"
           onClick={testDraft}
           disabled={draftLoading}
-          className="rounded-md border border-violet-700 bg-violet-900/20 px-4 py-1.5 text-sm font-medium text-violet-200 transition hover:bg-violet-900/40 disabled:opacity-50"
+          className="rounded-md border border-violet-700 bg-violet-900/20 px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-900/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
         >
-          {draftLoading ? 'Generating…' : 'Test brand voice'}
+          {draftLoading ? '✨ Generating…' : '✨ Test brand voice'}
         </button>
+        <p className="mt-2 text-xs text-neutral-500">
+          Generates 3 sample AI replies against a recent post to preview your tone.
+        </p>
       </div>
       {draftError ? (
         <div className="mt-3 rounded border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
@@ -371,6 +373,7 @@ function BrandIdentitySection({
           </ul>
         </div>
       ) : null}
+      <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
     </Section>
   );
 }
