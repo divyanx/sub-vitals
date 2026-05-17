@@ -77,6 +77,9 @@ export interface TaxonomyNode {
   label: string;
   color?: string;
   description?: string;
+  keywords?: string[];
+  /** null or missing = root driver. Non-null = child of named parent. */
+  parentId?: string | null;
 }
 
 export interface Agent {
@@ -537,3 +540,37 @@ export const api = {
     },
   },
 };
+
+// ---------------------------------------------------------------------------
+// Taxonomy display helpers
+// ---------------------------------------------------------------------------
+
+/**
+ * Renders a driver's full ancestry as a breadcrumb string.
+ *
+ * Examples:
+ *   formatDriverPath('bug', taxonomy)           → 'Bug / broken experience'
+ *   formatDriverPath('bug.crash', taxonomy)     → 'Bug / broken experience › Crash'
+ *   formatDriverPath('unknown', taxonomy)       → 'unknown'
+ *
+ * @param driverId  The driver id to resolve.
+ * @param taxonomy  Flat taxonomy array (may include parentId fields).
+ * @returns         Human-readable breadcrumb string.
+ */
+export function formatDriverPath(driverId: string, taxonomy: TaxonomyNode[]): string {
+  const byId = new Map(taxonomy.map((t) => [t.id, t]));
+
+  const chain: string[] = [];
+  let current: TaxonomyNode | undefined = byId.get(driverId);
+  const visited = new Set<string>();
+
+  while (current) {
+    if (visited.has(current.id)) break; // cycle guard
+    visited.add(current.id);
+    chain.unshift(current.label || current.id);
+    current = current.parentId ? byId.get(current.parentId) : undefined;
+  }
+
+  // Fallback: if driverId not found, return the raw id
+  return chain.length > 0 ? chain.join(' › ') : driverId;
+}

@@ -79,6 +79,9 @@ export interface TaxonomyNode {
   label: string;
   description?: string | undefined;
   color?: string | undefined;
+  keywords?: string[] | undefined;
+  /** null or missing = root driver. Non-null = child of named parent. */
+  parentId?: string | null | undefined;
 }
 
 export type PostStatus = 'open' | 'in-progress' | 'responded' | 'resolved';
