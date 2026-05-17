@@ -33,7 +33,7 @@ export function Pulse({ onOpenDashboard }: Props) {
           RedLattice · Today's Pulse
         </h1>
         {stats.data && (
-          <span className="ml-auto text-xs text-neutral-500" title="Date">
+          <span className="ml-auto text-xs text-neutral-400" title="Date">
             {stats.data.today}
           </span>
         )}
@@ -135,9 +135,9 @@ function Stat({
 
   return (
     <article className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-neutral-500">{label}</div>
+      <div className="text-xs font-medium uppercase tracking-wide text-neutral-400">{label}</div>
       <div className={`mt-1.5 text-2xl font-semibold leading-none ${valueColor}`}>{value}</div>
-      <div className="mt-1 truncate text-xs text-neutral-500">{sub}</div>
+      <div className="mt-1 truncate text-xs text-neutral-400">{sub}</div>
     </article>
   );
 }
@@ -159,10 +159,10 @@ function TrendSection({ data }: { data: PulseStats }) {
       aria-label="Last 7 days sentiment"
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-500">
+        <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">
           Last 7 days — sentiment
         </span>
-        <span className="flex items-center gap-3 text-xs text-neutral-600">
+        <span className="flex items-center gap-3 text-xs text-neutral-400">
           <LegendDot color="bg-emerald-500" label="positive" />
           <LegendDot color="bg-neutral-600" label="neutral" />
           <LegendDot color="bg-rose-500" label="negative" />
@@ -206,7 +206,7 @@ function TrendSection({ data }: { data: PulseStats }) {
                   />
                 </div>
               </div>
-              <span className="text-[10px] text-neutral-600">{shortDate}</span>
+              <span className="text-[10px] text-neutral-400">{shortDate}</span>
             </div>
           );
         })}
@@ -247,7 +247,7 @@ function TrendTotal({ label, value, color }: { label: string; value: number; col
   return (
     <span className="flex flex-col items-center gap-0.5">
       <span className={`text-sm font-semibold ${color}`}>{value}</span>
-      <span className="text-neutral-600">{label}</span>
+      <span className="text-neutral-400">{label}</span>
     </span>
   );
 }
