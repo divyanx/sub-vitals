@@ -5,6 +5,18 @@
  * Tags every post with an issue category (bug, billing, feature, complaint…)
  * so brand teams see *why* customers are contacting them.
  *
+ * ## Classifier behavior (updated for hierarchical taxonomy)
+ *
+ * The classifier can return ANY node id — root or leaf. When a post clearly
+ * matches a specific leaf (e.g., "bug.crash"), it returns the leaf id rather
+ * than the parent ("bug"). When confidence is low or no leaf applies, it falls
+ * back to the most appropriate root or the closest ancestor it is confident
+ * about. There is never a guarantee of a leaf — only a single `driverId`
+ * string referencing any valid node in the taxonomy.
+ *
+ * Keyword scoring (lexicon fallback): uses taxonomy keywords per node and
+ * prefers the most specific matching leaf over its parent root.
+ *
  * Phase 1:
  *   - PostCreate trigger → keyword auto-suggest → store tag + rollup if confident
  *   - Manual tag via menu action (form-based)
@@ -422,20 +434,63 @@ export interface Suggestion {
   confidence: number;
 }
 
+/**
+ * Suggest the best-matching driver from the taxonomy using keyword scoring.
+ *
+ * Strategy:
+ *   1. Score ALL nodes in the taxonomy (using their own keywords field plus
+ *      the built-in KEYWORDS map for backward compat).
+ *   2. Among nodes with the same confidence, prefer a leaf (has no children)
+ *      over a root — the most specific match wins.
+ */
 export function suggestDriver(
   text: string,
   taxonomy: TaxonomyNode[] = DEFAULT_TAXONOMY,
 ): Suggestion | null {
   const validIds = new Set(taxonomy.map((t) => t.id));
-  let best: Suggestion | null = null;
+  // parentIds = ids that have at least one child → they are parents
+  const parentIds = new Set(
+    taxonomy.filter((t) => t.parentId && validIds.has(t.parentId)).map((t) => t.parentId as string),
+  );
+
+  let best: (Suggestion & { isLeaf: boolean }) | null = null;
+
+  // Score using the built-in keyword map (backward compat)
   for (const [driverId, phrases] of Object.entries(KEYWORDS)) {
     if (!validIds.has(driverId)) continue;
     const hits = phrases.filter((p) => text.includes(p)).length;
     if (hits === 0) continue;
-    const confidence = Math.min(1, hits / 3); // 3 hits = full confidence
-    if (!best || confidence > best.confidence) best = { id: driverId, confidence };
+    const confidence = Math.min(1, hits / 3);
+    const isLeaf = !parentIds.has(driverId);
+    if (
+      !best ||
+      confidence > best.confidence ||
+      (confidence === best.confidence && isLeaf && !best.isLeaf)
+    ) {
+      best = { id: driverId, confidence, isLeaf };
+    }
   }
-  return best && best.confidence >= 0.34 ? best : null;
+
+  // Also score using per-node keywords from the taxonomy (supports hierarchy)
+  for (const node of taxonomy) {
+    const nodeKeywords: string[] = Array.isArray((node as { keywords?: string[] }).keywords)
+      ? ((node as { keywords?: string[] }).keywords ?? [])
+      : [];
+    if (nodeKeywords.length === 0) continue;
+    const hits = nodeKeywords.filter((p) => text.includes(p.toLowerCase())).length;
+    if (hits === 0) continue;
+    const confidence = Math.min(1, hits / 3);
+    const isLeaf = !parentIds.has(node.id);
+    if (
+      !best ||
+      confidence > best.confidence ||
+      (confidence === best.confidence && isLeaf && !best.isLeaf)
+    ) {
+      best = { id: node.id, confidence, isLeaf };
+    }
+  }
+
+  return best && best.confidence >= 0.34 ? { id: best.id, confidence: best.confidence } : null;
 }
 
 function defaultFromDate(): string {
@@ -551,7 +606,10 @@ async function classifyWithLlm(args: {
     name: 'contact-drivers-tag',
     schema,
     system:
-      'You categorize Reddit posts in a brand support subreddit by their contact driver (why the customer is posting). Choose the single best matching category. Reply with the category id, your confidence (0-1), and a one-sentence reasoning.',
+      'You categorize Reddit posts in a brand support subreddit by their contact driver (why the customer is posting). ' +
+      'Choose the single best matching category. Prefer the most specific leaf category when you are confident it applies. ' +
+      'Return a root category when no leaf clearly fits, or when your confidence in any leaf is below 0.7. ' +
+      'Reply with the category id (any node in the taxonomy, not just roots), your confidence (0-1), and a one-sentence reasoning.',
     prompt: `Categories:\n${categoryList}\n\nPost title: ${args.title}\nPost body: ${args.body || '(empty)'}\n\nReturn the best matching category id, a confidence score, and a brief reasoning.`,
   });
   if (!result.ok) return null;
