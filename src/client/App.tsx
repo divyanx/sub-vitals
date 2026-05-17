@@ -14,6 +14,7 @@ const VALID_TABS: Tab[] = [
   'sentiment',
   'incidents',
   'themes',
+  'pipelines',
   'agents',
   'export',
   'audit',

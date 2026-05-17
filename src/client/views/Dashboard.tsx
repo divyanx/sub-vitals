@@ -42,6 +42,7 @@ type Tab =
   | 'sentiment'
   | 'incidents'
   | 'themes'
+  | 'pipelines'
   | 'agents'
   | 'export'
   | 'audit'
@@ -105,6 +106,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
           {tab === 'sentiment' && <SentimentTab />}
           {tab === 'incidents' && <Incidents />}
           {tab === 'themes' && <Themes />}
+          {tab === 'pipelines' && <Pipelines onOpenSettings={() => setTab('settings')} />}
           {tab === 'agents' && <Agents />}
           {tab === 'export' && <ExportTab />}
           {tab === 'audit' && <Audit />}
@@ -136,6 +138,7 @@ const TABS: { id: Tab; label: string }[] = [
   { id: 'sentiment', label: 'Sentiment' },
   { id: 'incidents', label: 'Incidents' },
   { id: 'themes', label: 'Themes' },
+  { id: 'pipelines', label: 'Pipelines' },
   { id: 'agents', label: 'Agents' },
   { id: 'export', label: 'Export' },
   { id: 'audit', label: 'Audit' },
@@ -2135,6 +2138,309 @@ function Themes() {
         </>
       )}
     </section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Pipelines — catalog of all classification/analysis pipelines
+// ---------------------------------------------------------------------------
+
+interface PipelineDef {
+  id: string;
+  name: string;
+  trigger: string;
+  logic: string;
+  settingsLink?: string;
+  moduleKey?: string;
+}
+
+const PIPELINE_DEFS: PipelineDef[] = [
+  {
+    id: 'contact-drivers',
+    name: 'Contact Drivers',
+    trigger: 'PostSubmit',
+    logic: 'Lexicon → LLM',
+    settingsLink: 'taxonomy',
+    moduleKey: 'contact-drivers',
+  },
+  {
+    id: 'sentiment',
+    name: 'Sentiment scoring',
+    trigger: 'PostSubmit + CommentCreate',
+    logic: 'AFINN lexicon → LLM judge for ambiguous',
+    moduleKey: 'sentiment',
+  },
+  {
+    id: 'impostor',
+    name: 'Impostor detection',
+    trigger: 'CommentCreate (non-mods only)',
+    logic: 'Regex pre-filter → LLM judge',
+    moduleKey: 'impostor-detection',
+  },
+  {
+    id: 'crisis',
+    name: 'Crisis detection',
+    trigger: 'CommentCreate',
+    logic: 'Hourly volume + negative-share thresholds',
+    moduleKey: 'crisis-detection',
+  },
+  {
+    id: 'themes',
+    name: 'Theme clustering',
+    trigger: 'Scheduler (daily 02:00 UTC)',
+    logic: 'LLM clustering of negative posts',
+    moduleKey: 'theme-clustering',
+  },
+  {
+    id: 'agent-metrics',
+    name: 'Agent metrics',
+    trigger: 'CommentCreate',
+    logic: 'First-response latency + sentiment delta tracking',
+    moduleKey: 'agent-metrics',
+  },
+];
+
+interface DebugStats {
+  events_received?: number;
+  events_processed?: number;
+  events_failed?: number;
+}
+
+/** Expandable stats section inside a pipeline card */
+function PipelineStats({ moduleKey }: { moduleKey: string }) {
+  const [open, setOpen] = useState(false);
+  const debugQ = useQuery({
+    queryKey: ['admin-debug'],
+    queryFn: api.adminDebug,
+    enabled: open,
+    staleTime: 30_000,
+  });
+
+  const stats: DebugStats = (() => {
+    if (!debugQ.data) return {};
+    // The debug endpoint returns per-module counters under a `moduleCounters` key
+    // or falls back to zero if unavailable (module counters are Redis hashes).
+    const raw = debugQ.data as Record<string, unknown>;
+    const counters = raw[`counters.${moduleKey}`] as Record<string, number> | undefined;
+    return counters ?? {};
+  })();
+
+  return (
+    <div className="mt-3 border-t border-neutral-800 pt-3">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex items-center gap-1 text-xs text-neutral-500 hover:text-neutral-300"
+        aria-expanded={open}
+        data-testid={`pipeline-stats-toggle-${moduleKey}`}
+      >
+        <span className={`transition-transform ${open ? 'rotate-90' : ''}`} aria-hidden="true">
+          ▶
+        </span>
+        Stats
+      </button>
+      {open ? (
+        <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
+          {debugQ.isPending ? (
+            <span className="col-span-3 text-neutral-500">Loading…</span>
+          ) : debugQ.isError ? (
+            <span className="col-span-3 text-rose-400">Failed to load stats.</span>
+          ) : (
+            <>
+              <div className="rounded bg-neutral-800 px-2 py-1">
+                <div className="text-neutral-500">Received</div>
+                <div className="font-medium text-neutral-200">{stats.events_received ?? '—'}</div>
+              </div>
+              <div className="rounded bg-neutral-800 px-2 py-1">
+                <div className="text-neutral-500">Processed</div>
+                <div className="font-medium text-neutral-200">{stats.events_processed ?? '—'}</div>
+              </div>
+              <div className="rounded bg-neutral-800 px-2 py-1">
+                <div className="text-neutral-500">Failed</div>
+                <div
+                  className={`font-medium ${(stats.events_failed ?? 0) > 0 ? 'text-rose-400' : 'text-neutral-200'}`}
+                >
+                  {stats.events_failed ?? '—'}
+                </div>
+              </div>
+            </>
+          )}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Standard pipeline card */
+export function PipelineCard({
+  pipeline,
+  onOpenSettings,
+}: {
+  pipeline: PipelineDef;
+  onOpenSettings?: () => void;
+}) {
+  return (
+    <div
+      className="flex flex-col rounded-xl border border-neutral-800 bg-neutral-900 p-5"
+      data-testid={`pipeline-card-${pipeline.id}`}
+    >
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <h3 className="text-sm font-semibold text-neutral-100">{pipeline.name}</h3>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <span className="flex items-center gap-1 text-xs text-emerald-400">
+              <span
+                className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"
+                aria-hidden="true"
+              />
+              Active
+            </span>
+          </div>
+        </div>
+        {pipeline.settingsLink === 'taxonomy' && onOpenSettings ? (
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="shrink-0 rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-300 hover:border-orange-600 hover:text-orange-300"
+            aria-label="Edit taxonomy in Settings"
+          >
+            Settings →
+          </button>
+        ) : null}
+      </div>
+
+      <dl className="flex flex-col gap-1.5 text-xs">
+        <div className="flex gap-2">
+          <dt className="w-14 shrink-0 text-neutral-500">Trigger</dt>
+          <dd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-neutral-300">
+            {pipeline.trigger}
+          </dd>
+        </div>
+        <div className="flex gap-2">
+          <dt className="w-14 shrink-0 text-neutral-500">Logic</dt>
+          <dd className="text-neutral-400">{pipeline.logic}</dd>
+        </div>
+      </dl>
+
+      {pipeline.moduleKey ? <PipelineStats moduleKey={pipeline.moduleKey} /> : null}
+    </div>
+  );
+}
+
+/** Stub card for the future Studio custom pipeline */
+export function StubPipelineCard({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onOpen}
+      data-testid="pipeline-card-studio-stub"
+      className="flex flex-col items-start rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 p-5 text-left transition hover:border-orange-600/50 hover:bg-neutral-900"
+    >
+      <span className="mb-2 text-2xl" aria-hidden="true">
+        +
+      </span>
+      <h3 className="text-sm font-semibold text-neutral-400">Custom pipeline</h3>
+      <p className="mt-1 text-xs text-neutral-600">RedLattice Studio</p>
+      <p className="mt-3 text-xs text-orange-400 underline underline-offset-2">
+        Build custom pipelines in Studio →
+      </p>
+    </button>
+  );
+}
+
+/** Studio waitlist modal */
+function StudioModal({ onClose }: { onClose: () => void }) {
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    // Wire to Studio waitlist webhook later
+    console.log('[RedLattice Studio] Waitlist signup:', email);
+    setSubmitted(true);
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-label="RedLattice Studio waitlist"
+    >
+      <div className="w-96 rounded-xl border border-neutral-700 bg-neutral-900 p-7 shadow-2xl">
+        <div className="mb-5 flex items-start justify-between">
+          <div>
+            <h3 className="text-base font-semibold text-neutral-100">RedLattice Studio</h3>
+            <p className="mt-1 text-xs text-neutral-400">Coming soon</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            aria-label="Close"
+            className="text-neutral-600 hover:text-neutral-300"
+          >
+            ×
+          </button>
+        </div>
+        <p className="mb-5 text-sm text-neutral-300">
+          RedLattice Studio lets you build custom classification pipelines visually — no code
+          required. Chain classifiers, set conditions, and route signals to any destination.
+        </p>
+        {submitted ? (
+          <div className="rounded-lg border border-emerald-800 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-200">
+            You're on the list! We'll reach out when Studio launches.
+          </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="flex gap-2">
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              placeholder="your@email.com"
+              aria-label="Email address for Studio waitlist"
+              className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              data-testid="studio-email-input"
+            />
+            <button
+              type="submit"
+              className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-sm font-medium text-orange-200 hover:bg-orange-600/40"
+              data-testid="studio-waitlist-submit"
+            >
+              Join waitlist →
+            </button>
+          </form>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
+  const [studioOpen, setStudioOpen] = useState(false);
+
+  return (
+    <div className="space-y-6">
+      {studioOpen ? <StudioModal onClose={() => setStudioOpen(false)} /> : null}
+
+      <header>
+        <h2 className="text-sm uppercase tracking-wide text-neutral-400">Active pipelines</h2>
+        <p className="mt-1 max-w-2xl text-xs text-neutral-500">
+          Every classification and analysis pipeline running on this subreddit. Each pipeline is
+          event-driven, failure-isolated, and writes to Redis.
+        </p>
+      </header>
+
+      <div
+        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
+        data-testid="pipelines-grid"
+      >
+        {PIPELINE_DEFS.map((p) => (
+          <PipelineCard key={p.id} pipeline={p} onOpenSettings={onOpenSettings} />
+        ))}
+        <StubPipelineCard onOpen={() => setStudioOpen(true)} />
+      </div>
+    </div>
   );
 }
 
