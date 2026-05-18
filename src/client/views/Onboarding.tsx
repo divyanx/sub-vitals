@@ -153,14 +153,14 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
       aria-label="RedLattice onboarding tour"
       aria-modal="true"
       onClose={dismiss}
-      className="m-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-neutral-700 bg-neutral-950 p-0 shadow-2xl backdrop:bg-black/60 open:flex open:flex-col"
+      className="m-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-0 shadow-2xl backdrop:bg-black/60 open:flex open:flex-col"
     >
       {/* Skip button */}
       <div className="flex items-center justify-end px-6 pt-5">
         <button
           type="button"
           onClick={dismiss}
-          className="rounded px-2 py-1 text-xs text-neutral-400 transition hover:text-neutral-300 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+          className="rounded px-2 py-1 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
           aria-label="Skip onboarding"
         >
           Skip
@@ -186,8 +186,8 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
       {/* Content */}
       <div className="px-8 pt-6 pb-4 text-center">
         <h2 className="text-xl font-semibold text-neutral-50">{current.title}</h2>
-        <p className="mt-2 text-sm font-medium text-neutral-300">{current.body}</p>
-        <p className="mt-3 text-sm leading-relaxed text-neutral-400">{current.detail}</p>
+        <p className="mt-2 text-sm font-medium text-[var(--text)]">{current.body}</p>
+        <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{current.detail}</p>
       </div>
 
       {/* Footer */}
@@ -199,7 +199,7 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
             type="button"
             onClick={() => setStep((s) => Math.max(0, s - 1))}
             disabled={step === 0}
-            className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-300 transition hover:bg-neutral-800 disabled:pointer-events-none disabled:opacity-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text)] transition hover:bg-[var(--input-bg)] disabled:pointer-events-none disabled:opacity-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
             aria-label="Previous step"
           >
             Back
@@ -210,7 +210,7 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
               <button
                 type="button"
                 onClick={dismiss}
-                className="rounded-lg border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm text-neutral-400 transition hover:bg-neutral-800 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-muted)] transition hover:bg-[var(--input-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
               >
                 Skip for now
               </button>
@@ -284,9 +284,9 @@ export function OnboardingSettingsSection() {
   });
 
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
-      <h3 className="mb-1 text-sm font-semibold text-neutral-100">Onboarding</h3>
-      <p className="mb-4 text-xs text-neutral-400">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+      <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">Onboarding</h3>
+      <p className="mb-4 text-xs text-[var(--text-muted)]">
         Replay the first-run walkthrough to re-familiarise yourself or onboard a new mod.
       </p>
       <button

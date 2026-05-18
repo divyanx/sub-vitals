@@ -35,7 +35,7 @@ export function SentimentChart({ series }: Props) {
     [series],
   );
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 6, right: 6, left: -16, bottom: 0 }}>

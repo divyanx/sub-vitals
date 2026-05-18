@@ -80,9 +80,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
-      <h3 className="mb-1 text-sm font-semibold text-neutral-100">{title}</h3>
-      {description ? <p className="mb-4 text-xs text-neutral-400">{description}</p> : null}
+    <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+      <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">{title}</h3>
+      {description ? <p className="mb-4 text-xs text-[var(--text-muted)]">{description}</p> : null}
       {children}
     </section>
   );
@@ -98,7 +98,7 @@ function SaveButton({
   disabled?: boolean;
 }) {
   return (
-    <div className="mt-6 flex justify-end border-t border-neutral-800 pt-4">
+    <div className="mt-6 flex justify-end border-t border-[var(--border)] pt-4">
       <button
         type="button"
         onClick={onClick}
@@ -122,7 +122,7 @@ function FieldError({ msg }: { msg: string | null }) {
 
 function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
   return (
-    <label htmlFor={htmlFor} className="mb-1 block text-xs font-medium text-neutral-300">
+    <label htmlFor={htmlFor} className="mb-1 block text-xs font-medium text-[var(--text)]">
       {children}
     </label>
   );
@@ -151,7 +151,7 @@ function Input({
       onChange={(e) => onChange(e.target.value)}
       placeholder={placeholder}
       aria-label={ariaLabel}
-      className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
+      className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
     />
   );
 }
@@ -177,7 +177,7 @@ export function Settings() {
         {[0, 1, 2].map((i) => (
           <div
             key={i}
-            className="h-40 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+            className="h-40 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
           />
         ))}
       </div>
@@ -187,7 +187,7 @@ export function Settings() {
   if (settingsQ.isError) {
     return (
       <div className="space-y-4">
-        <h2 className="text-sm uppercase tracking-wide text-neutral-400">Settings</h2>
+        <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Settings</h2>
         <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
           Failed to load settings.{' '}
           <button type="button" onClick={() => settingsQ.refetch()} className="underline">
@@ -204,11 +204,11 @@ export function Settings() {
     <div className="space-y-6">
       <ToastContainer toasts={toasts} />
       <header>
-        <h2 className="text-sm uppercase tracking-wide text-neutral-400">Settings</h2>
-        <p className="mt-1 max-w-2xl text-xs text-neutral-400">
+        <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Settings</h2>
+        <p className="mt-1 max-w-2xl text-xs text-[var(--text-muted)]">
           Changes take effect immediately. All values are stored in Redis and override Devvit
           settings defaults. The OpenRouter API key must be set via{' '}
-          <code className="rounded bg-neutral-800 px-1">
+          <code className="rounded bg-[var(--input-bg)] px-1">
             npx devvit settings set openrouter-api-key
           </code>
           .
@@ -232,7 +232,7 @@ export function Settings() {
 const TONE_COLOR: Record<string, string> = {
   empathetic: 'border-emerald-700 bg-emerald-900/30 text-emerald-200',
   direct: 'border-orange-700 bg-orange-900/30 text-orange-200',
-  concise: 'border-neutral-700 bg-neutral-900 text-neutral-200',
+  concise: 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)]',
   investigative: 'border-blue-700 bg-blue-900/30 text-blue-200',
 };
 
@@ -301,14 +301,14 @@ function BrandIdentitySection({
             onChange={setBrandName}
             placeholder="e.g. Acme, Sonos, Duolingo"
           />
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Used in impostor detection. Leave blank to disable.
           </p>
         </div>
         <div>
           <div className="mb-1 flex items-center justify-between">
             <Label htmlFor={brandVoiceId}>Brand voice</Label>
-            <span className="text-[10px] text-neutral-400">{brandVoice.length}/2000</span>
+            <span className="text-[10px] text-[var(--text-muted)]">{brandVoice.length}/2000</span>
           </div>
           <textarea
             id={brandVoiceId}
@@ -317,9 +317,9 @@ function BrandIdentitySection({
             rows={5}
             maxLength={2000}
             placeholder="Friendly, empathetic, never defensive. Acknowledge frustration first. Sign off as the Acme support team."
-            className="w-full resize-y rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
+            className="w-full resize-y rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
           />
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Shapes AI draft replies. Describe tone, things to avoid, sign-off style.
           </p>
         </div>
@@ -334,7 +334,7 @@ function BrandIdentitySection({
         >
           {draftLoading ? '✨ Generating…' : '✨ Test brand voice'}
         </button>
-        <p className="mt-2 text-xs text-neutral-500">
+        <p className="mt-2 text-xs text-[var(--text-muted)]">
           Generates 3 sample AI replies against a recent post to preview your tone.
         </p>
       </div>
@@ -345,9 +345,9 @@ function BrandIdentitySection({
       ) : null}
       {draftData ? (
         <div className="mt-4 space-y-3">
-          <p className="text-xs text-neutral-400">
-            Draft against: <span className="text-neutral-200">"{draftData.postTitle}"</span>
-            <span className="ml-2 text-neutral-400">
+          <p className="text-xs text-[var(--text-muted)]">
+            Draft against: <span className="text-[var(--text)]">"{draftData.postTitle}"</span>
+            <span className="ml-2 text-[var(--text-muted)]">
               · {draftData.tokensIn + draftData.tokensOut} tokens · $
               {(draftData.costCents / 100).toFixed(4)}
               {draftData.cached ? ' · cached' : ''}
@@ -357,7 +357,7 @@ function BrandIdentitySection({
             {draftData.candidates.map((c, i) => (
               <li
                 key={`${c.tone}-${i}`}
-                className="rounded-lg border border-neutral-800 bg-neutral-950/50 p-3"
+                className="rounded-lg border border-[var(--border)] bg-[var(--bg)]/50 p-3"
               >
                 <div className="mb-2 flex items-center gap-2 text-xs">
                   <span
@@ -365,9 +365,9 @@ function BrandIdentitySection({
                   >
                     {c.tone}
                   </span>
-                  <span className="text-neutral-400">{c.rationale}</span>
+                  <span className="text-[var(--text-muted)]">{c.rationale}</span>
                 </div>
-                <p className="whitespace-pre-wrap text-sm text-neutral-200">{c.reply}</p>
+                <p className="whitespace-pre-wrap text-sm text-[var(--text)]">{c.reply}</p>
               </li>
             ))}
           </ul>
@@ -453,7 +453,7 @@ function IdentityTrustSection({
               value={testFlair}
               onChange={(e) => setTestFlair(e.target.value)}
               placeholder="Test flair text…"
-              className="flex-1 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+              className="flex-1 rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
             />
             {regexResult ? (
               <span
@@ -461,7 +461,7 @@ function IdentityTrustSection({
                   regexResult === 'MATCH'
                     ? 'bg-emerald-900/50 text-emerald-200'
                     : regexResult === 'NO MATCH'
-                      ? 'bg-neutral-800 text-neutral-400'
+                      ? 'bg-[var(--input-bg)] text-[var(--text-muted)]'
                       : 'bg-rose-900/50 text-rose-200'
                 }`}
               >
@@ -469,7 +469,7 @@ function IdentityTrustSection({
               </span>
             ) : null}
           </div>
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Commenters whose flair matches this regex are treated as verified reps.
           </p>
         </div>
@@ -491,9 +491,9 @@ function IdentityTrustSection({
               value={flairColor}
               onChange={(e) => setFlairColor(e.target.value)}
               aria-label="Flair background color picker"
-              className="h-9 w-14 cursor-pointer rounded border border-neutral-700 bg-neutral-800 p-0.5"
+              className="h-9 w-14 cursor-pointer rounded border border-[var(--border)] bg-[var(--input-bg)] p-0.5"
             />
-            <span className="text-xs text-neutral-400">{flairColor}</span>
+            <span className="text-xs text-[var(--text-muted)]">{flairColor}</span>
           </div>
         </div>
       </div>
@@ -560,9 +560,9 @@ function ThresholdsSection({
             max={50}
             value={sentThreshold}
             onChange={(e) => setSentThreshold(Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+            className="w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
           />
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Modmail fires when a thread has this many negative comments in the last{' '}
             {Math.round(sentThreshold)} sampled.
           </p>
@@ -576,16 +576,16 @@ function ThresholdsSection({
             max={1440}
             value={slaMinutes}
             onChange={(e) => setSlaMinutes(Number(e.target.value))}
-            className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+            className="w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
           />
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Posts unanswered beyond this SLA appear in the breach feed.
           </p>
         </div>
         <div>
           <Label htmlFor={costCapId}>Monthly AI cost cap</Label>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-neutral-400" aria-hidden="true">
+            <span className="text-sm text-[var(--text-muted)]" aria-hidden="true">
               $
             </span>
             <input
@@ -596,10 +596,10 @@ function ThresholdsSection({
               step={0.01}
               value={(costCapCents / 100).toFixed(2)}
               onChange={(e) => setCostCapCents(Math.round(Number(e.target.value) * 100))}
-              className="w-full rounded border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+              className="w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
             />
           </div>
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             When exceeded, AI tagging falls back to lexicon-only. Current value: {costCapCents}{' '}
             cents.
           </p>
@@ -839,7 +839,7 @@ function AISection({
         <div>
           <Label>AI model</Label>
           {aiStatusQ.isPending ? (
-            <div className="h-10 animate-pulse rounded-md border border-neutral-700 bg-neutral-800" />
+            <div className="h-10 animate-pulse rounded-md border border-[var(--border)] bg-[var(--input-bg)]" />
           ) : (
             <select
               value={useCustom ? '__custom__' : selectedSlug}
@@ -851,7 +851,7 @@ function AISection({
                   handleDropdownChange(e.target.value);
                 }
               }}
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
               data-testid="model-dropdown"
             >
               {catalog.map((m) => (
@@ -870,16 +870,16 @@ function AISection({
               <span
                 className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
                   TIER_BADGE[catalogEntry.tier] ??
-                  'bg-neutral-800 text-neutral-300 border-neutral-700'
+                  'bg-[var(--input-bg)] text-[var(--text)] border-[var(--border)]'
                 }`}
               >
                 {TIER_LABELS[catalogEntry.tier] ?? catalogEntry.tier}
               </span>
-              <span className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-xs text-neutral-300">
+              <span className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-xs text-[var(--text)]">
                 ~${catalogEntry.pricePer1kTaggingCalls.toFixed(4)}/1k posts
               </span>
               {catalogEntry.notes ? (
-                <span className="text-xs text-neutral-400">{catalogEntry.notes}</span>
+                <span className="text-xs text-[var(--text-muted)]">{catalogEntry.notes}</span>
               ) : null}
             </div>
           ) : null}
@@ -887,7 +887,7 @@ function AISection({
 
         {/* Custom model input */}
         {useCustom ? (
-          <div className="rounded-lg border border-neutral-700 bg-neutral-900/50 p-4">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
             <Label htmlFor={customModelId}>Custom model slug</Label>
             <div className="mt-1 flex gap-2">
               <Input
@@ -900,7 +900,7 @@ function AISection({
                 type="button"
                 onClick={handleCustomBlur}
                 disabled={validating || !customModel.trim()}
-                className="shrink-0 rounded-md border border-neutral-600 bg-neutral-800 px-3 py-2 text-xs font-medium text-neutral-300 transition hover:bg-neutral-700 disabled:opacity-50"
+                className="shrink-0 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-xs font-medium text-[var(--text)] transition hover:bg-neutral-700 disabled:opacity-50"
               >
                 {validating ? 'Checking…' : 'Validate'}
               </button>
@@ -913,7 +913,7 @@ function AISection({
 
         {/* Validation result */}
         {validating ? (
-          <div className="flex items-center gap-2 rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-400">
+          <div className="flex items-center gap-2 rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-muted)]">
             <span className="animate-spin">⟳</span> Validating model…
           </div>
         ) : validation ? (
@@ -943,16 +943,16 @@ function AISection({
 
         {/* Cost estimate widget */}
         {monthlyCostEst !== null && dailyPosts !== null ? (
-          <div className="rounded border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs text-neutral-300">
+          <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)]">
             At {dailyPosts} posts/day, estimated monthly AI cost ≈{' '}
-            <strong className="text-neutral-100">${monthlyCostEst}</strong>
+            <strong className="text-[var(--text)]">${monthlyCostEst}</strong>
           </div>
         ) : null}
       </div>
 
       <FieldError msg={saveError} />
 
-      <div className="mt-6 flex justify-end border-t border-neutral-800 pt-4">
+      <div className="mt-6 flex justify-end border-t border-[var(--border)] pt-4">
         <button
           type="button"
           onClick={() => {
@@ -1072,7 +1072,7 @@ function StudioSection({
         className={`mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
           connected
             ? 'border-emerald-800 bg-emerald-950/30 text-emerald-200'
-            : 'border-neutral-700 bg-neutral-900 text-neutral-400'
+            : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]'
         }`}
         data-testid="studio-status-banner"
       >
@@ -1096,7 +1096,7 @@ function StudioSection({
             onChange={setStudioUrl}
             placeholder="https://studio.redlattice.app"
           />
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Base URL of your RedLattice Studio instance.
           </p>
         </div>
@@ -1109,7 +1109,7 @@ function StudioSection({
             onChange={setToken}
             placeholder="Paste the token from Studio > Settings > Connections"
           />
-          <p className="mt-1 text-xs text-neutral-400">
+          <p className="mt-1 text-xs text-[var(--text-muted)]">
             Issued by Studio. Stored encrypted in Redis per installation.
           </p>
         </div>

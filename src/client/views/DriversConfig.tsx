@@ -121,9 +121,9 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-neutral-800 bg-neutral-900 p-6">
-      <h3 className="mb-1 text-sm font-semibold text-neutral-100">{title}</h3>
-      {description ? <p className="mb-4 text-xs text-neutral-400">{description}</p> : null}
+    <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
+      <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">{title}</h3>
+      {description ? <p className="mb-4 text-xs text-[var(--text-muted)]">{description}</p> : null}
       {children}
     </section>
   );
@@ -139,7 +139,7 @@ function SaveButton({
   disabled?: boolean;
 }) {
   return (
-    <div className="mt-6 flex justify-end border-t border-neutral-800 pt-4">
+    <div className="mt-6 flex justify-end border-t border-[var(--border)] pt-4">
       <button
         type="button"
         onClick={onClick}
@@ -210,10 +210,10 @@ function ColorPickerPopover({ value, onChange }: { value: string; onChange: (v: 
         <div
           role="dialog"
           aria-label="Color picker"
-          className="absolute left-0 top-8 z-40 w-52 rounded-xl border border-neutral-700 bg-neutral-900 p-3 shadow-2xl"
+          className="absolute left-0 top-8 z-40 w-52 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-3 shadow-2xl"
           data-testid="color-picker-popover"
         >
-          <p className="mb-2 text-xs font-medium text-neutral-400">Preset colors</p>
+          <p className="mb-2 text-xs font-medium text-[var(--text-muted)]">Preset colors</p>
           <div className="mb-3 grid grid-cols-6 gap-1.5">
             {COLOR_PRESETS.map((p) => (
               <button
@@ -233,16 +233,16 @@ function ColorPickerPopover({ value, onChange }: { value: string; onChange: (v: 
               />
             ))}
           </div>
-          <p className="mb-1.5 text-xs font-medium text-neutral-400">Custom</p>
+          <p className="mb-1.5 text-xs font-medium text-[var(--text-muted)]">Custom</p>
           <div className="flex items-center gap-2">
             <input
               type="color"
               value={value}
               onChange={(e) => onChange(e.target.value)}
-              className="h-7 w-10 cursor-pointer rounded border border-neutral-700 bg-neutral-800 p-0.5"
+              className="h-7 w-10 cursor-pointer rounded border border-[var(--border)] bg-[var(--input-bg)] p-0.5"
               aria-label="Custom color"
             />
-            <span className="font-mono text-xs text-neutral-300">{value}</span>
+            <span className="font-mono text-xs text-[var(--text)]">{value}</span>
           </div>
         </div>
       ) : null}
@@ -432,10 +432,10 @@ function DeleteConfirmModal({
 }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-80 rounded-xl border border-neutral-700 bg-neutral-900 p-6 shadow-2xl">
-        <h4 className="mb-2 text-sm font-semibold text-neutral-100">Delete driver?</h4>
-        <p className="mb-5 text-xs text-neutral-400">
-          Remove <span className="font-medium text-neutral-200">&ldquo;{label}&rdquo;</span> from
+      <div className="w-80 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-6 shadow-2xl">
+        <h4 className="mb-2 text-sm font-semibold text-[var(--text)]">Delete driver?</h4>
+        <p className="mb-5 text-xs text-[var(--text-muted)]">
+          Remove <span className="font-medium text-[var(--text)]">&ldquo;{label}&rdquo;</span> from
           the taxonomy. Posts already tagged with this driver retain their tag.
           {hasChildren ? (
             <span className="mt-2 block text-amber-300">
@@ -447,7 +447,7 @@ function DeleteConfirmModal({
           <button
             type="button"
             onClick={onCancel}
-            className="rounded-md border border-neutral-700 bg-neutral-800 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-700"
+            className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-1.5 text-xs text-[var(--text)] hover:bg-neutral-700"
           >
             Cancel
           </button>
@@ -495,21 +495,21 @@ function KeywordsInput({
 
   return (
     <div>
-      <label htmlFor={inputId} className="mb-1 block text-xs font-medium text-neutral-400">
+      <label htmlFor={inputId} className="mb-1 block text-xs font-medium text-[var(--text-muted)]">
         Keywords
       </label>
-      <div className="flex flex-wrap gap-1 rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1.5 focus-within:border-orange-500">
+      <div className="flex flex-wrap gap-1 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1.5 focus-within:border-orange-500">
         {keywords.map((kw) => (
           <span
             key={kw}
-            className="flex items-center gap-1 rounded bg-neutral-700 px-2 py-0.5 text-xs text-neutral-200"
+            className="flex items-center gap-1 rounded bg-neutral-700 px-2 py-0.5 text-xs text-[var(--text)]"
           >
             {kw}
             <button
               type="button"
               aria-label={`Remove keyword ${kw}`}
               onClick={() => onChange(keywords.filter((k) => k !== kw))}
-              className="ml-0.5 text-neutral-400 hover:text-rose-400"
+              className="ml-0.5 text-[var(--text-muted)] hover:text-rose-400"
             >
               &times;
             </button>
@@ -522,7 +522,7 @@ function KeywordsInput({
           onKeyDown={handleKeyDown}
           onBlur={addKeyword}
           placeholder={keywords.length === 0 ? 'Type keyword, press Enter' : ''}
-          className="min-w-24 flex-1 bg-transparent text-xs text-neutral-100 outline-none placeholder:text-neutral-400"
+          className="min-w-24 flex-1 bg-transparent text-xs text-[var(--text)] outline-none placeholder:text-[var(--text-muted)]"
         />
       </div>
     </div>
@@ -626,7 +626,7 @@ function DriverTreeRow({
           {depth > 1 ? (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute top-0 bottom-0 border-l border-neutral-700"
+              className="pointer-events-none absolute top-0 bottom-0 border-l border-[var(--border)]"
               style={{ left: `${(depth - 2) * INDENT_PX + 8}px` }}
             />
           ) : null}
@@ -634,7 +634,7 @@ function DriverTreeRow({
           {depth > 1 ? (
             <span
               aria-hidden="true"
-              className="pointer-events-none absolute top-1/2 border-t border-neutral-700"
+              className="pointer-events-none absolute top-1/2 border-t border-[var(--border)]"
               style={{
                 left: `${(depth - 2) * INDENT_PX + 8}px`,
                 width: `${INDENT_PX - 8}px`,
@@ -644,7 +644,7 @@ function DriverTreeRow({
 
           {/* biome-ignore lint/a11y/noStaticElementInteractions: focus tracking wrapper for breadcrumb, children are interactive */}
           <div
-            className="group mb-1.5 flex items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-950/60 px-3 py-2 transition hover:border-neutral-700"
+            className="group mb-1.5 flex items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)]/60 px-3 py-2 transition hover:border-[var(--border)]"
             style={{ marginLeft: `${(depth - 1) * INDENT_PX}px` }}
             onFocus={() => onFocus(row._uid)}
           >
@@ -654,7 +654,7 @@ function DriverTreeRow({
               onClick={() => onToggleCollapse(row._uid)}
               aria-label={isCollapsed ? 'Expand children' : 'Collapse children'}
               data-testid={`chevron-${row._uid}`}
-              className={`shrink-0 text-xs text-neutral-500 transition hover:text-neutral-200 ${!hasChildren ? 'invisible' : ''}`}
+              className={`shrink-0 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)] ${!hasChildren ? 'invisible' : ''}`}
             >
               {isCollapsed ? '▶' : '▼'}
             </button>
@@ -667,12 +667,12 @@ function DriverTreeRow({
             />
 
             {/* Label */}
-            <span className="flex-1 truncate text-xs font-medium text-neutral-200">
-              {row.label || <span className="text-neutral-500 italic">Untitled</span>}
+            <span className="flex-1 truncate text-xs font-medium text-[var(--text)]">
+              {row.label || <span className="text-[var(--text-muted)] italic">Untitled</span>}
             </span>
 
             {/* Post count badge */}
-            <span className="rounded-full bg-neutral-800 px-2 py-0.5 text-xs text-neutral-400">
+            <span className="rounded-full bg-[var(--input-bg)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
               0
             </span>
 
@@ -680,7 +680,7 @@ function DriverTreeRow({
             <button
               type="button"
               aria-label={`Edit driver ${row.label || row.id}`}
-              className="shrink-0 text-neutral-500 opacity-0 transition hover:text-orange-400 group-hover:opacity-100 focus:opacity-100"
+              className="shrink-0 text-[var(--text-muted)] opacity-0 transition hover:text-orange-400 group-hover:opacity-100 focus:opacity-100"
               onClick={() => onFocus(row._uid)}
             >
               <svg
@@ -699,7 +699,7 @@ function DriverTreeRow({
               type="button"
               onClick={() => setConfirmDelete(true)}
               aria-label={`Delete driver ${row.label || row.id}`}
-              className="shrink-0 text-xs text-neutral-500 opacity-0 transition hover:text-rose-400 group-hover:opacity-100 focus:opacity-100"
+              className="shrink-0 text-xs text-[var(--text-muted)] opacity-0 transition hover:text-rose-400 group-hover:opacity-100 focus:opacity-100"
             >
               &times;
             </button>
@@ -736,7 +736,7 @@ function DriverTreeRow({
         {depth > 1 ? (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute top-0 bottom-0 border-l border-neutral-700"
+            className="pointer-events-none absolute top-0 bottom-0 border-l border-[var(--border)]"
             style={{ left: `${(depth - 2) * INDENT_PX + 8}px` }}
           />
         ) : null}
@@ -744,7 +744,7 @@ function DriverTreeRow({
         {depth > 1 ? (
           <span
             aria-hidden="true"
-            className="pointer-events-none absolute border-t border-neutral-700"
+            className="pointer-events-none absolute border-t border-[var(--border)]"
             style={{
               top: '22px',
               left: `${(depth - 2) * INDENT_PX + 8}px`,
@@ -754,7 +754,7 @@ function DriverTreeRow({
         ) : null}
 
         <div
-          className="rounded-lg border border-neutral-800 bg-neutral-950/60 p-3"
+          className="rounded-lg border border-[var(--border)] bg-[var(--bg)]/60 p-3"
           style={{ marginLeft: `${(depth - 1) * INDENT_PX}px` }}
         >
           <div className="flex items-start gap-2">
@@ -764,7 +764,7 @@ function DriverTreeRow({
               onClick={() => onToggleCollapse(row._uid)}
               aria-label={isCollapsed ? 'Expand children' : 'Collapse children'}
               data-testid={`chevron-${row._uid}`}
-              className={`mt-1 shrink-0 text-xs text-neutral-400 transition hover:text-neutral-200 ${!hasChildren ? 'invisible' : ''}`}
+              className={`mt-1 shrink-0 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)] ${!hasChildren ? 'invisible' : ''}`}
             >
               {isCollapsed ? '▶' : '▼'}
             </button>
@@ -775,7 +775,7 @@ function DriverTreeRow({
               {...attributes}
               {...listeners}
               aria-label="Drag to reorder"
-              className="mt-1 cursor-grab touch-none text-neutral-400 hover:text-neutral-300 active:cursor-grabbing"
+              className="mt-1 cursor-grab touch-none text-[var(--text-muted)] hover:text-[var(--text)] active:cursor-grabbing"
             >
               <svg
                 width="12"
@@ -796,48 +796,50 @@ function DriverTreeRow({
             <div className="flex-1 space-y-2">
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
                 <div>
-                  <label className="mb-0.5 block text-xs font-medium text-neutral-400">
+                  <label className="mb-0.5 block text-xs font-medium text-[var(--text-muted)]">
                     ID
                     <input
                       value={row.id}
                       onChange={(e) => onUpdate(row._uid, 'id', e.target.value)}
                       placeholder="bug"
                       data-testid={`driver-row-id-${row._uid}`}
-                      className="mt-1 w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                      className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500"
                     />
                   </label>
                 </div>
                 <div className="col-span-2">
-                  <label className="mb-0.5 block text-xs font-medium text-neutral-400">
+                  <label className="mb-0.5 block text-xs font-medium text-[var(--text-muted)]">
                     Label
                     <input
                       value={row.label}
                       onChange={(e) => onUpdate(row._uid, 'label', e.target.value)}
                       placeholder="Bug / Issue Report"
-                      className="mt-1 w-full rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                      className="mt-1 w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500"
                     />
                   </label>
                 </div>
                 <div>
-                  <span className="mb-0.5 block text-xs font-medium text-neutral-400">Color</span>
+                  <span className="mb-0.5 block text-xs font-medium text-[var(--text-muted)]">
+                    Color
+                  </span>
                   <div className="mt-1 flex items-center gap-2">
                     <ColorPickerPopover
                       value={row.color}
                       onChange={(v) => onUpdate(row._uid, 'color', v)}
                     />
-                    <span className="font-mono text-xs text-neutral-400">{row.color}</span>
+                    <span className="font-mono text-xs text-[var(--text-muted)]">{row.color}</span>
                   </div>
                 </div>
               </div>
               <div>
-                <label className="block text-xs font-medium text-neutral-400">
+                <label className="block text-xs font-medium text-[var(--text-muted)]">
                   Description
                   <textarea
                     value={row.description}
                     onChange={(e) => onUpdate(row._uid, 'description', e.target.value)}
                     placeholder="Optional"
                     rows={1}
-                    className="mt-0.5 w-full resize-none rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                    className="mt-0.5 w-full resize-none rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500"
                   />
                 </label>
               </div>
@@ -852,7 +854,7 @@ function DriverTreeRow({
                     type="button"
                     onClick={() => onAddChild(row._uid)}
                     data-testid={`add-sub-driver-${row._uid}`}
-                    className="text-xs text-neutral-400 opacity-0 underline-offset-2 transition hover:text-orange-300 hover:underline group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
+                    className="text-xs text-[var(--text-muted)] opacity-0 underline-offset-2 transition hover:text-orange-300 hover:underline group-hover:opacity-100 focus:opacity-100 focus-visible:opacity-100"
                     aria-label={`Add sub-driver under ${row.label || row.id}`}
                   >
                     + Add sub-driver
@@ -866,7 +868,7 @@ function DriverTreeRow({
                     type="button"
                     onClick={() => setShowMoveMenu((v) => !v)}
                     data-testid={`move-to-${row._uid}`}
-                    className="text-xs text-neutral-400 underline-offset-2 hover:text-blue-300 hover:underline"
+                    className="text-xs text-[var(--text-muted)] underline-offset-2 hover:text-blue-300 hover:underline"
                     aria-haspopup="listbox"
                     aria-expanded={showMoveMenu}
                   >
@@ -876,23 +878,23 @@ function DriverTreeRow({
                     <div
                       role="listbox"
                       aria-label="Move driver to"
-                      className="absolute left-0 top-full z-30 mt-1 min-w-48 rounded-lg border border-neutral-700 bg-neutral-900 p-1 shadow-xl"
+                      className="absolute left-0 top-full z-30 mt-1 min-w-48 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-1 shadow-xl"
                     >
                       {/* "Move to top level" as first dedicated action */}
                       <button
                         type="button"
                         role="option"
                         aria-selected={row.parentId === null}
-                        className="flex w-full items-center gap-1.5 rounded px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+                        className="flex w-full items-center gap-1.5 rounded px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
                         onClick={() => {
                           onMoveTo(row._uid, null);
                           setShowMoveMenu(false);
                         }}
                       >
-                        <span className="text-neutral-500">↑</span>
+                        <span className="text-[var(--text-muted)]">↑</span>
                         Move to top level
                       </button>
-                      <div className="my-1 border-t border-neutral-800" />
+                      <div className="my-1 border-t border-[var(--border)]" />
                       {moveTargets.map((t) => {
                         const byIdMap = new Map(allRows.map((r) => [r.id, r]));
                         const targetDepth = rowDepth(t, byIdMap);
@@ -902,7 +904,7 @@ function DriverTreeRow({
                             type="button"
                             role="option"
                             aria-selected={row.parentId === t.id}
-                            className="flex w-full items-center rounded px-3 py-1.5 text-left text-xs text-neutral-300 hover:bg-neutral-800"
+                            className="flex w-full items-center rounded px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
                             style={{ paddingLeft: `${8 + (targetDepth - 1) * 12}px` }}
                             onClick={() => {
                               onMoveTo(row._uid, t.id);
@@ -919,8 +921,8 @@ function DriverTreeRow({
 
                 {/* Parent badge */}
                 {row.parentId ? (
-                  <span className="rounded bg-neutral-800 px-1.5 py-0.5 text-xs text-neutral-400">
-                    child of <span className="text-neutral-200">{row.parentId}</span>
+                  <span className="rounded bg-[var(--input-bg)] px-1.5 py-0.5 text-xs text-[var(--text-muted)]">
+                    child of <span className="text-[var(--text)]">{row.parentId}</span>
                   </span>
                 ) : null}
               </div>
@@ -930,7 +932,7 @@ function DriverTreeRow({
               type="button"
               onClick={() => setConfirmDelete(true)}
               aria-label={`Delete driver ${row.label || row.id}`}
-              className="mt-1 text-xs text-neutral-400 hover:text-rose-400"
+              className="mt-1 text-xs text-[var(--text-muted)] hover:text-rose-400"
               title="Delete driver"
             >
               &times;
@@ -951,14 +953,14 @@ function StickyBreadcrumb({ parts }: { parts: string[] }) {
   return (
     <nav
       aria-label="Currently editing"
-      className="sticky top-0 z-20 -mx-6 mb-3 flex items-center gap-1.5 border-b border-neutral-800 bg-neutral-900/95 px-6 py-2 backdrop-blur-sm"
+      className="sticky top-0 z-20 -mx-6 mb-3 flex items-center gap-1.5 border-b border-[var(--border)] bg-[var(--surface)] px-6 py-2 backdrop-blur-sm"
       data-testid="sticky-breadcrumb"
     >
-      <span className="text-xs text-neutral-500">Editing:</span>
+      <span className="text-xs text-[var(--text-muted)]">Editing:</span>
       {parts.map((part) => (
         <span key={part} className="flex items-center gap-1.5">
           {parts.indexOf(part) > 0 ? <span className="text-neutral-600">›</span> : null}
-          <span className="text-xs font-medium text-neutral-200">{part}</span>
+          <span className="text-xs font-medium text-[var(--text)]">{part}</span>
         </span>
       ))}
     </nav>
@@ -972,10 +974,10 @@ function StickyBreadcrumb({ parts }: { parts: string[] }) {
 function TaxonomyEmptyState({ onAdd }: { onAdd: () => void }) {
   return (
     <div
-      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-neutral-700 bg-neutral-950/30 py-14 text-center"
+      className="flex flex-col items-center justify-center rounded-xl border-2 border-dashed border-[var(--border)] bg-[var(--bg)]/30 py-14 text-center"
       data-testid="taxonomy-empty-state"
     >
-      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-neutral-800">
+      <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[var(--input-bg)]">
         <svg
           width="22"
           height="22"
@@ -983,7 +985,7 @@ function TaxonomyEmptyState({ onAdd }: { onAdd: () => void }) {
           fill="none"
           stroke="currentColor"
           strokeWidth="1.5"
-          className="text-neutral-400"
+          className="text-[var(--text-muted)]"
           aria-hidden="true"
         >
           <path d="M3 4h14M3 8h8M3 12h5" strokeLinecap="round" />
@@ -991,8 +993,8 @@ function TaxonomyEmptyState({ onAdd }: { onAdd: () => void }) {
           <path d="M15 12v4M13 14h4" strokeLinecap="round" />
         </svg>
       </div>
-      <p className="mb-1 text-sm font-medium text-neutral-200">No drivers yet</p>
-      <p className="mb-5 max-w-xs text-xs text-neutral-400">
+      <p className="mb-1 text-sm font-medium text-[var(--text)]">No drivers yet</p>
+      <p className="mb-5 max-w-xs text-xs text-[var(--text-muted)]">
         Create your first contact driver category. Posts will be auto-tagged based on keywords you
         define.
       </p>
@@ -1016,8 +1018,8 @@ function TaxonomyPreview({ rows }: { rows: TaxRow[] }) {
   const roots = rows.filter((r) => !r.parentId);
   if (roots.length === 0) return null;
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-neutral-800 bg-neutral-950/40 px-3 py-2">
-      <span className="text-xs text-neutral-400">Current drivers:</span>
+    <div className="mb-4 flex flex-wrap items-center gap-2 rounded-lg border border-[var(--border)] bg-[var(--bg)]/40 px-3 py-2">
+      <span className="text-xs text-[var(--text-muted)]">Current drivers:</span>
       {roots
         .filter((r) => r.label || r.id)
         .map((r) => (
@@ -1070,14 +1072,14 @@ function TemplateApplyDialog({
       aria-modal="true"
       aria-label={`Apply ${template.name} template`}
     >
-      <div className="w-full max-w-md rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl">
-        <div className="border-b border-neutral-800 px-5 py-4">
-          <h3 className="text-sm font-semibold text-neutral-100">
+      <div className="w-full max-w-md rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
+        <div className="border-b border-[var(--border)] px-5 py-4">
+          <h3 className="text-sm font-semibold text-[var(--text)]">
             Apply "{template.name}" template
           </h3>
         </div>
         <div className="space-y-3 px-5 py-4">
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-neutral-700 p-3 hover:border-orange-600/60">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--border)] p-3 hover:border-orange-600/60">
             <input
               type="radio"
               name="apply-mode"
@@ -1087,13 +1089,13 @@ function TemplateApplyDialog({
               className="mt-0.5"
             />
             <div>
-              <p className="text-sm font-medium text-neutral-200">Replace</p>
-              <p className="text-xs text-neutral-400">
+              <p className="text-sm font-medium text-[var(--text)]">Replace</p>
+              <p className="text-xs text-[var(--text-muted)]">
                 Overwrites your current taxonomy with the template.
               </p>
             </div>
           </label>
-          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-neutral-700 p-3 hover:border-orange-600/60">
+          <label className="flex cursor-pointer items-start gap-3 rounded-lg border border-[var(--border)] p-3 hover:border-orange-600/60">
             <input
               type="radio"
               name="apply-mode"
@@ -1103,19 +1105,19 @@ function TemplateApplyDialog({
               className="mt-0.5"
             />
             <div>
-              <p className="text-sm font-medium text-neutral-200">Merge</p>
-              <p className="text-xs text-neutral-400">
+              <p className="text-sm font-medium text-[var(--text)]">Merge</p>
+              <p className="text-xs text-[var(--text-muted)]">
                 Keeps your existing drivers and adds template drivers that don't conflict.
               </p>
             </div>
           </label>
         </div>
-        <div className="flex justify-end gap-3 border-t border-neutral-800 px-5 py-3">
+        <div className="flex justify-end gap-3 border-t border-[var(--border)] px-5 py-3">
           <button
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="rounded-md border border-neutral-700 px-4 py-1.5 text-sm text-neutral-300 hover:bg-neutral-800 disabled:opacity-50"
+            className="rounded-md border border-[var(--border)] px-4 py-1.5 text-sm text-[var(--text)] hover:bg-[var(--input-bg)] disabled:opacity-50"
           >
             Cancel
           </button>
@@ -1145,12 +1147,14 @@ function TemplateCard({
 }) {
   return (
     <div
-      className="flex flex-col rounded-lg border border-neutral-700 bg-neutral-800/40 p-4 hover:border-orange-600/50 transition"
+      className="flex flex-col rounded-lg border border-[var(--border)] bg-[var(--input-bg)] p-4 hover:border-orange-600/50 transition"
       data-testid={`template-card-${template.id}`}
     >
-      <h4 className="mb-1 text-sm font-semibold text-neutral-100">{template.name}</h4>
-      <p className="mb-3 grow text-xs text-neutral-400 leading-relaxed">{template.description}</p>
-      <div className="mb-3 flex items-center gap-3 text-xs text-neutral-500">
+      <h4 className="mb-1 text-sm font-semibold text-[var(--text)]">{template.name}</h4>
+      <p className="mb-3 grow text-xs text-[var(--text-muted)] leading-relaxed">
+        {template.description}
+      </p>
+      <div className="mb-3 flex items-center gap-3 text-xs text-[var(--text-muted)]">
         <span>{template.driverCount} drivers</span>
         <span>·</span>
         <span>{template.deepestDepth} levels deep</span>
@@ -1159,7 +1163,7 @@ function TemplateCard({
         <button
           type="button"
           onClick={onPreview}
-          className="rounded border border-neutral-600 px-3 py-1 text-xs text-neutral-300 hover:border-neutral-400 hover:text-neutral-100 transition"
+          className="rounded border border-neutral-600 px-3 py-1 text-xs text-[var(--text)] hover:border-neutral-400 hover:text-[var(--text)] transition"
         >
           Preview
         </button>
@@ -1236,7 +1240,7 @@ function TaxonomyTemplatesSection({
           loading={applying}
         />
       ) : null}
-      <div className="mb-6 rounded-lg border border-neutral-700 bg-neutral-900/50">
+      <div className="mb-6 rounded-lg border border-[var(--border)] bg-[var(--surface)]">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
@@ -1245,19 +1249,21 @@ function TaxonomyTemplatesSection({
           data-testid="templates-section-toggle"
         >
           <div>
-            <span className="text-sm font-semibold text-neutral-200">Templates</span>
-            <span className="ml-2 text-xs text-neutral-500">Start with a pre-built taxonomy</span>
+            <span className="text-sm font-semibold text-[var(--text)]">Templates</span>
+            <span className="ml-2 text-xs text-[var(--text-muted)]">
+              Start with a pre-built taxonomy
+            </span>
           </div>
           <span
-            className={`text-xs text-neutral-400 transition-transform ${open ? 'rotate-180' : ''}`}
+            className={`text-xs text-[var(--text-muted)] transition-transform ${open ? 'rotate-180' : ''}`}
           >
             ▼
           </span>
         </button>
         {open ? (
-          <div className="border-t border-neutral-800 px-4 pb-4 pt-3">
+          <div className="border-t border-[var(--border)] px-4 pb-4 pt-3">
             {isLoading ? (
-              <p className="text-xs text-neutral-500">Loading templates…</p>
+              <p className="text-xs text-[var(--text-muted)]">Loading templates…</p>
             ) : (
               <div
                 className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3"
@@ -1498,7 +1504,7 @@ export function TaxonomyConfigSection({
         <div
           role="tablist"
           aria-label="Taxonomy editor mode"
-          className="ml-auto flex shrink-0 gap-0.5 rounded-lg border border-neutral-800 bg-neutral-950 p-0.5"
+          className="ml-auto flex shrink-0 gap-0.5 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-0.5"
         >
           <button
             role="tab"
@@ -1507,7 +1513,7 @@ export function TaxonomyConfigSection({
             id={`${tabId}-tab-visual`}
             type="button"
             onClick={() => switchMode('visual')}
-            className={`rounded-md px-3 py-1 text-xs font-medium transition ${mode === 'visual' ? 'bg-orange-600/30 text-orange-200' : 'text-neutral-400 hover:text-neutral-200'}`}
+            className={`rounded-md px-3 py-1 text-xs font-medium transition ${mode === 'visual' ? 'bg-orange-600/30 text-orange-200' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
           >
             Visual
           </button>
@@ -1519,7 +1525,7 @@ export function TaxonomyConfigSection({
             type="button"
             onClick={() => switchMode('json')}
             data-testid="taxonomy-json-toggle"
-            className={`rounded-md px-3 py-1 text-xs font-medium transition ${mode === 'json' ? 'bg-orange-600/30 text-orange-200' : 'text-neutral-400 hover:text-neutral-200'}`}
+            className={`rounded-md px-3 py-1 text-xs font-medium transition ${mode === 'json' ? 'bg-orange-600/30 text-orange-200' : 'text-[var(--text-muted)] hover:text-[var(--text)]'}`}
           >
             JSON
           </button>
@@ -1543,7 +1549,7 @@ export function TaxonomyConfigSection({
                 type="button"
                 onClick={() => setCompactAll((v) => !v)}
                 data-testid="compact-mode-toggle"
-                className="flex items-center gap-1.5 rounded-md border border-neutral-700 bg-neutral-800/60 px-2.5 py-1 text-xs text-neutral-400 transition hover:border-neutral-600 hover:text-neutral-200"
+                className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-2.5 py-1 text-xs text-[var(--text-muted)] transition hover:border-neutral-600 hover:text-[var(--text)]"
                 aria-pressed={compactAll}
               >
                 {compactAll ? (
@@ -1618,7 +1624,7 @@ export function TaxonomyConfigSection({
               type="button"
               onClick={addRoot}
               data-testid="taxonomy-add-driver"
-              className="mt-4 text-xs text-neutral-400 underline-offset-2 hover:text-orange-300 hover:underline"
+              className="mt-4 text-xs text-[var(--text-muted)] underline-offset-2 hover:text-orange-300 hover:underline"
             >
               + Add root driver
             </button>
@@ -1638,7 +1644,7 @@ export function TaxonomyConfigSection({
           onChange={(e) => setJsonText(e.target.value)}
           onBlur={onJsonBlur}
           rows={16}
-          className="w-full resize-y rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 font-mono text-xs text-neutral-100 outline-none focus:border-orange-500"
+          className="w-full resize-y rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 font-mono text-xs text-[var(--text)] outline-none focus:border-orange-500"
           aria-label="Taxonomy JSON editor"
           data-testid="taxonomy-json-editor"
         />
@@ -1735,19 +1741,19 @@ export function RoutingConfigSection({
       description="When a post is auto-tagged with a driver, send a modmail to the listed team members."
     >
       {rows.length === 0 ? (
-        <p className="mb-3 text-xs text-neutral-400">No routing rules yet.</p>
+        <p className="mb-3 text-xs text-[var(--text-muted)]">No routing rules yet.</p>
       ) : (
         <div className="overflow-x-auto">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-neutral-800 text-left text-neutral-400">
+              <tr className="border-b border-[var(--border)] text-left text-[var(--text-muted)]">
                 <th className="pb-2 pr-3 font-medium">Driver ID</th>
                 <th className="pb-2 pr-3 font-medium">Modmail subject</th>
                 <th className="pb-2 pr-3 font-medium">Mentions (comma-sep usernames)</th>
                 <th className="pb-2 font-medium" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800/60">
+            <tbody className="divide-y divide-[var(--border)]">
               {rows.map((r) => (
                 <tr key={r._uid}>
                   <td className="py-2 pr-3">
@@ -1755,7 +1761,7 @@ export function RoutingConfigSection({
                       value={r.driver}
                       onChange={(e) => update(r._uid, 'driver', e.target.value)}
                       placeholder="bug"
-                      className="w-24 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                      className="w-24 rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500"
                     />
                   </td>
                   <td className="py-2 pr-3">
@@ -1763,7 +1769,7 @@ export function RoutingConfigSection({
                       value={r.subject}
                       onChange={(e) => update(r._uid, 'subject', e.target.value)}
                       placeholder="[ENG] new bug post"
-                      className="w-48 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                      className="w-48 rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500"
                     />
                   </td>
                   <td className="py-2 pr-3">
@@ -1771,14 +1777,14 @@ export function RoutingConfigSection({
                       value={r.mentions}
                       onChange={(e) => update(r._uid, 'mentions', e.target.value)}
                       placeholder="dev-alice, eng-bob"
-                      className="w-48 rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-100 outline-none focus:border-orange-500"
+                      className="w-48 rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500"
                     />
                   </td>
                   <td className="py-2">
                     <button
                       type="button"
                       onClick={() => removeRow(r._uid)}
-                      className="text-neutral-400 hover:text-rose-400"
+                      className="text-[var(--text-muted)] hover:text-rose-400"
                     >
                       &times;
                     </button>
@@ -1792,7 +1798,7 @@ export function RoutingConfigSection({
       <button
         type="button"
         onClick={addRow}
-        className="mt-3 text-xs text-neutral-400 underline-offset-2 hover:text-orange-300 hover:underline"
+        className="mt-3 text-xs text-[var(--text-muted)] underline-offset-2 hover:text-orange-300 hover:underline"
       >
         + Add rule
       </button>

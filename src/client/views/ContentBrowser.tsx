@@ -162,7 +162,7 @@ function ChipDropdown({ label, options, selected, onChange }: ChipDropdownProps)
         className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
           isActive
             ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-            : 'border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+            : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
         }`}
       >
         {label}
@@ -171,15 +171,15 @@ function ChipDropdown({ label, options, selected, onChange }: ChipDropdownProps)
             {selected.length}
           </span>
         ) : (
-          <span className="text-neutral-500">▾</span>
+          <span className="text-[var(--text-muted)]">▾</span>
         )}
       </button>
       {open ? (
-        <div className="absolute top-full left-0 z-30 mt-1 min-w-[160px] rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-xl">
+        <div className="absolute top-full left-0 z-30 mt-1 min-w-[160px] rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-xl">
           {options.map((o) => (
             <label
               key={o.value}
-              className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800"
+              className="flex cursor-pointer items-center gap-2 px-3 py-1.5 text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
             >
               <input
                 type="checkbox"
@@ -195,7 +195,7 @@ function ChipDropdown({ label, options, selected, onChange }: ChipDropdownProps)
             <button
               type="button"
               onClick={() => onChange([])}
-              className="w-full px-3 py-1.5 text-left text-xs text-neutral-500 hover:text-neutral-300"
+              className="w-full px-3 py-1.5 text-left text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
             >
               Clear
             </button>
@@ -217,7 +217,7 @@ function SentimentChip({ label }: { label: 'positive' | 'neutral' | 'negative' |
       ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
       : label === 'negative'
         ? 'border-rose-800 bg-rose-900/30 text-rose-200'
-        : 'border-neutral-700 bg-neutral-800 text-neutral-300';
+        : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)]';
   return <span className={`rounded-full border px-2 py-0.5 text-xs ${style}`}>{label}</span>;
 }
 
@@ -234,7 +234,7 @@ function StatusChip({ status }: { status: PostStatus | null }) {
         ? 'border-blue-800 bg-blue-900/20 text-blue-300'
         : status === 'responded'
           ? 'border-violet-800 bg-violet-900/20 text-violet-300'
-          : 'border-neutral-700 bg-neutral-800 text-neutral-400';
+          : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-muted)]';
   return <span className={`rounded-full border px-2 py-0.5 text-xs ${style}`}>{status}</span>;
 }
 
@@ -322,19 +322,19 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
         ref={dialogRef}
         aria-modal="true"
         aria-label={`Respond to: ${item.title}`}
-        className="relative m-0 flex h-full max-w-2xl flex-col overflow-y-auto border-l border-neutral-700 bg-neutral-950 p-0 text-neutral-100 open:flex"
+        className="relative m-0 flex h-full max-w-2xl flex-col overflow-y-auto border-l border-[var(--border)] bg-[var(--bg)] p-0 text-[var(--text)] open:flex"
         style={{ width: 'min(640px, 100vw)' }}
       >
         {/* Header */}
-        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-neutral-800 bg-neutral-950 px-5 py-4">
+        <div className="sticky top-0 z-10 flex items-center justify-between border-b border-[var(--border)] bg-[var(--bg)] px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs text-neutral-400">Responding to</p>
-            <p className="mt-0.5 truncate text-sm font-medium text-neutral-100">{item.title}</p>
+            <p className="text-xs text-[var(--text-muted)]">Responding to</p>
+            <p className="mt-0.5 truncate text-sm font-medium text-[var(--text)]">{item.title}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="ml-3 flex-shrink-0 text-neutral-400 hover:text-neutral-200"
+            className="ml-3 flex-shrink-0 text-[var(--text-muted)] hover:text-[var(--text)]"
             aria-label="Close respond drawer"
           >
             ✕
@@ -342,8 +342,8 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
         </div>
 
         {/* Post context */}
-        <div className="border-b border-neutral-800 px-5 py-3">
-          <div className="flex flex-wrap gap-2 text-xs text-neutral-400">
+        <div className="border-b border-[var(--border)] px-5 py-3">
+          <div className="flex flex-wrap gap-2 text-xs text-[var(--text-muted)]">
             <span>u/{item.authorName}</span>
             <span>·</span>
             <span>{relativeTime(item.createdAt)}</span>
@@ -357,7 +357,7 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
             <StatusChip status={item.status} />
           </div>
           {item.body ? (
-            <p className="mt-2 text-sm text-neutral-300 line-clamp-3">{item.body}</p>
+            <p className="mt-2 text-sm text-[var(--text)] line-clamp-3">{item.body}</p>
           ) : null}
           <a
             href={item.url}
@@ -371,13 +371,13 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
 
         {/* Recent thread */}
         <div className="flex-1 overflow-y-auto px-5 py-3">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-neutral-500">
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
             Recent comments
           </p>
           {threadQ.isPending ? (
-            <div className="h-20 animate-pulse rounded-lg bg-neutral-900" />
+            <div className="h-20 animate-pulse rounded-lg bg-[var(--surface)]" />
           ) : recentComments.length === 0 ? (
-            <p className="text-xs text-neutral-500">No comments yet.</p>
+            <p className="text-xs text-[var(--text-muted)]">No comments yet.</p>
           ) : (
             <ul className="space-y-2">
               {recentComments.map((c) => (
@@ -386,17 +386,19 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
                   className={`rounded-lg border px-3 py-2 text-sm ${
                     c.isAgent
                       ? 'border-blue-800 bg-blue-950/30'
-                      : 'border-neutral-800 bg-neutral-900'
+                      : 'border-[var(--border)] bg-[var(--surface)]'
                   }`}
                 >
-                  <div className="mb-1 flex items-center gap-2 text-xs text-neutral-400">
-                    <span className={c.isAgent ? 'text-blue-300 font-medium' : 'text-neutral-300'}>
+                  <div className="mb-1 flex items-center gap-2 text-xs text-[var(--text-muted)]">
+                    <span
+                      className={c.isAgent ? 'text-blue-300 font-medium' : 'text-[var(--text)]'}
+                    >
                       u/{c.authorName}
                     </span>
                     <span>·</span>
                     <span>{relativeTime(c.createdAt)}</span>
                   </div>
-                  <p className="whitespace-pre-wrap text-neutral-200">{c.body}</p>
+                  <p className="whitespace-pre-wrap text-[var(--text)]">{c.body}</p>
                 </li>
               ))}
             </ul>
@@ -404,7 +406,7 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
         </div>
 
         {/* Reply compose */}
-        <div className="sticky bottom-0 border-t border-neutral-800 bg-neutral-950 px-5 py-4">
+        <div className="sticky bottom-0 border-t border-[var(--border)] bg-[var(--bg)] px-5 py-4">
           {submitted ? (
             <div className="rounded-lg border border-emerald-700 bg-emerald-900/20 p-3 text-sm text-emerald-200">
               Reply submitted! Comment ID: {submitted}
@@ -417,7 +419,7 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
                 onChange={(e) => setBody(e.target.value)}
                 placeholder="Write your reply…"
                 rows={4}
-                className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:border-orange-500 focus:outline-none"
+                className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] placeholder-neutral-500 focus:border-orange-500 focus:outline-none"
                 aria-label="Reply text"
               />
               {draftError ? <p className="mt-1 text-xs text-rose-400">{draftError}</p> : null}
@@ -513,18 +515,18 @@ function ModReplyDrawer({ item, onClose, onToast }: ModReplyDrawerProps) {
       }}
     >
       <div
-        className="flex h-full max-w-lg flex-col border-l border-neutral-700 bg-neutral-950 text-neutral-100"
+        className="flex h-full max-w-lg flex-col border-l border-[var(--border)] bg-[var(--bg)] text-[var(--text)]"
         style={{ width: 'min(480px, 100vw)' }}
       >
-        <div className="flex items-center justify-between border-b border-neutral-800 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
           <div className="min-w-0">
-            <p className="text-xs text-neutral-400">Reply…</p>
+            <p className="text-xs text-[var(--text-muted)]">Reply…</p>
             <p className="mt-0.5 truncate text-sm font-medium">{item.title || '(no title)'}</p>
           </div>
           <button
             type="button"
             onClick={onClose}
-            className="ml-3 text-neutral-400 hover:text-neutral-200"
+            className="ml-3 text-[var(--text-muted)] hover:text-[var(--text)]"
             aria-label="Close reply drawer"
           >
             ✕
@@ -537,12 +539,12 @@ function ModReplyDrawer({ item, onClose, onToast }: ModReplyDrawerProps) {
             onChange={(e) => setBody(e.target.value)}
             placeholder="Write your reply…"
             rows={6}
-            className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:border-orange-500 focus:outline-none"
+            className="w-full resize-none rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] placeholder-neutral-500 focus:border-orange-500 focus:outline-none"
             aria-label="Reply text"
           />
           <div className="flex items-center gap-3">
-            <span className="text-xs text-neutral-400">Send as:</span>
-            <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer">
+            <span className="text-xs text-[var(--text-muted)]">Send as:</span>
+            <label className="flex items-center gap-1.5 text-xs text-[var(--text)] cursor-pointer">
               <input
                 type="radio"
                 name="reply-as"
@@ -553,7 +555,7 @@ function ModReplyDrawer({ item, onClose, onToast }: ModReplyDrawerProps) {
               />
               Me (moderator)
             </label>
-            <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer">
+            <label className="flex items-center gap-1.5 text-xs text-[var(--text)] cursor-pointer">
               <input
                 type="radio"
                 name="reply-as"
@@ -566,7 +568,7 @@ function ModReplyDrawer({ item, onClose, onToast }: ModReplyDrawerProps) {
             </label>
           </div>
         </div>
-        <div className="border-t border-neutral-800 px-5 py-4 flex gap-2">
+        <div className="border-t border-[var(--border)] px-5 py-4 flex gap-2">
           <button
             type="button"
             onClick={handleDraft}
@@ -656,7 +658,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
           type="button"
           onClick={() => setOpen((o) => !o)}
           disabled={busy}
-          className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+          className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] hover:bg-neutral-700 disabled:opacity-50"
           aria-label="Row actions"
           aria-haspopup="menu"
           aria-expanded={open}
@@ -666,19 +668,19 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
         {open ? (
           <div
             role="menu"
-            className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-xl"
+            className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-xl"
           >
             {/* Approve */}
             <button
               role="menuitem"
               type="button"
               onClick={handleApprove}
-              className="block w-full px-3 py-1.5 text-left text-xs text-emerald-300 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-emerald-300 hover:bg-[var(--input-bg)]"
             >
               Approve
             </button>
 
-            <div className="my-1 border-t border-neutral-800" />
+            <div className="my-1 border-t border-[var(--border)]" />
 
             {/* Remove / Spam — destructive, need confirm */}
             <button
@@ -688,7 +690,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                 setOpen(false);
                 setConfirming('remove');
               }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-rose-300 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-rose-300 hover:bg-[var(--input-bg)]"
             >
               Remove
             </button>
@@ -699,12 +701,12 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                 setOpen(false);
                 setConfirming('spam');
               }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-rose-300 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-rose-300 hover:bg-[var(--input-bg)]"
             >
               Mark spam
             </button>
 
-            <div className="my-1 border-t border-neutral-800" />
+            <div className="my-1 border-t border-[var(--border)]" />
 
             {/* Lock — applies to parent post for comments too */}
             <button
@@ -714,7 +716,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                 setOpen(false);
                 void handleLock();
               }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-violet-300 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-violet-300 hover:bg-[var(--input-bg)]"
             >
               Lock{!isPost ? ' (parent post)' : ''}
             </button>
@@ -728,13 +730,13 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                   setOpen(false);
                   void handleDistinguish();
                 }}
-                className="block w-full px-3 py-1.5 text-left text-xs text-violet-300 hover:bg-neutral-800"
+                className="block w-full px-3 py-1.5 text-left text-xs text-violet-300 hover:bg-[var(--input-bg)]"
               >
                 Distinguish
               </button>
             ) : null}
 
-            <div className="my-1 border-t border-neutral-800" />
+            <div className="my-1 border-t border-[var(--border)]" />
 
             {/* Reply with send-mode choice */}
             <button
@@ -744,7 +746,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                 setOpen(false);
                 setShowReply(true);
               }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-sky-300 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-sky-300 hover:bg-[var(--input-bg)]"
             >
               Reply…
             </button>
@@ -757,12 +759,12 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                 setOpen(false);
                 onRespond();
               }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
             >
               Respond (tag/status)
             </button>
 
-            <div className="my-1 border-t border-neutral-800" />
+            <div className="my-1 border-t border-[var(--border)]" />
 
             {/* Status shortcuts */}
             <button
@@ -772,7 +774,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                 setOpen(false);
                 onStatusChange('resolved');
               }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
             >
               Mark resolved
             </button>
@@ -783,7 +785,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
                 setOpen(false);
                 onStatusChange('in-progress');
               }}
-              className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+              className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
             >
               Mark in-progress
             </button>
@@ -793,7 +795,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
               target="_top"
               rel="noopener noreferrer"
               onClick={() => setOpen(false)}
-              className="block px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800"
+              className="block px-3 py-1.5 text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
             >
               Open on Reddit ↗
             </a>
@@ -810,11 +812,11 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
             if (e.target === e.currentTarget) setConfirming(null);
           }}
         >
-          <div className="w-80 rounded-xl border border-neutral-700 bg-neutral-950 p-5 shadow-2xl">
-            <h3 className="mb-2 text-sm font-semibold text-neutral-100">
+          <div className="w-80 rounded-xl border border-[var(--border)] bg-[var(--bg)] p-5 shadow-2xl">
+            <h3 className="mb-2 text-sm font-semibold text-[var(--text)]">
               {confirming === 'spam' ? 'Mark as spam?' : 'Remove this content?'}
             </h3>
-            <p className="mb-4 text-xs text-neutral-400">
+            <p className="mb-4 text-xs text-[var(--text-muted)]">
               {confirming === 'spam'
                 ? 'This will remove the content and flag it as spam.'
                 : 'This will remove the content from the subreddit.'}
@@ -823,7 +825,7 @@ function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProp
               <button
                 type="button"
                 onClick={() => setConfirming(null)}
-                className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800"
+                className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
               >
                 Cancel
               </button>
@@ -868,7 +870,7 @@ function ColHeader({ label, sortKey, currentSort, onSort, className = '' }: ColH
     return (
       <th
         scope="col"
-        className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-neutral-400 ${className}`}
+        className={`px-3 py-2 text-left text-xs font-medium uppercase tracking-wide text-[var(--text-muted)] ${className}`}
       >
         {label}
       </th>
@@ -890,7 +892,7 @@ function ColHeader({ label, sortKey, currentSort, onSort, className = '' }: ColH
         type="button"
         onClick={() => onSort(sortKey)}
         className={`group flex items-center gap-1 transition ${
-          isDesc || isAsc ? 'text-orange-300' : 'text-neutral-400 hover:text-neutral-200'
+          isDesc || isAsc ? 'text-orange-300' : 'text-[var(--text-muted)] hover:text-[var(--text)]'
         }`}
       >
         {label}
@@ -966,7 +968,7 @@ function ExportMenu({ items }: { items: ContentItem[] }) {
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="rounded-md border border-neutral-700 bg-neutral-900 px-3 py-1.5 text-xs text-neutral-300 hover:text-neutral-100"
+        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text)] hover:text-[var(--text)]"
         aria-haspopup="menu"
       >
         Export ▾
@@ -974,13 +976,13 @@ function ExportMenu({ items }: { items: ContentItem[] }) {
       {open ? (
         <div
           role="menu"
-          className="absolute right-0 top-full z-30 mt-1 min-w-[120px] rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-xl"
+          className="absolute right-0 top-full z-30 mt-1 min-w-[120px] rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-xl"
         >
           <button
             role="menuitem"
             type="button"
             onClick={downloadCSV}
-            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+            className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
           >
             Export CSV
           </button>
@@ -988,7 +990,7 @@ function ExportMenu({ items }: { items: ContentItem[] }) {
             role="menuitem"
             type="button"
             onClick={downloadJSON}
-            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+            className="block w-full px-3 py-1.5 text-left text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
           >
             Export JSON
           </button>
@@ -1031,10 +1033,10 @@ function BulkToolbar({
     <div
       role="toolbar"
       aria-label="Bulk actions"
-      className="sticky bottom-0 z-20 flex flex-wrap items-center gap-3 border-t border-orange-800/40 bg-neutral-950/95 px-4 py-3 text-sm backdrop-blur"
+      className="sticky bottom-0 z-20 flex flex-wrap items-center gap-3 border-t border-orange-800/40 bg-[var(--bg)]/95 px-4 py-3 text-sm backdrop-blur"
     >
       <span className="font-medium text-orange-200">{selected.size} selected</span>
-      <span className="text-neutral-500">·</span>
+      <span className="text-[var(--text-muted)]">·</span>
 
       <button
         type="button"
@@ -1058,7 +1060,7 @@ function BulkToolbar({
           <select
             value={tagDriver}
             onChange={(e) => setTagDriver(e.target.value)}
-            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)]"
             aria-label="Tag with driver"
           >
             <option value="">Tag driver…</option>
@@ -1087,14 +1089,14 @@ function BulkToolbar({
       <button
         type="button"
         onClick={onSelectAll}
-        className="text-xs text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
+        className="text-xs text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text)] hover:underline"
       >
         Select all matching
       </button>
       <button
         type="button"
         onClick={onClear}
-        className="ml-auto text-xs text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
+        className="ml-auto text-xs text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text)] hover:underline"
       >
         Clear (Esc)
       </button>
@@ -1400,11 +1402,11 @@ export function ContentBrowser() {
       {/* ------------------------------------------------------------------ */}
       <div className="flex flex-wrap items-center justify-between gap-3 pb-4">
         <div className="flex items-center gap-3">
-          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Content</h2>
+          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Content</h2>
           <select
             value={filters.type}
             onChange={(e) => updateFilter('type', e.target.value as ContentType)}
-            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)]"
             aria-label="Content type"
           >
             <option value="both">Posts &amp; Comments</option>
@@ -1414,9 +1416,9 @@ export function ContentBrowser() {
         </div>
         <div className="flex items-center gap-3">
           {contentQ.isFetching ? (
-            <span className="text-xs text-neutral-500">Loading…</span>
+            <span className="text-xs text-[var(--text-muted)]">Loading…</span>
           ) : (
-            <span className="text-xs text-neutral-400">
+            <span className="text-xs text-[var(--text-muted)]">
               {total.toLocaleString()} item{total !== 1 ? 's' : ''}
             </span>
           )}
@@ -1427,17 +1429,17 @@ export function ContentBrowser() {
       {/* ------------------------------------------------------------------ */}
       {/* Filter bar */}
       {/* ------------------------------------------------------------------ */}
-      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-neutral-800 bg-neutral-950/95 pb-3 pt-1 backdrop-blur">
+      <div className="sticky top-0 z-10 flex flex-wrap items-center gap-2 border-b border-[var(--border)] bg-[var(--bg)]/95 pb-3 pt-1 backdrop-blur">
         {/* Text search */}
         {searchExpanded ? (
-          <div className="flex flex-1 items-center gap-1 rounded-full border border-orange-500 bg-neutral-900 px-3 py-1">
-            <span className="text-xs text-neutral-400">🔍</span>
+          <div className="flex flex-1 items-center gap-1 rounded-full border border-orange-500 bg-[var(--surface)] px-3 py-1">
+            <span className="text-xs text-[var(--text-muted)]">🔍</span>
             <input
               type="search"
               value={filters.q}
               onChange={(e) => updateFilter('q', e.target.value)}
               placeholder="Search titles and bodies…"
-              className="flex-1 bg-transparent text-xs text-neutral-100 placeholder-neutral-500 focus:outline-none"
+              className="flex-1 bg-transparent text-xs text-[var(--text)] placeholder-neutral-500 focus:outline-none"
               aria-label="Text search"
               // biome-ignore lint/a11y/noAutofocus: intentional focus when expanding search
               autoFocus
@@ -1448,7 +1450,7 @@ export function ContentBrowser() {
                 updateFilter('q', '');
                 setSearchExpanded(false);
               }}
-              className="text-xs text-neutral-400 hover:text-neutral-200"
+              className="text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
               aria-label="Close search"
             >
               ✕
@@ -1461,7 +1463,7 @@ export function ContentBrowser() {
             className={`flex items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition ${
               filters.q
                 ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-                : 'border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
             aria-pressed={!!filters.q}
           >
@@ -1509,8 +1511,8 @@ export function ContentBrowser() {
             value={filters.author}
             onChange={(e) => updateFilter('author', e.target.value)}
             placeholder="Author…"
-            className={`w-28 rounded-full border bg-neutral-900 px-3 py-1 text-xs text-neutral-200 placeholder-neutral-500 focus:outline-none ${
-              filters.author ? 'border-orange-500' : 'border-neutral-700'
+            className={`w-28 rounded-full border bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text)] placeholder-neutral-500 focus:outline-none ${
+              filters.author ? 'border-orange-500' : 'border-[var(--border)]'
             }`}
             aria-label="Filter by author"
           />
@@ -1520,8 +1522,8 @@ export function ContentBrowser() {
         <select
           value={filters.hasAgent}
           onChange={(e) => updateFilter('hasAgent', e.target.value as ContentFilters['hasAgent'])}
-          className={`rounded-full border bg-neutral-900 px-3 py-1 text-xs text-neutral-200 ${
-            filters.hasAgent !== 'any' ? 'border-orange-500' : 'border-neutral-700'
+          className={`rounded-full border bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text)] ${
+            filters.hasAgent !== 'any' ? 'border-orange-500' : 'border-[var(--border)]'
           }`}
           aria-label="Has rep reply"
         >
@@ -1541,7 +1543,7 @@ export function ContentBrowser() {
               className={`rounded-full border px-2 py-1 text-xs transition ${
                 filters.dateRange === r
                   ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-                  : 'border-neutral-700 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+                  : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
               {r === 'today' ? 'Today' : r === '7d' ? 'Last 7d' : 'Last 30d'}
@@ -1553,15 +1555,15 @@ export function ContentBrowser() {
                 type="date"
                 value={filters.from}
                 onChange={(e) => updateFilter('from', e.target.value)}
-                className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-neutral-200"
+                className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--text)]"
                 aria-label="From date"
               />
-              <span className="text-xs text-neutral-500">–</span>
+              <span className="text-xs text-[var(--text-muted)]">–</span>
               <input
                 type="date"
                 value={filters.to}
                 onChange={(e) => updateFilter('to', e.target.value)}
-                className="rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-xs text-neutral-200"
+                className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-xs text-[var(--text)]"
                 aria-label="To date"
               />
             </div>
@@ -1572,7 +1574,7 @@ export function ContentBrowser() {
         <select
           value={filters.sort}
           onChange={(e) => updateFilter('sort', e.target.value as ContentSort)}
-          className="ml-auto rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+          className="ml-auto rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)]"
           aria-label="Sort order"
         >
           {SORT_OPTIONS.map((o) => (
@@ -1586,7 +1588,7 @@ export function ContentBrowser() {
           <button
             type="button"
             onClick={clearAllFilters}
-            className="text-xs text-neutral-500 underline-offset-2 hover:text-neutral-300 hover:underline"
+            className="text-xs text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text)] hover:underline"
           >
             Clear all
           </button>
@@ -1609,7 +1611,7 @@ export function ContentBrowser() {
             {[0, 1, 2, 3, 4].map((i) => (
               <div
                 key={i}
-                className="h-12 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+                className="h-12 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
               />
             ))}
           </div>
@@ -1621,7 +1623,7 @@ export function ContentBrowser() {
             </button>
           </div>
         ) : items.length === 0 ? (
-          <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6 text-sm text-neutral-400">
+          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">
             No content matches the current filters.{' '}
             {hasActiveFilters ? (
               <button
@@ -1639,7 +1641,7 @@ export function ContentBrowser() {
           <>
             <table className="w-full border-collapse text-sm" aria-label="Content table">
               <thead>
-                <tr className="border-b border-neutral-800 text-left">
+                <tr className="border-b border-[var(--border)] text-left">
                   <th scope="col" className="px-3 py-2 w-8">
                     <input
                       type="checkbox"
@@ -1651,7 +1653,7 @@ export function ContentBrowser() {
                   </th>
                   <th
                     scope="col"
-                    className="px-3 py-2 w-8 text-xs font-medium uppercase tracking-wide text-neutral-400"
+                    className="px-3 py-2 w-8 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
                   >
                     Type
                   </th>
@@ -1664,25 +1666,25 @@ export function ContentBrowser() {
                   />
                   <th
                     scope="col"
-                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-400"
+                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
                   >
                     Author
                   </th>
                   <th
                     scope="col"
-                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-400"
+                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
                   >
                     Driver
                   </th>
                   <th
                     scope="col"
-                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-400"
+                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
                   >
                     Sentiment
                   </th>
                   <th
                     scope="col"
-                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-neutral-400"
+                    className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
                   >
                     Status
                   </th>
@@ -1702,7 +1704,7 @@ export function ContentBrowser() {
                   ) : null}
                   <th
                     scope="col"
-                    className="px-3 py-2 w-16 text-xs font-medium uppercase tracking-wide text-neutral-400"
+                    className="px-3 py-2 w-16 text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]"
                   >
                     Actions
                   </th>
@@ -1731,7 +1733,7 @@ export function ContentBrowser() {
             </table>
 
             {/* Pagination */}
-            <div className="flex items-center justify-between border-t border-neutral-800 px-3 py-3 text-xs text-neutral-400">
+            <div className="flex items-center justify-between border-t border-[var(--border)] px-3 py-3 text-xs text-[var(--text-muted)]">
               <span>
                 Showing {offset + 1}–{Math.min(offset + LIMIT, total)} of {total.toLocaleString()}
               </span>
@@ -1740,7 +1742,7 @@ export function ContentBrowser() {
                   type="button"
                   disabled={offset === 0}
                   onClick={() => setOffset(Math.max(0, offset - LIMIT))}
-                  className="rounded border border-neutral-700 bg-neutral-900 px-3 py-1 text-xs text-neutral-300 disabled:opacity-50"
+                  className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text)] disabled:opacity-50"
                 >
                   Previous
                 </button>
@@ -1748,7 +1750,7 @@ export function ContentBrowser() {
                   type="button"
                   disabled={offset + LIMIT >= total}
                   onClick={() => setOffset(offset + LIMIT)}
-                  className="rounded border border-neutral-700 bg-neutral-900 px-3 py-1 text-xs text-neutral-300 disabled:opacity-50"
+                  className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1 text-xs text-[var(--text)] disabled:opacity-50"
                 >
                   Next
                 </button>
@@ -1818,8 +1820,8 @@ function ContentRow({
 
   return (
     <tr
-      className={`border-b border-neutral-800/50 transition-colors ${
-        selected ? 'bg-orange-950/20' : 'hover:bg-neutral-900/50'
+      className={`border-b border-[var(--border)]/50 transition-colors ${
+        selected ? 'bg-orange-950/20' : 'hover:bg-[var(--surface)]'
       }`}
       onContextMenu={(e) => {
         // Right-click selects the row (without losing other selection)
@@ -1839,7 +1841,7 @@ function ContentRow({
       </td>
 
       {/* Type icon */}
-      <td className="px-3 py-2.5 text-center text-sm text-neutral-500">
+      <td className="px-3 py-2.5 text-center text-sm text-[var(--text-muted)]">
         {item.type === 'post' ? (
           <span title="Post" aria-hidden="true">
             📄
@@ -1859,11 +1861,11 @@ function ContentRow({
           className="block w-full text-left"
           aria-expanded={expanded}
         >
-          <span className="block truncate text-sm font-medium text-neutral-100 hover:text-orange-200">
+          <span className="block truncate text-sm font-medium text-[var(--text)] hover:text-orange-200">
             {item.title || '(no title)'}
           </span>
           {expanded && item.body ? (
-            <span className="mt-1 block text-xs text-neutral-400 whitespace-pre-wrap">
+            <span className="mt-1 block text-xs text-[var(--text-muted)] whitespace-pre-wrap">
               {item.body.slice(0, 400)}
               {item.body.length > 400 ? '…' : ''}
             </span>
@@ -1872,7 +1874,7 @@ function ContentRow({
       </td>
 
       {/* Author */}
-      <td className="px-3 py-2.5 text-xs text-neutral-300 whitespace-nowrap">
+      <td className="px-3 py-2.5 text-xs text-[var(--text)] whitespace-nowrap">
         u/{item.authorName}
       </td>
 
@@ -1896,13 +1898,13 @@ function ContentRow({
       </td>
 
       {/* Age */}
-      <td className="px-3 py-2.5 text-xs text-neutral-400 whitespace-nowrap">
+      <td className="px-3 py-2.5 text-xs text-[var(--text-muted)] whitespace-nowrap">
         <span title={formatDate(item.createdAt)}>{relativeTime(item.createdAt)}</span>
       </td>
 
       {/* Score (optional) */}
       {showScore ? (
-        <td className="px-3 py-2.5 text-xs text-neutral-400">
+        <td className="px-3 py-2.5 text-xs text-[var(--text-muted)]">
           {item.sentimentScore != null ? item.sentimentScore.toFixed(2) : '—'}
         </td>
       ) : null}

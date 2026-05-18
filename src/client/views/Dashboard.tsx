@@ -90,21 +90,29 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [pipelinesAutoOpen, setPipelinesAutoOpen] = useState(false);
   const { theme, cycle: cycleTheme } = useTheme();
   const badges = useNavBadges();
 
   // URL helpers
-  const setTab = useCallback((t: Tab, extra?: Record<string, string>) => {
-    setTabState(t);
-    const cleanExtra: Record<string, string> = {};
-    if (extra) {
-      for (const [k, v] of Object.entries(extra)) {
-        if (typeof v === 'string' && v.length > 0) cleanExtra[k] = v;
+  const setTab = useCallback(
+    (t: Tab, extra?: Record<string, string>) => {
+      setTabState(t);
+      // If navigating away from pipelines-with-auto-open, reset the flag
+      if (t !== 'pipelines') setPipelinesAutoOpen(false);
+      const cleanExtra: Record<string, string> = {};
+      if (extra) {
+        for (const [k, v] of Object.entries(extra)) {
+          if (typeof v === 'string' && v.length > 0) cleanExtra[k] = v;
+        }
       }
-    }
-    const params = new URLSearchParams({ tab: t, ...cleanExtra });
-    history.pushState({ tab: t, ...cleanExtra }, '', `?${params.toString()}`);
-  }, []);
+      const params = new URLSearchParams({ tab: t, ...cleanExtra });
+      history.pushState({ tab: t, ...cleanExtra }, '', `?${params.toString()}`);
+    },
+    // setPipelinesAutoOpen is a stable setState setter — omit from deps per React rules
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
 
   const setInsightsSection = useCallback((section: InsightSection) => {
     setActiveSection(section);
@@ -357,10 +365,20 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
                 SentimentContent={() => <SentimentTab />}
                 ThemesContent={() => <Themes />}
                 customPipelines={customPipelines}
+                onOpenNewPipeline={() => {
+                  setPipelinesAutoOpen(true);
+                  setTab('pipelines');
+                }}
               />
             )}
             {tab === 'incidents' && <Incidents />}
-            {tab === 'pipelines' && <Pipelines onOpenSettings={() => setTab('settings')} />}
+            {tab === 'pipelines' && (
+              <Pipelines
+                onOpenSettings={() => setTab('settings')}
+                autoOpen={pipelinesAutoOpen}
+                key={pipelinesAutoOpen ? 'auto-open' : 'normal'}
+              />
+            )}
             {tab === 'team' && <Agents />}
             {tab === 'export' && <ExportTab />}
             {tab === 'audit' && <Audit />}
@@ -644,8 +662,8 @@ function Inbox() {
 
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Triage inbox</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-400">
+          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Triage inbox</h2>
+          <p className="mt-1 max-w-xl text-xs text-[var(--text-muted)]">
             Auto-prioritized by driver severity × sentiment × thread heat × age. Top of list is what
             should get your attention first.
           </p>
@@ -659,7 +677,7 @@ function Inbox() {
               className={`rounded-full border px-3 py-1 transition ${
                 statusFilter === s.id
                   ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-                  : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+                  : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
               {s.label}
@@ -673,14 +691,14 @@ function Inbox() {
         <div
           role="toolbar"
           aria-label="Bulk actions"
-          className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border border-orange-700 bg-neutral-950/95 px-4 py-2.5 text-sm backdrop-blur"
+          className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border border-orange-700 bg-[var(--bg)]/95 px-4 py-2.5 text-sm backdrop-blur"
         >
           <span className="font-medium text-orange-200">{selected.size} selected</span>
-          <span className="text-neutral-400">·</span>
+          <span className="text-[var(--text-muted)]">·</span>
           <select
             value={bulkStatus}
             onChange={(e) => setBulkStatus(e.target.value as PostStatus)}
-            className="rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-xs text-neutral-200"
+            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)]"
             aria-label="Bulk status to apply"
           >
             {BULK_STATUS_OPTIONS.map((o) => (
@@ -700,7 +718,7 @@ function Inbox() {
           <button
             type="button"
             onClick={() => setSelected(new Set())}
-            className="ml-auto text-xs text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
+            className="ml-auto text-xs text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text)] hover:underline"
           >
             Clear (Esc)
           </button>
@@ -744,7 +762,7 @@ function Inbox() {
       ) : (
         <>
           {/* Select-all header */}
-          <div className="flex items-center gap-2 pb-1 text-xs text-neutral-400">
+          <div className="flex items-center gap-2 pb-1 text-xs text-[var(--text-muted)]">
             <input
               type="checkbox"
               aria-label="Select all"
@@ -758,10 +776,10 @@ function Inbox() {
             {items.map((p, idx) => (
               <li
                 key={p.postId}
-                className={`rounded-lg border bg-neutral-900 p-4 transition ${
+                className={`rounded-lg border bg-[var(--surface)] p-4 transition ${
                   selected.has(p.postId)
                     ? 'border-orange-600/60'
-                    : 'border-neutral-800 hover:border-neutral-700'
+                    : 'border-[var(--border)] hover:border-[var(--border)]'
                 }`}
               >
                 <div className="flex items-start gap-3">
@@ -782,18 +800,18 @@ function Inbox() {
                       href={p.url}
                       target="_top"
                       rel="noopener noreferrer"
-                      className="block truncate text-sm font-medium text-neutral-100 hover:underline"
+                      className="block truncate text-sm font-medium text-[var(--text)] hover:underline"
                       title={p.title}
                     >
                       {p.title || '(no title)'}
                     </a>
-                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+                    <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
                       <button
                         type="button"
                         onClick={() =>
                           setOpenHistory(openHistory === p.authorName ? null : p.authorName)
                         }
-                        className="text-neutral-300 underline-offset-2 hover:underline"
+                        className="text-[var(--text)] underline-offset-2 hover:underline"
                       >
                         u/{p.authorName}
                       </button>
@@ -823,7 +841,9 @@ function Inbox() {
                       ) : null}
                     </div>
                     {p.reasoning ? (
-                      <div className="mt-1 text-xs italic text-neutral-400">"{p.reasoning}"</div>
+                      <div className="mt-1 text-xs italic text-[var(--text-muted)]">
+                        "{p.reasoning}"
+                      </div>
                     ) : null}
                     <div className="mt-2 flex flex-wrap gap-2 text-xs">
                       {p.status !== 'resolved' ? (
@@ -838,7 +858,7 @@ function Inbox() {
                         <button
                           type="button"
                           onClick={() => mutate(p.postId, 'open')}
-                          className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+                          className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:bg-neutral-700"
                         >
                           Re-open
                         </button>
@@ -855,7 +875,7 @@ function Inbox() {
                       <button
                         type="button"
                         onClick={() => setOpenThread(openThread === p.postId ? null : p.postId)}
-                        className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+                        className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:bg-neutral-700"
                       >
                         {openThread === p.postId ? 'Hide thread' : 'View thread'}
                       </button>
@@ -870,7 +890,7 @@ function Inbox() {
                         href={p.url}
                         target="_top"
                         rel="noopener noreferrer"
-                        className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:border-orange-500 hover:text-orange-200"
+                        className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:border-orange-500 hover:text-orange-200"
                       >
                         ↗ Open on Reddit
                       </a>
@@ -878,17 +898,17 @@ function Inbox() {
                   </div>
                 </div>
                 {openHistory === p.authorName ? (
-                  <div className="mt-4 border-t border-neutral-800 pt-4">
+                  <div className="mt-4 border-t border-[var(--border)] pt-4">
                     <UserHistoryPanel username={p.authorName} currentPostId={p.postId} />
                   </div>
                 ) : null}
                 {openThread === p.postId ? (
-                  <div className="mt-4 border-t border-neutral-800 pt-4">
+                  <div className="mt-4 border-t border-[var(--border)] pt-4">
                     <ThreadPanel postId={p.postId} />
                   </div>
                 ) : null}
                 {openDraft === p.postId ? (
-                  <div className="mt-4 border-t border-neutral-800 pt-4">
+                  <div className="mt-4 border-t border-[var(--border)] pt-4">
                     <DraftReplyPanel postId={p.postId} />
                   </div>
                 ) : null}
@@ -907,7 +927,7 @@ function PriorityPill({ priority }: { priority: number }) {
       ? 'border-rose-700 bg-rose-900/40 text-rose-200'
       : priority >= 0.5
         ? 'border-orange-700 bg-orange-900/40 text-orange-200'
-        : 'border-neutral-700 bg-neutral-800 text-neutral-400';
+        : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-muted)]';
   return (
     <span className={`mt-1 rounded-full border px-1.5 py-0.5 text-[10px] tabular-nums ${tone}`}>
       {priority.toFixed(2)}
@@ -932,8 +952,8 @@ function UserHistoryPanel({
   const others = items.filter((p) => p.postId !== currentPostId);
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-3 text-xs text-neutral-400">
-        <span className="font-medium text-neutral-200">u/{username}</span>
+      <div className="flex flex-wrap items-center gap-3 text-xs text-[var(--text-muted)]">
+        <span className="font-medium text-[var(--text)]">u/{username}</span>
         <span>·</span>
         <span>{aggregate.totalPosts} known posts</span>
         {aggregate.averageScore !== null ? (
@@ -947,7 +967,7 @@ function UserHistoryPanel({
                     ? 'text-rose-300'
                     : aggregate.averageScore > 0.1
                       ? 'text-emerald-300'
-                      : 'text-neutral-300'
+                      : 'text-[var(--text)]'
                 }
               >
                 {aggregate.averageScore.toFixed(2)}
@@ -977,24 +997,24 @@ function UserHistoryPanel({
       {others.length === 0 ? (
         <EmptyHint>No other posts by this user in our index.</EmptyHint>
       ) : (
-        <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-950/40">
+        <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--bg)]/40">
           {others.map((p) => (
             <li key={p.postId} className="px-3 py-2">
               <a
                 href={p.url}
                 target="_top"
                 rel="noopener noreferrer"
-                className="block truncate text-sm text-neutral-100 hover:underline"
+                className="block truncate text-sm text-[var(--text)] hover:underline"
                 title={p.title}
               >
                 {p.title || '(no title)'}
               </a>
-              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+              <div className="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
                 <span>{relativeTime(p.createdAt)}</span>
                 {p.driverId ? (
                   <>
                     <span>·</span>
-                    <span className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5">
+                    <span className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5">
                       {p.driverId}
                     </span>
                   </>
@@ -1027,7 +1047,7 @@ function UserHistoryPanel({
 const TONE_COLOR: Record<string, string> = {
   empathetic: 'border-emerald-700 bg-emerald-900/30 text-emerald-200',
   direct: 'border-orange-700 bg-orange-900/30 text-orange-200',
-  concise: 'border-neutral-700 bg-neutral-900 text-neutral-200',
+  concise: 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)]',
   investigative: 'border-blue-700 bg-blue-900/30 text-blue-200',
 };
 
@@ -1060,10 +1080,10 @@ function DraftReplyPanel({ postId }: { postId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="flex items-center gap-2 text-xs text-neutral-400">
+        <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
           <span className="font-medium text-violet-300">✨ AI draft replies</span>
           {data ? (
-            <span className="text-neutral-400">
+            <span className="text-[var(--text-muted)]">
               · {data.candidates.length} candidates · {data.tokensIn + data.tokensOut} tokens · $
               {(data.costCents / 100).toFixed(4)}
               {data.cached ? ' · cached' : ''}
@@ -1089,7 +1109,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
           {[0, 1, 2].map((i) => (
             <div
               key={i}
-              className="h-24 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+              className="h-24 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
             />
           ))}
         </div>
@@ -1101,16 +1121,16 @@ function DraftReplyPanel({ postId }: { postId: string }) {
             return (
               <li
                 key={`${c.tone}-${i}`}
-                className="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-950/50"
+                className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--bg)]/50"
               >
-                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-neutral-800 bg-neutral-900/60 px-3 py-2 text-xs">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs">
                   <div className="flex items-center gap-2">
                     <span
                       className={`rounded-full border px-2 py-0.5 ${TONE_COLOR[c.tone] ?? TONE_COLOR.concise}`}
                     >
                       {c.tone}
                     </span>
-                    <span className="text-neutral-400">{c.rationale}</span>
+                    <span className="text-[var(--text-muted)]">{c.rationale}</span>
                   </div>
                   <button
                     type="button"
@@ -1123,7 +1143,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
                         /* clipboard blocked — user can still select+copy */
                       }
                     }}
-                    className="rounded-md border border-neutral-700 bg-neutral-800 px-2 py-1 text-neutral-200 transition hover:border-orange-500 hover:text-orange-200"
+                    className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-[var(--text)] transition hover:border-orange-500 hover:text-orange-200"
                   >
                     {copiedIdx === i ? '✓ Copied' : 'Copy'}
                   </button>
@@ -1132,7 +1152,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
                   value={text}
                   onChange={(e) => setEdits((prev) => ({ ...prev, [i]: e.target.value }))}
                   rows={Math.min(10, Math.max(3, text.split('\n').length + 2))}
-                  className="block w-full resize-y border-0 bg-transparent px-3 py-3 text-sm text-neutral-100 outline-none focus:bg-neutral-900/40"
+                  className="block w-full resize-y border-0 bg-transparent px-3 py-3 text-sm text-[var(--text)] outline-none focus:bg-[var(--surface)]"
                   spellCheck
                 />
               </li>
@@ -1140,7 +1160,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
           })}
         </ul>
       ) : null}
-      <p className="text-xs text-neutral-400">
+      <p className="text-xs text-[var(--text-muted)]">
         Edits stay local — copy the version you like and paste it into Reddit's reply box. Brand
         voice is configurable via the subreddit setting <code>brand-voice</code>.
       </p>
@@ -1182,12 +1202,12 @@ function KpiTile({
         ? 'text-rose-400'
         : tone === 'warn'
           ? 'text-amber-400'
-          : 'text-neutral-100';
+          : 'text-[var(--text)]';
   const deltaColor = deltaPositive ? 'text-emerald-400' : 'text-rose-400';
 
   const inner = (
     <>
-      <div className="flex items-center text-[10px] uppercase tracking-widest text-neutral-400">
+      <div className="flex items-center text-[10px] uppercase tracking-widest text-[var(--text-muted)]">
         {label}
         {tooltip ? <InfoTooltip tip={tooltip} /> : null}
       </div>
@@ -1197,7 +1217,7 @@ function KpiTile({
         {value}
       </div>
       <div className="mt-1 flex items-center gap-2">
-        {sub ? <span className="text-[11px] text-neutral-400">{sub}</span> : null}
+        {sub ? <span className="text-[11px] text-[var(--text-muted)]">{sub}</span> : null}
         {delta ? (
           <span className={`ml-auto text-[11px] tabular-nums ${deltaColor}`}>{delta}</span>
         ) : null}
@@ -1208,7 +1228,7 @@ function KpiTile({
   if (onClick) {
     return (
       <article
-        className="rounded-lg border border-neutral-800 bg-neutral-900 p-3.5 transition hover:border-neutral-700 hover:bg-neutral-800/60"
+        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5 transition hover:border-[var(--border)] hover:bg-[var(--input-bg)]"
         aria-label={`${label}: ${value}`}
       >
         <button
@@ -1224,7 +1244,7 @@ function KpiTile({
   }
   return (
     <article
-      className="rounded-lg border border-neutral-800 bg-neutral-900 p-3.5"
+      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5"
       aria-label={`${label}: ${value}`}
     >
       {inner}
@@ -1329,7 +1349,7 @@ function HeatmapCell({ count, max, label }: { count: number; max: number; label:
   const opacity = Math.round(intensity * 100);
   return (
     <div
-      className={`h-4 w-full rounded-[2px] border border-neutral-800/40 bg-orange-500/${opacity}`}
+      className={`h-4 w-full rounded-[2px] border border-[var(--border)]/40 bg-orange-500/${opacity}`}
       title={label}
     />
   );
@@ -1493,7 +1513,7 @@ function Overview({
 
       {/* ── KPI strip ────────────────────────────────────────────────────── */}
       <section aria-label="Key performance indicators">
-        <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
+        <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
           Pulse — today at a glance
         </h2>
         {summaryQ.isPending ? (
@@ -1501,7 +1521,7 @@ function Overview({
             {[0, 1, 2, 3, 4, 5].map((i) => (
               <div
                 key={i}
-                className="h-20 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+                className="h-20 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
               />
             ))}
           </div>
@@ -1576,7 +1596,7 @@ function Overview({
         <div className="min-w-0 space-y-6">
           {/* ── Per-driver sparklines ───────────────────────────────────── */}
           <section aria-label="Driver volume sparklines">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
               Drivers · 14-day trend
             </h2>
             {volumeQ.isPending || taxonomyQ.isPending ? (
@@ -1596,7 +1616,7 @@ function Overview({
                     key={node.id}
                     type="button"
                     onClick={() => navigateTo('insights', { section: 'intent', driver: node.id })}
-                    className="group flex flex-col gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900 p-3 text-left transition hover:border-neutral-700 hover:bg-neutral-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+                    className="group flex flex-col gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-left transition hover:border-[var(--border)] hover:bg-[var(--input-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
                     aria-label={`${node.label}: ${current} posts today. Click to view driver.`}
                   >
                     <div className="flex items-center justify-between gap-2">
@@ -1606,11 +1626,11 @@ function Overview({
                           className="block h-2 w-2 shrink-0 rounded-full"
                           style={{ background: node.color }}
                         />
-                        <span className="truncate text-xs font-medium text-neutral-200 group-hover:text-white">
+                        <span className="truncate text-xs font-medium text-[var(--text)] group-hover:text-white">
                           {node.label}
                         </span>
                       </span>
-                      <span className="shrink-0 text-sm font-semibold tabular-nums text-neutral-100">
+                      <span className="shrink-0 text-sm font-semibold tabular-nums text-[var(--text)]">
                         {current}
                       </span>
                     </div>
@@ -1622,7 +1642,9 @@ function Overview({
                         height={28}
                       />
                     </div>
-                    <div className="text-[10px] text-neutral-400">14d trend · click to drill</div>
+                    <div className="text-[10px] text-[var(--text-muted)]">
+                      14d trend · click to drill
+                    </div>
                   </button>
                 ))}
               </div>
@@ -1637,15 +1659,15 @@ function Overview({
 
           {/* ── Hour-of-day heatmap ─────────────────────────────────────── */}
           <section aria-label="Posts by day and hour of week">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
               Activity heatmap · day × hour
             </h2>
             {recentQ.isPending ? (
-              <div className="h-36 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />
+              <div className="h-36 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
             ) : recentQ.isError ? (
               <ErrorMsg msg="Couldn't load heatmap data." retry={() => recentQ.refetch()} />
             ) : heatmap ? (
-              <div className="overflow-x-auto rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+              <div className="overflow-x-auto rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
                 {/* Hour column labels */}
                 <div
                   className="mb-1 ml-10 grid"
@@ -1677,7 +1699,7 @@ function Overview({
                     '22',
                     '23',
                   ].map((h) => (
-                    <div key={h} className="text-center text-[9px] text-neutral-400">
+                    <div key={h} className="text-center text-[9px] text-[var(--text-muted)]">
                       {HOUR_LABELS.includes(h.padStart(2, '0')) ? h.padStart(2, '0') : ''}
                     </div>
                   ))}
@@ -1686,7 +1708,7 @@ function Overview({
                 <div className="space-y-0.5">
                   {DOW_LABELS.map((day, dow) => (
                     <div key={day} className="flex items-center gap-2">
-                      <span className="w-8 shrink-0 text-right text-[10px] text-neutral-400">
+                      <span className="w-8 shrink-0 text-right text-[10px] text-[var(--text-muted)]">
                         {day}
                       </span>
                       <div
@@ -1708,13 +1730,13 @@ function Overview({
                     </div>
                   ))}
                 </div>
-                <div className="mt-2 flex items-center gap-2 text-[10px] text-neutral-400">
+                <div className="mt-2 flex items-center gap-2 text-[10px] text-[var(--text-muted)]">
                   <span>fewer</span>
                   <div className="flex gap-0.5">
                     {[0, 20, 40, 60, 80, 100].map((op) => (
                       <div
                         key={op}
-                        className={`h-3 w-4 rounded-[2px] bg-orange-500/${op} border border-neutral-700/30`}
+                        className={`h-3 w-4 rounded-[2px] bg-orange-500/${op} border border-[var(--border)]/30`}
                       />
                     ))}
                   </div>
@@ -1726,7 +1748,7 @@ function Overview({
 
           {/* ── Top themes ──────────────────────────────────────────────── */}
           <section aria-label="Emerging themes">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
+            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
               Emerging themes
             </h2>
             {themesQ.isPending ? (
@@ -1734,7 +1756,7 @@ function Overview({
             ) : themesQ.isError ? (
               <ErrorMsg msg="Couldn't load themes." retry={() => themesQ.refetch()} />
             ) : themesQ.data.themes.length === 0 ? (
-              <div className="flex items-center justify-between rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3 text-sm text-neutral-400">
+              <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-muted)]">
                 <span>No themes generated yet.</span>
                 <button
                   type="button"
@@ -1749,27 +1771,29 @@ function Overview({
                 {themesQ.data.themes.slice(0, 5).map((t) => (
                   <div
                     key={t.name}
-                    className="rounded-lg border border-neutral-800 bg-neutral-900 p-3"
+                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
                   >
                     <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="truncate text-sm font-medium text-neutral-100">{t.name}</h3>
+                      <h3 className="truncate text-sm font-medium text-[var(--text)]">{t.name}</h3>
                       <span
                         className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] tabular-nums ${
                           t.avgSentiment < -0.2
                             ? 'border-rose-700 bg-rose-900/40 text-rose-200'
                             : t.avgSentiment > 0.2
                               ? 'border-emerald-700 bg-emerald-900/40 text-emerald-200'
-                              : 'border-neutral-700 bg-neutral-800 text-neutral-400'
+                              : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-muted)]'
                         }`}
                       >
                         {t.avgSentiment > 0 ? '+' : ''}
                         {t.avgSentiment.toFixed(2)}
                       </span>
                     </div>
-                    <div className="mt-1 text-[10px] text-neutral-400">
+                    <div className="mt-1 text-[10px] text-[var(--text-muted)]">
                       {t.postCount} post{t.postCount === 1 ? '' : 's'}
                     </div>
-                    <p className="mt-1.5 line-clamp-2 text-xs text-neutral-400">{t.summary}</p>
+                    <p className="mt-1.5 line-clamp-2 text-xs text-[var(--text-muted)]">
+                      {t.summary}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -1779,7 +1803,7 @@ function Overview({
 
         {/* ── Activity ticker (sidebar on lg+) ─────────────────────────── */}
         <aside aria-label="Recent activity">
-          <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
+          <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
             Recent activity
           </h2>
           {recentQ.isPending ? (
@@ -1799,19 +1823,19 @@ function Overview({
 
 function ActivityTicker({ items }: { items: RecentPost[] }) {
   return (
-    <ul className="divide-y divide-neutral-800/70 rounded-lg border border-neutral-800 bg-neutral-900/60">
+    <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       {items.map((p) => (
         <li key={p.postId} className="px-3 py-2.5">
           <a
             href={p.url}
             target="_top"
             rel="noopener noreferrer"
-            className="block truncate text-xs font-medium text-neutral-200 hover:text-orange-300 hover:underline"
+            className="block truncate text-xs font-medium text-[var(--text)] hover:text-orange-300 hover:underline"
             title={p.title}
           >
             {p.title || '(no title)'}
           </a>
-          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-neutral-400">
+          <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
             <span>{relativeTime(p.createdAt)}</span>
             {p.driverId ? (
               <>
@@ -1851,11 +1875,11 @@ function DriverBadge({
       ? 'text-violet-300'
       : taggedBy === 'auto'
         ? 'text-blue-300'
-        : 'text-neutral-400';
+        : 'text-[var(--text-muted)]';
   return (
     <span className={`font-medium ${color}`} title={`ID: ${id}`}>
       {label}
-      {taggedBy ? <span className="ml-1 text-neutral-400">({taggedBy})</span> : null}
+      {taggedBy ? <span className="ml-1 text-[var(--text-muted)]">({taggedBy})</span> : null}
     </span>
   );
 }
@@ -1874,7 +1898,7 @@ function SentimentBadge({
       ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
       : label === 'negative'
         ? 'border-rose-800 bg-rose-900/30 text-rose-200'
-        : 'border-neutral-700 bg-neutral-800 text-neutral-300';
+        : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)]';
   return (
     <span className={`rounded-full border px-2 py-0.5 ${style}`}>
       {label}
@@ -1950,7 +1974,7 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
       />
 
       {/* Configure taxonomy accordion */}
-      <div className="rounded-lg border border-neutral-800 bg-neutral-900/40">
+      <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)]">
         <button
           type="button"
           onClick={() => setConfigOpen((v) => !v)}
@@ -1958,16 +1982,18 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
           data-testid="drivers-config-toggle"
           className="flex w-full items-center justify-between px-5 py-3 text-left"
         >
-          <span className="text-sm font-medium text-neutral-200">Configure taxonomy</span>
-          <span className="text-xs text-neutral-400">{configOpen ? '▲ collapse' : '▼ expand'}</span>
+          <span className="text-sm font-medium text-[var(--text)]">Configure taxonomy</span>
+          <span className="text-xs text-[var(--text-muted)]">
+            {configOpen ? '▲ collapse' : '▼ expand'}
+          </span>
         </button>
         {configOpen ? (
           <div
-            className="space-y-4 border-t border-neutral-800 px-5 pb-5 pt-4"
+            className="space-y-4 border-t border-[var(--border)] px-5 pb-5 pt-4"
             data-testid="drivers-config-panel"
           >
             {settingsQ.isPending ? (
-              <div className="h-24 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />
+              <div className="h-24 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
             ) : (
               <>
                 <TaxonomyConfigSection
@@ -1987,7 +2013,7 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
       </div>
 
       <div>
-        <h2 className="mb-4 text-sm uppercase tracking-wide text-neutral-400">
+        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">
           Drivers · last 30 days · click to see posts
         </h2>
         <ul className="space-y-2">
@@ -1998,8 +2024,8 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
                 onClick={() => setOpenDriver(openDriver === d.id ? null : d.id)}
                 className={`flex w-full items-center gap-4 rounded-lg border px-3 py-2 text-left transition ${
                   openDriver === d.id
-                    ? 'border-orange-500 bg-neutral-900'
-                    : 'border-transparent hover:border-neutral-800 hover:bg-neutral-900/60'
+                    ? 'border-orange-500 bg-[var(--surface)]'
+                    : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--surface)]'
                 }`}
               >
                 <span className="flex w-40 min-w-0 items-center gap-1.5">
@@ -2008,11 +2034,11 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
                     className="block h-2 w-2 shrink-0 rounded-full"
                     style={{ background: d.color }}
                   />
-                  <span className="truncate text-sm text-neutral-200">
+                  <span className="truncate text-sm text-[var(--text)]">
                     {formatDriverPath(d.id, taxonomy)}
                   </span>
                 </span>
-                <span className="h-2 flex-1 overflow-hidden rounded-full bg-neutral-900">
+                <span className="h-2 flex-1 overflow-hidden rounded-full bg-[var(--surface)]">
                   <span
                     className="block h-full rounded-full"
                     style={{
@@ -2021,7 +2047,7 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
                     }}
                   />
                 </span>
-                <span className="w-12 text-right text-sm tabular-nums text-neutral-400">
+                <span className="w-12 text-right text-sm tabular-nums text-[var(--text-muted)]">
                   {d.count}
                 </span>
               </button>
@@ -2069,7 +2095,7 @@ function DriverPostsPanel({
   return (
     <div>
       <div className="mb-2 flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-neutral-400">Filter:</span>
+        <span className="text-[var(--text-muted)]">Filter:</span>
         {STATUS_FILTERS.map((f) => (
           <button
             type="button"
@@ -2078,20 +2104,20 @@ function DriverPostsPanel({
             className={`rounded-full border px-2 py-0.5 transition ${
               filter === f.id
                 ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-                : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
             {f.label}
           </button>
         ))}
         {hasChildren ? (
-          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-neutral-400">
+          <label className="ml-2 flex cursor-pointer items-center gap-1.5 text-[var(--text-muted)]">
             <input
               type="checkbox"
               checked={includeSubDrivers}
               onChange={(e) => setIncludeSubDrivers(e.target.checked)}
               data-testid="include-sub-drivers-toggle"
-              className="rounded border-neutral-700 bg-neutral-800 accent-orange-500"
+              className="rounded border-[var(--border)] bg-[var(--input-bg)] accent-orange-500"
             />
             Include sub-drivers
           </label>
@@ -2131,19 +2157,19 @@ function DriverPostList({
     ]);
   };
   return (
-    <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-900">
+    <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       {posts.map((p) => (
         <li key={p.postId} className="px-4 py-3">
           <a
             href={p.url}
             target="_top"
             rel="noopener noreferrer"
-            className="block truncate text-sm font-medium text-neutral-100 hover:underline"
+            className="block truncate text-sm font-medium text-[var(--text)] hover:underline"
             title={p.title}
           >
             {p.title || '(no title)'}
           </a>
-          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+          <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
             <span>u/{p.authorName}</span>
             <span>·</span>
             <span>{relativeTime(p.createdAt)}</span>
@@ -2161,7 +2187,7 @@ function DriverPostList({
             ) : null}
           </div>
           {p.reasoning ? (
-            <div className="mt-1 text-xs italic text-neutral-400">"{p.reasoning}"</div>
+            <div className="mt-1 text-xs italic text-[var(--text-muted)]">"{p.reasoning}"</div>
           ) : null}
           <div className="mt-2 flex gap-2 text-xs">
             <StatusBadge status={p.status} />
@@ -2177,7 +2203,7 @@ function DriverPostList({
               <button
                 type="button"
                 onClick={() => mutate(p.postId, 'open')}
-                className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+                className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:bg-neutral-700"
               >
                 Re-open
               </button>
@@ -2194,7 +2220,7 @@ function DriverPostList({
             <button
               type="button"
               onClick={() => setOpenThread(openThread === p.postId ? null : p.postId)}
-              className="rounded-full border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:bg-neutral-700"
+              className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:bg-neutral-700"
             >
               {openThread === p.postId ? 'Hide thread' : 'Show thread'}
             </button>
@@ -2225,9 +2251,9 @@ function ThreadPanel({ postId }: { postId: string }) {
       </EmptyHint>
     );
   return (
-    <div className="space-y-3 rounded-lg border border-neutral-800 bg-neutral-950/60 p-3">
+    <div className="space-y-3 rounded-lg border border-[var(--border)] bg-[var(--bg)]/60 p-3">
       <div className="flex items-center justify-between text-xs">
-        <span className="text-neutral-400">
+        <span className="text-[var(--text-muted)]">
           {comments.length} comment{comments.length === 1 ? '' : 's'} processed
         </span>
         {heat.isHot ? (
@@ -2235,7 +2261,7 @@ function ThreadPanel({ postId }: { postId: string }) {
             🔥 thread heating up ({(heat.negativeShare * 100).toFixed(0)}% recent negative)
           </span>
         ) : (
-          <span className="text-neutral-400">
+          <span className="text-[var(--text-muted)]">
             {(heat.negativeShare * 100).toFixed(0)}% recent negative
           </span>
         )}
@@ -2245,11 +2271,13 @@ function ThreadPanel({ postId }: { postId: string }) {
           <li
             key={c.commentId}
             className={`rounded-lg border px-3 py-2 ${
-              c.isAgent ? 'border-blue-800 bg-blue-950/30' : 'border-neutral-800 bg-neutral-900'
+              c.isAgent
+                ? 'border-blue-800 bg-blue-950/30'
+                : 'border-[var(--border)] bg-[var(--surface)]'
             }`}
           >
-            <div className="flex flex-wrap items-center gap-2 text-xs text-neutral-400">
-              <span className={c.isAgent ? 'font-medium text-blue-300' : 'text-neutral-300'}>
+            <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
+              <span className={c.isAgent ? 'font-medium text-blue-300' : 'text-[var(--text)]'}>
                 u/{c.authorName}
               </span>
               {c.isAgent ? <AgentSourceBadge source={c.agentSource} /> : null}
@@ -2266,7 +2294,7 @@ function ThreadPanel({ postId }: { postId: string }) {
                 </>
               ) : null}
             </div>
-            <div className="mt-1 text-sm whitespace-pre-wrap text-neutral-200">{c.body}</div>
+            <div className="mt-1 text-sm whitespace-pre-wrap text-[var(--text)]">{c.body}</div>
           </li>
         ))}
       </ul>
@@ -2319,7 +2347,7 @@ function StatusBadge({ status }: { status: PostStatus }) {
         ? 'border-blue-800 bg-blue-900/30 text-blue-200'
         : status === 'responded'
           ? 'border-violet-800 bg-violet-900/30 text-violet-200'
-          : 'border-neutral-700 bg-neutral-800 text-neutral-300';
+          : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)]';
   return <span className={`rounded-full border px-2 py-0.5 ${style}`}>{status}</span>;
 }
 
@@ -2396,12 +2424,12 @@ function SentimentTab() {
       {openLabel ? <SentimentPostList label={openLabel} /> : null}
 
       <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
           Daily sentiment volume · 30 days
         </h2>
         <Suspense
           fallback={
-            <div className="h-64 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />
+            <div className="h-64 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
           }
         >
           <SentimentChartLazy series={series} />
@@ -2431,7 +2459,7 @@ function SentimentDrillCard({
       ? 'text-emerald-400'
       : tone === 'negative'
         ? 'text-rose-400'
-        : 'text-neutral-100';
+        : 'text-[var(--text)]';
 
   const ringClass = isOpen
     ? tone === 'positive'
@@ -2447,10 +2475,10 @@ function SentimentDrillCard({
       aria-pressed={isOpen}
       aria-label={ariaLabel}
       data-testid={`sentiment-card-${label}`}
-      className={`w-full cursor-pointer rounded-lg border border-neutral-800 bg-neutral-900 p-4 text-left transition hover:border-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${ringClass}`}
+      className={`w-full cursor-pointer rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 text-left transition hover:border-neutral-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 ${ringClass}`}
       onClick={onToggle}
     >
-      <div className="flex items-center text-xs uppercase tracking-wide text-neutral-400">
+      <div className="flex items-center text-xs uppercase tracking-wide text-[var(--text-muted)]">
         {label.charAt(0).toUpperCase() + label.slice(1)}
         <InfoTooltip
           tip={
@@ -2463,7 +2491,7 @@ function SentimentDrillCard({
         />
       </div>
       <div className={`mt-2 truncate text-2xl font-semibold ${accent}`}>{count}</div>
-      <div className="mt-1 flex items-center gap-1 text-xs text-neutral-400">
+      <div className="mt-1 flex items-center gap-1 text-xs text-[var(--text-muted)]">
         <span>last 30d</span>
         <span
           aria-hidden="true"
@@ -2501,14 +2529,14 @@ function SentimentPostList({ label }: { label: 'positive' | 'neutral' | 'negativ
     <section
       aria-label={`${labelTitle} posts`}
       data-testid={`sentiment-posts-${label}`}
-      className="rounded-lg border border-neutral-800 bg-neutral-900"
+      className="rounded-lg border border-[var(--border)] bg-[var(--surface)]"
     >
-      <div className="border-b border-neutral-800 px-4 py-3">
-        <span className="text-sm font-medium text-neutral-200">
+      <div className="border-b border-[var(--border)] px-4 py-3">
+        <span className="text-sm font-medium text-[var(--text)]">
           {labelTitle} posts · {posts.length} results
         </span>
       </div>
-      <ul className="divide-y divide-neutral-800">
+      <ul className="divide-y divide-[var(--border)]">
         {posts.map((p) => (
           <li key={p.postId} className="flex flex-wrap items-start gap-3 px-4 py-3">
             <div className="min-w-0 flex-1">
@@ -2516,11 +2544,11 @@ function SentimentPostList({ label }: { label: 'positive' | 'neutral' | 'negativ
                 href={p.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-medium text-neutral-100 hover:text-orange-300 hover:underline"
+                className="text-sm font-medium text-[var(--text)] hover:text-orange-300 hover:underline"
               >
                 {p.title}
               </a>
-              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-neutral-400">
+              <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
                 <span>u/{p.authorName}</span>
                 <span>·</span>
                 <span>{relativeTime(p.createdAt)}</span>
@@ -2571,8 +2599,8 @@ function Incidents() {
     <section className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Incidents</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-400">
+          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Incidents</h2>
+          <p className="mt-1 max-w-xl text-xs text-[var(--text-muted)]">
             Auto-grouped when comment volume or negative-sentiment ratio spikes vs the 14-day
             baseline. Resolves automatically after 30 min of quiet.
           </p>
@@ -2587,7 +2615,7 @@ function Incidents() {
               className={`rounded-full border px-3 py-1 transition ${
                 filter === f
                   ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-                  : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+                  : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
               {f}
@@ -2608,11 +2636,14 @@ function Incidents() {
       ) : (
         <ul className="space-y-2">
           {q.data.incidents.map((inc) => (
-            <li key={inc.id} className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+            <li
+              key={inc.id}
+              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
+            >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
                   <div className="font-medium text-rose-200">{inc.reason}</div>
-                  <div className="mt-1 text-xs text-neutral-400">
+                  <div className="mt-1 text-xs text-[var(--text-muted)]">
                     started{' '}
                     <time dateTime={isoTime(inc.startedAt)} title={absoluteTime(inc.startedAt)}>
                       {relativeTime(inc.startedAt)}
@@ -2646,13 +2677,13 @@ function Incidents() {
                   {inc.postIds.slice(0, 6).map((pid) => (
                     <span
                       key={pid}
-                      className="rounded border border-neutral-800 bg-neutral-950 px-2 py-0.5 text-neutral-400"
+                      className="rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-[var(--text-muted)]"
                     >
                       {pid}
                     </span>
                   ))}
                   {inc.postIds.length > 6 ? (
-                    <span className="px-2 py-0.5 text-neutral-400">
+                    <span className="px-2 py-0.5 text-[var(--text-muted)]">
                       +{inc.postIds.length - 6} more
                     </span>
                   ) : null}
@@ -2692,8 +2723,10 @@ function Themes() {
     <section className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Emerging themes</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-400">
+          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">
+            Emerging themes
+          </h2>
+          <p className="mt-1 max-w-xl text-xs text-[var(--text-muted)]">
             LLM-clustered themes from the most recent negative posts. Regenerated daily; click below
             to refresh on-demand.
           </p>
@@ -2734,16 +2767,19 @@ function Themes() {
         />
       ) : (
         <>
-          <div className="text-xs text-neutral-400">
+          <div className="text-xs text-[var(--text-muted)]">
             generated {q.data.generatedAt ? relativeTime(q.data.generatedAt) : 'recently'} · last 7
             days
           </div>
           <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {q.data.themes.map((t) => (
-              <li key={t.name} className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
+              <li
+                key={t.name}
+                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4"
+              >
                 <div className="flex items-baseline justify-between gap-2">
-                  <h3 className="font-medium text-neutral-100">{t.name}</h3>
-                  <span className="text-xs text-neutral-400">
+                  <h3 className="font-medium text-[var(--text)]">{t.name}</h3>
+                  <span className="text-xs text-[var(--text-muted)]">
                     {t.postCount} post{t.postCount === 1 ? '' : 's'} ·{' '}
                     <span
                       className={
@@ -2751,20 +2787,20 @@ function Themes() {
                           ? 'text-rose-300'
                           : t.avgSentiment > 0.2
                             ? 'text-emerald-300'
-                            : 'text-neutral-300'
+                            : 'text-[var(--text)]'
                       }
                     >
                       {t.avgSentiment.toFixed(2)}
                     </span>
                   </span>
                 </div>
-                <p className="mt-2 text-sm text-neutral-400">{t.summary}</p>
+                <p className="mt-2 text-sm text-[var(--text-muted)]">{t.summary}</p>
                 {t.samplePostIds.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-1 text-xs">
                     {t.samplePostIds.slice(0, 4).map((pid) => (
                       <span
                         key={pid}
-                        className="rounded border border-neutral-800 bg-neutral-950 px-2 py-0.5 text-neutral-400"
+                        className="rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-[var(--text-muted)]"
                       >
                         {pid}
                       </span>
@@ -2892,11 +2928,11 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
   })();
 
   return (
-    <div className="mt-3 border-t border-neutral-800 pt-3">
+    <div className="mt-3 border-t border-[var(--border)] pt-3">
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
-        className="flex items-center gap-1 text-xs text-neutral-400 hover:text-neutral-300"
+        className="flex items-center gap-1 text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
         aria-expanded={open}
         data-testid={`pipeline-stats-toggle-${moduleKey}`}
       >
@@ -2908,23 +2944,25 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
       {open ? (
         <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
           {debugQ.isPending ? (
-            <span className="col-span-3 text-neutral-400">Loading…</span>
+            <span className="col-span-3 text-[var(--text-muted)]">Loading…</span>
           ) : debugQ.isError ? (
             <span className="col-span-3 text-rose-400">Failed to load stats.</span>
           ) : (
             <>
-              <div className="rounded bg-neutral-800 px-2 py-1">
-                <div className="text-neutral-400">Received</div>
-                <div className="font-medium text-neutral-200">{stats.events_received ?? '—'}</div>
+              <div className="rounded bg-[var(--input-bg)] px-2 py-1">
+                <div className="text-[var(--text-muted)]">Received</div>
+                <div className="font-medium text-[var(--text)]">{stats.events_received ?? '—'}</div>
               </div>
-              <div className="rounded bg-neutral-800 px-2 py-1">
-                <div className="text-neutral-400">Processed</div>
-                <div className="font-medium text-neutral-200">{stats.events_processed ?? '—'}</div>
+              <div className="rounded bg-[var(--input-bg)] px-2 py-1">
+                <div className="text-[var(--text-muted)]">Processed</div>
+                <div className="font-medium text-[var(--text)]">
+                  {stats.events_processed ?? '—'}
+                </div>
               </div>
-              <div className="rounded bg-neutral-800 px-2 py-1">
-                <div className="text-neutral-400">Failed</div>
+              <div className="rounded bg-[var(--input-bg)] px-2 py-1">
+                <div className="text-[var(--text-muted)]">Failed</div>
                 <div
-                  className={`font-medium ${(stats.events_failed ?? 0) > 0 ? 'text-rose-400' : 'text-neutral-200'}`}
+                  className={`font-medium ${(stats.events_failed ?? 0) > 0 ? 'text-rose-400' : 'text-[var(--text)]'}`}
                 >
                   {stats.events_failed ?? '—'}
                 </div>
@@ -2953,12 +2991,12 @@ export function PipelineCard({
 
   return (
     <div
-      className="flex flex-col rounded-xl border border-neutral-800 bg-neutral-900 p-5"
+      className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5"
       data-testid={`pipeline-card-${pipeline.id}`}
     >
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
-          <h3 className="text-sm font-semibold text-neutral-100">{pipeline.name}</h3>
+          <h3 className="text-sm font-semibold text-[var(--text)]">{pipeline.name}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <span className="flex items-center gap-1 text-xs text-emerald-400">
               <span
@@ -2979,7 +3017,7 @@ export function PipelineCard({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-300 hover:border-orange-600 hover:text-orange-300"
+              className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2.5 py-1 text-xs text-[var(--text)] hover:border-orange-600 hover:text-orange-300"
               aria-label="Edit taxonomy in Settings"
             >
               Settings →
@@ -2990,7 +3028,7 @@ export function PipelineCard({
             onClick={handleTune}
             aria-label={`Tune ${pipeline.name} pipeline`}
             data-testid={`pipeline-tune-${pipeline.id}`}
-            className="rounded border border-neutral-700 bg-neutral-800 px-2.5 py-1 text-xs text-neutral-300 hover:border-violet-600 hover:text-violet-300"
+            className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2.5 py-1 text-xs text-[var(--text)] hover:border-violet-600 hover:text-violet-300"
           >
             Tune →
           </button>
@@ -2999,18 +3037,18 @@ export function PipelineCard({
 
       <dl className="flex flex-col gap-1.5 text-xs">
         <div className="flex gap-2">
-          <dt className="w-14 shrink-0 text-neutral-400">Kind</dt>
-          <dd className="text-neutral-300">{pipeline.kind}</dd>
+          <dt className="w-14 shrink-0 text-[var(--text-muted)]">Kind</dt>
+          <dd className="text-[var(--text)]">{pipeline.kind}</dd>
         </div>
         <div className="flex gap-2">
-          <dt className="w-14 shrink-0 text-neutral-400">Trigger</dt>
-          <dd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-neutral-300">
+          <dt className="w-14 shrink-0 text-[var(--text-muted)]">Trigger</dt>
+          <dd className="rounded bg-[var(--input-bg)] px-1.5 py-0.5 font-mono text-[var(--text)]">
             {pipeline.trigger}
           </dd>
         </div>
         <div className="flex gap-2">
-          <dt className="w-14 shrink-0 text-neutral-400">Logic</dt>
-          <dd className="text-neutral-400">{pipeline.logic}</dd>
+          <dt className="w-14 shrink-0 text-[var(--text-muted)]">Logic</dt>
+          <dd className="text-[var(--text-muted)]">{pipeline.logic}</dd>
         </div>
       </dl>
 
@@ -3030,12 +3068,12 @@ function CustomPipelineCard({
   const [confirming, setConfirming] = useState(false);
 
   return (
-    <div className="flex flex-col rounded-xl border border-neutral-700 bg-neutral-900 p-5">
+    <div className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
       <div className="mb-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <p className="truncate font-semibold text-neutral-100">{pipeline.name}</p>
+          <p className="truncate font-semibold text-[var(--text)]">{pipeline.name}</p>
           <div className="mt-1 flex items-center gap-2">
-            <span className="rounded-full border border-neutral-600 px-2 py-0.5 text-xs text-neutral-400">
+            <span className="rounded-full border border-neutral-600 px-2 py-0.5 text-xs text-[var(--text-muted)]">
               {pipeline.kind}
             </span>
             <span className="rounded-full border border-emerald-800 bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-300">
@@ -3044,8 +3082,8 @@ function CustomPipelineCard({
           </div>
         </div>
       </div>
-      <p className="mb-3 text-xs text-neutral-400">
-        Trigger: <span className="text-neutral-300">{pipeline.trigger}</span>
+      <p className="mb-3 text-xs text-[var(--text-muted)]">
+        Trigger: <span className="text-[var(--text)]">{pipeline.trigger}</span>
       </p>
       <div className="mt-auto flex gap-2">
         {confirming ? (
@@ -3053,7 +3091,7 @@ function CustomPipelineCard({
             <button
               type="button"
               onClick={() => setConfirming(false)}
-              className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+              className="rounded border border-[var(--border)] px-2 py-1 text-xs text-[var(--text)] hover:bg-[var(--input-bg)]"
             >
               Cancel
             </button>
@@ -3069,7 +3107,7 @@ function CustomPipelineCard({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="text-xs text-neutral-500 underline-offset-2 hover:text-rose-400 hover:underline"
+            className="text-xs text-[var(--text-muted)] underline-offset-2 hover:text-rose-400 hover:underline"
           >
             Delete
           </button>
@@ -3086,13 +3124,13 @@ export function StubPipelineCard({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       data-testid="pipeline-card-studio-stub"
-      className="flex flex-col items-start rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 p-5 text-left transition hover:border-orange-600/50 hover:bg-neutral-900"
+      className="flex flex-col items-start rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-5 text-left transition hover:border-orange-600/50 hover:bg-[var(--surface)]"
     >
       <span className="mb-2 text-2xl" aria-hidden="true">
         +
       </span>
-      <h3 className="text-sm font-semibold text-neutral-400">Custom pipeline</h3>
-      <p className="mt-1 text-xs text-neutral-400">RedLattice Studio</p>
+      <h3 className="text-sm font-semibold text-[var(--text-muted)]">Custom pipeline</h3>
+      <p className="mt-1 text-xs text-[var(--text-muted)]">RedLattice Studio</p>
       <p className="mt-3 text-xs text-orange-400 underline underline-offset-2">
         Build custom pipelines in Studio →
       </p>
@@ -3300,18 +3338,18 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
         aria-modal="true"
         aria-label={`${pipeline.name} pipeline settings`}
         data-testid="pipeline-drawer"
-        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-neutral-700 bg-neutral-950 shadow-2xl sm:w-[480px]"
+        className="fixed inset-y-0 right-0 z-50 flex w-full flex-col border-l border-[var(--border)] bg-[var(--bg)] shadow-2xl sm:w-[480px]"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 px-5 py-4">
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-5 py-4">
           <div>
-            <h2 className="text-sm font-semibold text-neutral-100">{pipeline.name}</h2>
-            <p className="mt-0.5 text-xs text-neutral-400">{pipeline.trigger}</p>
+            <h2 className="text-sm font-semibold text-[var(--text)]">{pipeline.name}</h2>
+            <p className="mt-0.5 text-xs text-[var(--text-muted)]">{pipeline.trigger}</p>
           </div>
           <div className="flex items-center gap-3">
             {/* Enabled toggle */}
             <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-              <span className={enabled ? 'text-emerald-400' : 'text-neutral-400'}>
+              <span className={enabled ? 'text-emerald-400' : 'text-[var(--text-muted)]'}>
                 {enabled ? 'Enabled' : 'Disabled'}
               </span>
               <button
@@ -3330,7 +3368,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
               type="button"
               onClick={onClose}
               aria-label="Close drawer"
-              className="rounded p-1 text-neutral-400 hover:text-neutral-200"
+              className="rounded p-1 text-[var(--text-muted)] hover:text-[var(--text)]"
             >
               ✕
             </button>
@@ -3338,7 +3376,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
         </div>
 
         {/* Tab bar */}
-        <div className="flex gap-0 border-b border-neutral-800 px-5">
+        <div className="flex gap-0 border-b border-[var(--border)] px-5">
           {DRAWER_TABS.map((t) => (
             <button
               key={t.id}
@@ -3347,7 +3385,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
               className={`-mb-px border-b-2 px-4 py-3 text-xs font-medium transition ${
                 activeTab === t.id
                   ? 'border-orange-500 text-white'
-                  : 'border-transparent text-neutral-400 hover:text-neutral-200'
+                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
               {t.label}
@@ -3368,11 +3406,11 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                 <div className="space-y-5">
                   <div>
                     <div className="mb-2 flex items-center justify-between">
-                      <span className="text-xs font-medium text-neutral-300">System prompt</span>
+                      <span className="text-xs font-medium text-[var(--text)]">System prompt</span>
                       <button
                         type="button"
                         onClick={handleResetToDefault}
-                        className="text-xs text-neutral-400 underline underline-offset-2 hover:text-neutral-200"
+                        className="text-xs text-[var(--text-muted)] underline underline-offset-2 hover:text-[var(--text)]"
                       >
                         Reset to default
                       </button>
@@ -3382,13 +3420,13 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
                       rows={6}
-                      className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
                       placeholder="System prompt…"
                       aria-label="System prompt"
                     />
                   </div>
                   <div>
-                    <p className="mb-2 text-xs font-medium text-neutral-300">
+                    <p className="mb-2 text-xs font-medium text-[var(--text)]">
                       User prompt template
                     </p>
                     <textarea
@@ -3396,13 +3434,13 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                       value={userPrompt}
                       onChange={(e) => setUserPrompt(e.target.value)}
                       rows={6}
-                      className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
                       placeholder="User prompt template with {{variables}}…"
                       aria-label="User prompt template"
                     />
                   </div>
                   <div>
-                    <p className="mb-2 text-xs text-neutral-400">
+                    <p className="mb-2 text-xs text-[var(--text-muted)]">
                       Available variables — click to insert at cursor:
                     </p>
                     <div className="flex flex-wrap gap-1.5">
@@ -3418,7 +3456,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                               insertVariable(v, userPromptRef, setUserPrompt, userPrompt);
                             }
                           }}
-                          className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 font-mono text-xs text-neutral-300 hover:border-orange-500 hover:text-orange-300"
+                          className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 font-mono text-xs text-[var(--text)] hover:border-orange-500 hover:text-orange-300"
                         >
                           {v}
                         </button>
@@ -3438,7 +3476,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                       const current = thresholds[def.key] ?? def.min;
                       return (
                         <div key={def.key}>
-                          <label className="mb-2 flex items-center justify-between text-xs font-medium text-neutral-300">
+                          <label className="mb-2 flex items-center justify-between text-xs font-medium text-[var(--text)]">
                             <span>{def.label}</span>
                             <input
                               type="number"
@@ -3452,7 +3490,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                                   [def.key]: Number(e.target.value),
                                 }))
                               }
-                              className="w-16 rounded border border-neutral-700 bg-neutral-900 px-2 py-1 text-right text-xs text-neutral-100 outline-none focus:border-orange-500"
+                              className="w-16 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-right text-xs text-[var(--text)] outline-none focus:border-orange-500"
                               aria-label={def.label}
                             />
                           </label>
@@ -3471,7 +3509,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                             className="w-full accent-orange-500"
                             aria-label={`${def.label} slider`}
                           />
-                          <div className="mt-1 flex justify-between text-xs text-neutral-400">
+                          <div className="mt-1 flex justify-between text-xs text-[var(--text-muted)]">
                             <span>{def.min}</span>
                             <span>{def.max}</span>
                           </div>
@@ -3486,13 +3524,13 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
               {activeTab === 'test' && (
                 <div className="space-y-4">
                   <div>
-                    <p className="mb-2 text-xs font-medium text-neutral-300">Sample input</p>
+                    <p className="mb-2 text-xs font-medium text-[var(--text)]">Sample input</p>
                     <textarea
                       value={testInput}
                       onChange={(e) => setTestInput(e.target.value)}
                       rows={5}
                       placeholder="Paste sample post or comment text here…"
-                      className="w-full rounded-md border border-neutral-700 bg-neutral-900 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
                       aria-label="Sample input for pipeline test"
                     />
                   </div>
@@ -3511,10 +3549,10 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
                   ) : null}
                   {testResult ? (
                     <div className="space-y-2">
-                      <div className="text-xs text-neutral-400">
+                      <div className="text-xs text-[var(--text-muted)]">
                         Cost: ${(testResult.costCents / 100).toFixed(4)}
                       </div>
-                      <pre className="overflow-auto rounded-md border border-neutral-700 bg-neutral-900 p-3 text-xs text-neutral-200">
+                      <pre className="overflow-auto rounded-md border border-[var(--border)] bg-[var(--surface)] p-3 text-xs text-[var(--text)]">
                         {testResult.output}
                       </pre>
                     </div>
@@ -3533,7 +3571,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose:
         </div>
 
         {/* Footer — Save */}
-        <div className="border-t border-neutral-800 px-5 py-4">
+        <div className="border-t border-[var(--border)] px-5 py-4">
           {saveError ? (
             <div className="mb-3 rounded-lg border border-rose-800 bg-rose-950/40 p-2 text-xs text-rose-200">
               {saveError}
@@ -3576,22 +3614,22 @@ function StudioModal({ onClose }: { onClose: () => void }) {
       aria-modal="true"
       aria-label="RedLattice Studio waitlist"
     >
-      <div className="w-96 rounded-xl border border-neutral-700 bg-neutral-900 p-7 shadow-2xl">
+      <div className="w-96 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-7 shadow-2xl">
         <div className="mb-5 flex items-start justify-between">
           <div>
-            <h3 className="text-base font-semibold text-neutral-100">RedLattice Studio</h3>
-            <p className="mt-1 text-xs text-neutral-400">Coming soon</p>
+            <h3 className="text-base font-semibold text-[var(--text)]">RedLattice Studio</h3>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">Coming soon</p>
           </div>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-neutral-400 hover:text-neutral-300"
+            className="text-[var(--text-muted)] hover:text-[var(--text)]"
           >
             ×
           </button>
         </div>
-        <p className="mb-5 text-sm text-neutral-300">
+        <p className="mb-5 text-sm text-[var(--text)]">
           RedLattice Studio lets you build custom classification pipelines visually — no code
           required. Chain classifiers, set conditions, and route signals to any destination.
         </p>
@@ -3608,7 +3646,7 @@ function StudioModal({ onClose }: { onClose: () => void }) {
               onChange={(e) => setEmail(e.target.value)}
               placeholder="your@email.com"
               aria-label="Email address for Studio waitlist"
-              className="flex-1 rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
               data-testid="studio-email-input"
             />
             <button
@@ -3747,18 +3785,18 @@ function NewPipelineModal({
       aria-label="New custom pipeline"
     >
       <div
-        className="w-full max-w-lg overflow-y-auto rounded-xl border border-neutral-700 bg-neutral-900 shadow-2xl"
+        className="w-full max-w-lg overflow-y-auto rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl"
         style={{ maxHeight: '90vh' }}
         data-testid="new-pipeline-modal"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-neutral-800 px-6 py-4">
-          <h3 className="text-base font-semibold text-neutral-100">New pipeline</h3>
+        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+          <h3 className="text-base font-semibold text-[var(--text)]">New pipeline</h3>
           <button
             type="button"
             onClick={onClose}
             aria-label="Close"
-            className="text-neutral-400 hover:text-neutral-200"
+            className="text-[var(--text-muted)] hover:text-[var(--text)]"
           >
             ×
           </button>
@@ -3767,34 +3805,34 @@ function NewPipelineModal({
         <div className="space-y-5 px-6 py-5">
           {/* Name */}
           <div>
-            <p className="mb-1 text-xs font-medium text-neutral-300">Name *</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text)]">Name *</p>
             <input
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="e.g. Bug escalation detector"
               aria-label="Pipeline name"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
               data-testid="new-pipeline-name"
             />
           </div>
 
           {/* Description */}
           <div>
-            <p className="mb-1 text-xs font-medium text-neutral-300">Description</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text)]">Description</p>
             <input
               type="text"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Optional description…"
               aria-label="Pipeline description"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
             />
           </div>
 
           {/* Kind (visualization type) */}
           <div>
-            <p className="mb-1 text-xs font-medium text-neutral-300">Visualization kind *</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text)]">Visualization kind *</p>
             <select
               value={pipelineVisualizationKind}
               onChange={(e) =>
@@ -3803,7 +3841,7 @@ function NewPipelineModal({
                 )
               }
               aria-label="Pipeline kind"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
             >
               <option value="categorical">Categorical (bar chart by label)</option>
               <option value="ordinal">Ordinal (ordered label cards)</option>
@@ -3811,7 +3849,7 @@ function NewPipelineModal({
               <option value="scalar">Scalar (histogram / average)</option>
               <option value="boolean">Boolean (yes / no cards)</option>
             </select>
-            <p className="mt-1 text-xs text-neutral-500">
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
               Determines how this pipeline's output appears in the Insights tab.
             </p>
           </div>
@@ -3820,16 +3858,18 @@ function NewPipelineModal({
           {pipelineVisualizationKind === 'categorical' ||
           pipelineVisualizationKind === 'ordinal' ? (
             <div>
-              <p className="mb-1 text-xs font-medium text-neutral-300">Labels (comma-separated)</p>
+              <p className="mb-1 text-xs font-medium text-[var(--text)]">
+                Labels (comma-separated)
+              </p>
               <input
                 type="text"
                 value={labelsText}
                 onChange={(e) => setLabelsText(e.target.value)}
                 placeholder="e.g. urgent, normal, low"
                 aria-label="Pipeline labels"
-                className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+                className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
               />
-              <p className="mt-1 text-xs text-neutral-500">
+              <p className="mt-1 text-xs text-[var(--text-muted)]">
                 Expected output values from this pipeline — used for filtering and visualization.
               </p>
             </div>
@@ -3837,7 +3877,7 @@ function NewPipelineModal({
 
           {/* Trigger */}
           <div>
-            <p className="mb-2 text-xs font-medium text-neutral-300">Trigger</p>
+            <p className="mb-2 text-xs font-medium text-[var(--text)]">Trigger</p>
             <div className="flex gap-4">
               {(
                 [
@@ -3847,7 +3887,7 @@ function NewPipelineModal({
               ).map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200"
+                  className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text)]"
                 >
                   <input
                     type="radio"
@@ -3865,28 +3905,28 @@ function NewPipelineModal({
 
           {/* System prompt */}
           <div>
-            <p className="mb-1 text-xs font-medium text-neutral-300">System prompt *</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text)]">System prompt *</p>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
               rows={4}
               placeholder="You are a classifier that…"
               aria-label="System prompt"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
               data-testid="new-pipeline-system-prompt"
             />
           </div>
 
           {/* User prompt + variable chips */}
           <div>
-            <p className="mb-1 text-xs font-medium text-neutral-300">User prompt template *</p>
+            <p className="mb-1 text-xs font-medium text-[var(--text)]">User prompt template *</p>
             <textarea
               ref={userPromptRef}
               value={userPrompt}
               onChange={(e) => setUserPrompt(e.target.value)}
               rows={4}
               placeholder="Use {{variables}} for dynamic content…"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
               data-testid="new-pipeline-user-prompt"
             />
             <div className="mt-2 flex flex-wrap gap-1.5">
@@ -3895,7 +3935,7 @@ function NewPipelineModal({
                   key={v}
                   type="button"
                   onClick={() => insertVariable(v)}
-                  className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 font-mono text-xs text-neutral-300 hover:border-orange-500 hover:text-orange-300"
+                  className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 font-mono text-xs text-[var(--text)] hover:border-orange-500 hover:text-orange-300"
                 >
                   {`{{${v}}}`}
                 </button>
@@ -3905,7 +3945,7 @@ function NewPipelineModal({
 
           {/* Output schema */}
           <div>
-            <p className="mb-2 text-xs font-medium text-neutral-300">Output schema</p>
+            <p className="mb-2 text-xs font-medium text-[var(--text)]">Output schema</p>
             <div className="space-y-1.5">
               {(
                 [
@@ -3921,7 +3961,7 @@ function NewPipelineModal({
               ).map((opt) => (
                 <label
                   key={opt.value}
-                  className="flex cursor-pointer items-center gap-2 text-sm text-neutral-200"
+                  className="flex cursor-pointer items-center gap-2 text-sm text-[var(--text)]"
                 >
                   <input
                     type="radio"
@@ -3939,7 +3979,7 @@ function NewPipelineModal({
 
           {/* Advanced options → Studio promotion */}
           <div>
-            <p className="mb-2 text-xs font-medium text-neutral-300">
+            <p className="mb-2 text-xs font-medium text-[var(--text)]">
               Advanced options (require Studio)
             </p>
             <div className="space-y-1">
@@ -3948,7 +3988,7 @@ function NewPipelineModal({
                   key={opt}
                   type="button"
                   onClick={onStudioPromotion}
-                  className="flex w-full items-center justify-between rounded border border-neutral-800 bg-neutral-800/50 px-3 py-2 text-left text-xs text-neutral-400 hover:border-orange-500/50 hover:text-orange-300"
+                  className="flex w-full items-center justify-between rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:border-orange-500/50 hover:text-orange-300"
                   data-testid={`studio-advanced-${opt.replace(/\s+/g, '-').toLowerCase()}`}
                 >
                   <span>{opt}</span>
@@ -3960,12 +4000,14 @@ function NewPipelineModal({
 
           {/* Action */}
           <div>
-            <p className="mb-2 text-xs font-medium text-neutral-300">Action when output matches</p>
+            <p className="mb-2 text-xs font-medium text-[var(--text)]">
+              Action when output matches
+            </p>
             <select
               value={actionType}
               onChange={(e) => setActionType(e.target.value as CustomPipelineAction['type'])}
               aria-label="Action type"
-              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
               data-testid="new-pipeline-action-type"
             >
               <option value="tag-driver">Tag post with driver</option>
@@ -3978,7 +4020,7 @@ function NewPipelineModal({
                 value={actionDriverId}
                 onChange={(e) => setActionDriverId(e.target.value)}
                 placeholder="Driver ID (e.g. bug)"
-                className="mt-2 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+                className="mt-2 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
               />
             ) : actionType === 'send-modmail' ? (
               <textarea
@@ -3986,13 +4028,13 @@ function NewPipelineModal({
                 onChange={(e) => setActionModmailTemplate(e.target.value)}
                 rows={3}
                 placeholder="Modmail body template…"
-                className="mt-2 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-xs font-mono text-neutral-100 outline-none focus:border-orange-500"
+                className="mt-2 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
               />
             ) : (
               <select
                 value={actionStatus}
                 onChange={(e) => setActionStatus(e.target.value as typeof actionStatus)}
-                className="mt-2 w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+                className="mt-2 w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
               >
                 <option value="open">Open</option>
                 <option value="in-progress">In progress</option>
@@ -4009,7 +4051,7 @@ function NewPipelineModal({
         </div>
 
         {/* Footer */}
-        <div className="border-t border-neutral-800 px-6 py-4">
+        <div className="border-t border-[var(--border)] px-6 py-4">
           <button
             type="button"
             onClick={handleCreate}
@@ -4027,11 +4069,17 @@ function NewPipelineModal({
 
 type PipelineView = 'grid' | 'list';
 
-function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
+function Pipelines({
+  onOpenSettings,
+  autoOpen = false,
+}: {
+  onOpenSettings: () => void;
+  autoOpen?: boolean;
+}) {
   const qc = useQueryClient();
   const [studioOpen, setStudioOpen] = useState(false);
   const [drawerPipeline, setDrawerPipeline] = useState<PipelineDef | null>(null);
-  const [newPipelineOpen, setNewPipelineOpen] = useState(false);
+  const [newPipelineOpen, setNewPipelineOpen] = useState(autoOpen);
   const [view, setView] = useState<PipelineView>(() => {
     if (typeof window === 'undefined') return 'grid';
     return (window.localStorage.getItem('rl-pipelines-view') as PipelineView) || 'grid';
@@ -4080,8 +4128,10 @@ function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
 
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Active pipelines</h2>
-          <p className="mt-1 max-w-2xl text-xs text-neutral-400">
+          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">
+            Active pipelines
+          </h2>
+          <p className="mt-1 max-w-2xl text-xs text-[var(--text-muted)]">
             Every classification and analysis pipeline running on this subreddit. Each pipeline is
             event-driven, failure-isolated, and writes to Redis.
           </p>
@@ -4296,13 +4346,15 @@ function Agents() {
   return (
     <div className="space-y-8">
       <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
           Performance · last {lb.days}d
         </h2>
         <AgentLeaderboard rows={lb.rows} />
       </section>
       <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">Verified roster</h2>
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
+          Verified roster
+        </h2>
         <AgentList agents={agentsQ.data.agents} />
       </section>
     </div>
@@ -4330,9 +4382,9 @@ function AgentLeaderboard({
     );
   }
   return (
-    <div className="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900">
+    <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       <table className="w-full text-sm">
-        <thead className="bg-neutral-950/50 text-left text-xs uppercase tracking-wide text-neutral-400">
+        <thead className="bg-[var(--bg)]/50 text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
           <tr>
             <th className="px-4 py-2">Rep</th>
             <th className="px-4 py-2 text-right">Replies</th>
@@ -4342,27 +4394,27 @@ function AgentLeaderboard({
             <th className="px-4 py-2 text-right">Sentiment lift</th>
           </tr>
         </thead>
-        <tbody className="divide-y divide-neutral-800">
+        <tbody className="divide-y divide-[var(--border)]">
           {rows.map((r) => (
             <tr key={r.username}>
-              <td className="px-4 py-2 font-medium text-neutral-100">u/{r.username}</td>
+              <td className="px-4 py-2 font-medium text-[var(--text)]">u/{r.username}</td>
               <td className="px-4 py-2 text-right tabular-nums">{r.replies}</td>
               <td className="px-4 py-2 text-right tabular-nums">{r.firstResponses}</td>
-              <td className="px-4 py-2 text-right tabular-nums text-neutral-300">
+              <td className="px-4 py-2 text-right tabular-nums text-[var(--text)]">
                 {r.firstResponseRate != null ? `${(r.firstResponseRate * 100).toFixed(0)}%` : '—'}
               </td>
-              <td className="px-4 py-2 text-right tabular-nums text-neutral-300">
+              <td className="px-4 py-2 text-right tabular-nums text-[var(--text)]">
                 {r.avgLatencyMs != null ? formatLatency(r.avgLatencyMs) : '—'}
               </td>
               <td
                 className={`px-4 py-2 text-right tabular-nums ${
                   r.avgSentimentDelta == null
-                    ? 'text-neutral-400'
+                    ? 'text-[var(--text-muted)]'
                     : r.avgSentimentDelta > 0.05
                       ? 'text-emerald-300'
                       : r.avgSentimentDelta < -0.05
                         ? 'text-rose-300'
-                        : 'text-neutral-300'
+                        : 'text-[var(--text)]'
                 }`}
                 title="Avg change in thread sentiment in the 5 comments following the rep's reply"
               >
@@ -4406,15 +4458,15 @@ function AgentList({ agents }: { agents: Agent[] }) {
     );
   }
   return (
-    <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800 bg-neutral-900">
+    <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       {agents.map((a) => (
         <li key={a.username} className="flex items-center justify-between px-4 py-3">
           <span className="font-medium">u/{a.username}</span>
-          <span className="text-xs uppercase tracking-wide text-neutral-400">{a.role}</span>
+          <span className="text-xs uppercase tracking-wide text-[var(--text-muted)]">{a.role}</span>
           <time
             dateTime={isoTime(a.verifiedAt)}
             title={absoluteTime(a.verifiedAt)}
-            className="text-xs text-neutral-400"
+            className="text-xs text-[var(--text-muted)]"
           >
             {relativeTime(a.verifiedAt)}
           </time>
@@ -4478,11 +4530,11 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
 
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-neutral-400">Views:</span>
+      <span className="text-[var(--text-muted)]">Views:</span>
       {views.map((v) => (
         <span
           key={v.id}
-          className="group flex items-center gap-1 rounded-full border border-neutral-800 bg-neutral-900 pl-2.5 pr-1.5 py-0.5 text-neutral-300"
+          className="group flex items-center gap-1 rounded-full border border-[var(--border)] bg-[var(--surface)] pl-2.5 pr-1.5 py-0.5 text-[var(--text)]"
         >
           <button
             type="button"
@@ -4495,7 +4547,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
           <button
             type="button"
             onClick={() => deleteView.mutate(v.id)}
-            className="ml-0.5 rounded-full p-0.5 text-neutral-400 opacity-0 transition group-hover:opacity-100 hover:text-rose-400"
+            className="ml-0.5 rounded-full p-0.5 text-[var(--text-muted)] opacity-0 transition group-hover:opacity-100 hover:text-rose-400"
             aria-label={`Delete view "${v.name}"`}
             title="Delete view"
           >
@@ -4519,7 +4571,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
             onChange={(e) => setNewName(e.target.value)}
             placeholder="View name"
             maxLength={60}
-            className="w-36 rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200 outline-none focus:border-orange-500"
+            className="w-36 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[var(--text)] outline-none focus:border-orange-500"
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 setSaving(false);
@@ -4540,7 +4592,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
               setSaving(false);
               setNewName('');
             }}
-            className="text-neutral-400 hover:text-neutral-400"
+            className="text-[var(--text-muted)] hover:text-[var(--text-muted)]"
           >
             Cancel
           </button>
@@ -4549,7 +4601,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
         <button
           type="button"
           onClick={() => setSaving(true)}
-          className="rounded-full border border-dashed border-neutral-700 px-2.5 py-0.5 text-neutral-400 transition hover:border-orange-600 hover:text-orange-400"
+          className="rounded-full border border-dashed border-[var(--border)] px-2.5 py-0.5 text-[var(--text-muted)] transition hover:border-orange-600 hover:text-orange-400"
           title="Save current filters as a view"
         >
           + Save current
@@ -4592,7 +4644,7 @@ function auditActionBadgeStyle(action: AuditAction): string {
     case 'mark-agent':
     case 'unmark-agent':
     case 'settings-update':
-      return 'border-neutral-600 bg-neutral-800 text-neutral-300';
+      return 'border-neutral-600 bg-[var(--input-bg)] text-[var(--text)]';
     case 'mod-remove':
     case 'mod-spam':
       return 'border-rose-700 bg-rose-900/40 text-rose-200';
@@ -4606,7 +4658,7 @@ function auditActionBadgeStyle(action: AuditAction): string {
     case 'theme-regenerate':
       return 'border-blue-700 bg-blue-900/40 text-blue-200';
     default:
-      return 'border-neutral-600 bg-neutral-800 text-neutral-300';
+      return 'border-neutral-600 bg-[var(--input-bg)] text-[var(--text)]';
   }
 }
 
@@ -4645,8 +4697,8 @@ function Audit() {
     <section className="space-y-4">
       <header className="flex flex-wrap items-baseline justify-between gap-3">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-neutral-400">Audit log</h2>
-          <p className="mt-1 max-w-xl text-xs text-neutral-400">
+          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Audit log</h2>
+          <p className="mt-1 max-w-xl text-xs text-[var(--text-muted)]">
             Every mutating mod action, most recent first. Capped at 5 000 entries per installation.
           </p>
         </div>
@@ -4654,7 +4706,7 @@ function Audit() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-neutral-400">Action:</span>
+        <span className="text-[var(--text-muted)]">Action:</span>
         <button
           type="button"
           aria-pressed={actionFilter === ''}
@@ -4662,7 +4714,7 @@ function Audit() {
           className={`rounded-full border px-2.5 py-0.5 transition ${
             actionFilter === ''
               ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-              : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+              : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
           All
@@ -4676,7 +4728,7 @@ function Audit() {
             className={`rounded-full border px-2.5 py-0.5 transition ${
               actionFilter === a
                 ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-                : 'border-neutral-800 bg-neutral-900 text-neutral-400 hover:text-neutral-200'
+                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
             {a}
@@ -4685,7 +4737,7 @@ function Audit() {
       </div>
 
       <div className="flex items-center gap-2 text-xs">
-        <span className="text-neutral-400">Actor:</span>
+        <span className="text-[var(--text-muted)]">Actor:</span>
         <input
           type="text"
           value={actorInput}
@@ -4698,12 +4750,12 @@ function Audit() {
             }
           }}
           placeholder="username…"
-          className="w-36 rounded border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-neutral-200 outline-none focus:border-orange-500"
+          className="w-36 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[var(--text)] outline-none focus:border-orange-500"
         />
         <button
           type="button"
           onClick={commitActor}
-          className="rounded border border-neutral-700 bg-neutral-800 px-2 py-0.5 text-neutral-300 transition hover:border-orange-500"
+          className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:border-orange-500"
         >
           Filter
         </button>
@@ -4714,7 +4766,7 @@ function Audit() {
               setActorInput('');
               setActorFilter('');
             }}
-            className="text-neutral-400 underline-offset-2 hover:text-neutral-300 hover:underline"
+            className="text-[var(--text-muted)] underline-offset-2 hover:text-[var(--text)] hover:underline"
           >
             Clear
           </button>
@@ -4740,9 +4792,9 @@ function Audit() {
           />
         )
       ) : (
-        <div className="overflow-hidden rounded-lg border border-neutral-800 bg-neutral-900">
+        <div className="overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--surface)]">
           <table className="w-full text-sm">
-            <thead className="bg-neutral-950/50 text-left text-xs uppercase tracking-wide text-neutral-400">
+            <thead className="bg-[var(--bg)]/50 text-left text-xs uppercase tracking-wide text-[var(--text-muted)]">
               <tr>
                 <th className="px-4 py-2 w-36">Time</th>
                 <th className="px-4 py-2">Actor</th>
@@ -4751,7 +4803,7 @@ function Audit() {
                 <th className="px-4 py-2 w-8" />
               </tr>
             </thead>
-            <tbody className="divide-y divide-neutral-800">
+            <tbody className="divide-y divide-[var(--border)]">
               {q.data.entries.map((entry, idx) => (
                 <AuditRow
                   key={`${entry.ts}-${idx}`}
@@ -4781,27 +4833,27 @@ function AuditRow({
   return (
     <>
       <tr
-        className={`cursor-pointer transition ${hasMeta ? 'hover:bg-neutral-800/40' : ''}`}
+        className={`cursor-pointer transition ${hasMeta ? 'hover:bg-[var(--input-bg)]' : ''}`}
         onClick={hasMeta ? onToggle : undefined}
         aria-expanded={hasMeta ? expanded : undefined}
       >
-        <td className="px-4 py-2 text-xs text-neutral-400 tabular-nums">
+        <td className="px-4 py-2 text-xs text-[var(--text-muted)] tabular-nums">
           <time dateTime={isoTime(entry.ts)} title={absoluteTime(entry.ts)}>
             {relativeTime(entry.ts)}
           </time>
         </td>
-        <td className="px-4 py-2 text-xs text-neutral-300">
-          {entry.actor ? `u/${entry.actor}` : <span className="text-neutral-400">—</span>}
+        <td className="px-4 py-2 text-xs text-[var(--text)]">
+          {entry.actor ? `u/${entry.actor}` : <span className="text-[var(--text-muted)]">—</span>}
         </td>
         <td className="px-4 py-2">
           <AuditActionBadge action={entry.action} />
         </td>
-        <td className="px-4 py-2 text-xs text-neutral-400">
-          {entry.target ?? <span className="text-neutral-400">—</span>}
+        <td className="px-4 py-2 text-xs text-[var(--text-muted)]">
+          {entry.target ?? <span className="text-[var(--text-muted)]">—</span>}
         </td>
         <td className="px-4 py-2 text-right">
           {hasMeta ? (
-            <span className="text-neutral-400 transition hover:text-neutral-300">
+            <span className="text-[var(--text-muted)] transition hover:text-[var(--text)]">
               {expanded ? '▲' : '▼'}
             </span>
           ) : null}
@@ -4809,8 +4861,8 @@ function AuditRow({
       </tr>
       {expanded && hasMeta ? (
         <tr>
-          <td colSpan={5} className="bg-neutral-950/40 px-4 py-3">
-            <pre className="overflow-x-auto rounded border border-neutral-800 bg-neutral-900 p-3 text-[11px] text-neutral-300">
+          <td colSpan={5} className="bg-[var(--bg)]/40 px-4 py-3">
+            <pre className="overflow-x-auto rounded border border-[var(--border)] bg-[var(--surface)] p-3 text-[11px] text-[var(--text)]">
               {JSON.stringify(entry.meta, null, 2)}
             </pre>
           </td>
@@ -4828,8 +4880,10 @@ function ExportTab() {
   return (
     <div className="space-y-6">
       <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">Data export</h2>
-        <p className="mb-4 max-w-2xl text-sm text-neutral-400">
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
+          Data export
+        </h2>
+        <p className="mb-4 max-w-2xl text-sm text-[var(--text-muted)]">
           RedLattice keeps the operational hot data in Devvit Redis. For longer retention, cross-sub
           analytics, or pulling into your own warehouse (BigQuery, Snowflake, Sprinklr), export the
           most recent posts as CSV. Endpoint is mod-only and same-origin to the dashboard.
@@ -4839,7 +4893,7 @@ function ExportTab() {
             href="/api/export/posts.csv?limit=500"
             target="_top"
             rel="noopener noreferrer"
-            className="rounded-md border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-100 transition hover:border-orange-500 hover:text-orange-300"
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-orange-500 hover:text-orange-300"
           >
             Download recent 500 posts (CSV)
           </a>
@@ -4847,15 +4901,17 @@ function ExportTab() {
             href="/api/export/posts.csv?limit=1000"
             target="_top"
             rel="noopener noreferrer"
-            className="rounded-md border border-neutral-700 bg-neutral-900 px-4 py-2 text-sm font-medium text-neutral-100 transition hover:border-orange-500 hover:text-orange-300"
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-orange-500 hover:text-orange-300"
           >
             Download recent 1000 posts (CSV)
           </a>
         </div>
       </section>
       <section>
-        <h2 className="mb-3 text-sm uppercase tracking-wide text-neutral-400">REST endpoints</h2>
-        <div className="space-y-2 rounded-lg border border-neutral-800 bg-neutral-900 p-4 font-mono text-xs text-neutral-300">
+        <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
+          REST endpoints
+        </h2>
+        <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4 font-mono text-xs text-[var(--text)]">
           <div>GET /api/dashboard/summary</div>
           <div>GET /api/dashboard/recent-posts?limit=N</div>
           <div>GET /api/drivers/taxonomy</div>
@@ -4865,7 +4921,7 @@ function ExportTab() {
           <div>GET /api/agents</div>
           <div>GET /api/export/posts.csv?limit=N</div>
         </div>
-        <p className="mt-3 max-w-2xl text-xs text-neutral-400">
+        <p className="mt-3 max-w-2xl text-xs text-[var(--text-muted)]">
           All routes are mod-protected and return JSON unless otherwise noted. Phase 2 will add
           bearer-token auth so external services can pull directly without a mod session.
         </p>
@@ -4894,12 +4950,12 @@ function _Card({
       ? 'text-emerald-400'
       : tone === 'negative'
         ? 'text-rose-400'
-        : 'text-neutral-100';
+        : 'text-[var(--text)]';
   return (
-    <article className="rounded-lg border border-neutral-800 bg-neutral-900 p-4">
-      <div className="text-xs uppercase tracking-wide text-neutral-400">{label}</div>
+    <article className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+      <div className="text-xs uppercase tracking-wide text-[var(--text-muted)]">{label}</div>
       <div className={`mt-2 truncate text-2xl font-semibold ${accent}`}>{value}</div>
-      <div className="mt-1 text-xs text-neutral-400">{sub}</div>
+      <div className="mt-1 text-xs text-[var(--text-muted)]">{sub}</div>
     </article>
   );
 }
@@ -4910,7 +4966,7 @@ function SkeletonGrid() {
       {[0, 1, 2].map((i) => (
         <div
           key={i}
-          className="h-24 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+          className="h-24 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
         />
       ))}
     </div>
@@ -4923,7 +4979,7 @@ function SkeletonList() {
       {[0, 1, 2, 3].map((i) => (
         <div
           key={i}
-          className="h-14 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+          className="h-14 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
         />
       ))}
     </div>
@@ -4932,7 +4988,7 @@ function SkeletonList() {
 
 function EmptyHint({ children }: { children: React.ReactNode }) {
   return (
-    <div className="rounded-lg border border-neutral-800 bg-neutral-900 p-6 text-sm text-neutral-400">
+    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6 text-sm text-[var(--text-muted)]">
       {children}
     </div>
   );

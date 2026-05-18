@@ -29,11 +29,11 @@ export function Pulse({ onOpenDashboard }: Props) {
           className="block h-3 w-3 flex-shrink-0 rounded-full bg-orange-500"
           aria-hidden="true"
         />
-        <h1 className="text-xl font-semibold tracking-tight text-neutral-100">
+        <h1 className="text-xl font-semibold tracking-tight text-[var(--text)]">
           RedLattice · Today's Pulse
         </h1>
         {stats.data && (
-          <span className="ml-auto text-xs text-neutral-400" title="Date">
+          <span className="ml-auto text-xs text-[var(--text-muted)]" title="Date">
             {stats.data.today}
           </span>
         )}
@@ -131,13 +131,15 @@ function Stat({
         ? 'text-rose-400'
         : tone === 'warn'
           ? 'text-amber-400'
-          : 'text-neutral-100';
+          : 'text-[var(--text)]';
 
   return (
-    <article className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-neutral-400">{label}</div>
+    <article className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
+      <div className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        {label}
+      </div>
       <div className={`mt-1.5 text-2xl font-semibold leading-none ${valueColor}`}>{value}</div>
-      <div className="mt-1 truncate text-xs text-neutral-400">{sub}</div>
+      <div className="mt-1 truncate text-xs text-[var(--text-muted)]">{sub}</div>
     </article>
   );
 }
@@ -155,14 +157,14 @@ function TrendSection({ data }: { data: PulseStats }) {
 
   return (
     <section
-      className="rounded-lg border border-neutral-800 bg-neutral-900 px-4 py-3"
+      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
       aria-label="Last 7 days sentiment"
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-neutral-400">
+        <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
           Last 7 days — sentiment
         </span>
-        <span className="flex items-center gap-3 text-xs text-neutral-400">
+        <span className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
           <LegendDot color="bg-emerald-500" label="positive" />
           <LegendDot color="bg-neutral-600" label="neutral" />
           <LegendDot color="bg-rose-500" label="negative" />
@@ -206,14 +208,14 @@ function TrendSection({ data }: { data: PulseStats }) {
                   />
                 </div>
               </div>
-              <span className="text-[10px] text-neutral-400">{shortDate}</span>
+              <span className="text-[10px] text-[var(--text-muted)]">{shortDate}</span>
             </div>
           );
         })}
       </div>
 
       {/* Numeric summary row */}
-      <div className="mt-2 flex justify-around border-t border-neutral-800 pt-2 text-xs">
+      <div className="mt-2 flex justify-around border-t border-[var(--border)] pt-2 text-xs">
         <TrendTotal
           label="positive"
           value={series.reduce((s, d) => s + d.positive, 0)}
@@ -222,7 +224,7 @@ function TrendSection({ data }: { data: PulseStats }) {
         <TrendTotal
           label="neutral"
           value={series.reduce((s, d) => s + d.neutral, 0)}
-          color="text-neutral-400"
+          color="text-[var(--text-muted)]"
         />
         <TrendTotal
           label="negative"
@@ -247,7 +249,7 @@ function TrendTotal({ label, value, color }: { label: string; value: number; col
   return (
     <span className="flex flex-col items-center gap-0.5">
       <span className={`text-sm font-semibold ${color}`}>{value}</span>
-      <span className="text-neutral-400">{label}</span>
+      <span className="text-[var(--text-muted)]">{label}</span>
     </span>
   );
 }
@@ -263,11 +265,11 @@ function StatRowSkeleton() {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-20 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900"
+            className="h-20 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
           />
         ))}
       </section>
-      <div className="h-32 animate-pulse rounded-lg border border-neutral-800 bg-neutral-900" />
+      <div className="h-32 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
     </>
   );
 }
