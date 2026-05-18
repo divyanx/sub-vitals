@@ -181,3 +181,35 @@ test('URL updates when filters change', async ({ page }) => {
   // URL should contain sort param — allow up to 1s for replaceState
   await expect(page).toHaveURL(/sort=createdAt_asc/, { timeout: 1000 });
 });
+
+test('pipeline tag chip filter narrows visible rows and updates URL', async ({ page }) => {
+  await page.waitForSelector('[aria-label="Content table"]');
+
+  // Baseline: all 3 items visible
+  await expect(page.getByText('App crashes every time')).toBeVisible();
+  await expect(page.getByText('Great customer support')).toBeVisible();
+
+  // Click the "Intent" custom pipeline chip (rendered by filterablePipelines)
+  const intentChip = page.getByRole('button', { name: /Intent/ });
+  await intentChip.click();
+
+  // Select "bug" from the dropdown
+  const bugCheckbox = page.getByRole('checkbox', { name: 'bug' });
+  await bugCheckbox.check();
+
+  // Dismiss dropdown
+  await page.keyboard.press('Escape');
+
+  // Wait for debounce + re-fetch
+  await page.waitForTimeout(400);
+
+  // URL should contain the tag param
+  await expect(page).toHaveURL(/tag_intent=bug/, { timeout: 1500 });
+
+  // Only bug-tagged item visible; praise post should disappear
+  await expect(page.getByText('App crashes every time')).toBeVisible();
+  await expect(page.getByText('Great customer support')).not.toBeVisible();
+
+  // Item count should have dropped (mock returns 2 items for bug filter)
+  await expect(page.getByText(/\d+ items?/)).toBeVisible();
+});

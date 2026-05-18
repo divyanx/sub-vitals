@@ -21,6 +21,7 @@ import {
   type PostStatus,
   type TaxonomyNode,
 } from '../lib/api.ts';
+import { decodePipelineTags, encodePipelineTags } from '../lib/content-url.ts';
 
 // ---------------------------------------------------------------------------
 // URL state serialization
@@ -69,6 +70,7 @@ export function filtersToSearchParams(f: ContentFilters): URLSearchParams {
   if (f.to) p.set('to', f.to);
   if (f.type !== 'both') p.set('type', f.type);
   if (f.sort !== 'priority_desc') p.set('sort', f.sort);
+  encodePipelineTags(f.pipelineTags, p);
   return p;
 }
 
@@ -85,15 +87,8 @@ export function searchParamsToFilters(p: URLSearchParams): ContentFilters {
     to: p.get('to') ?? '',
     type: (p.get('type') ?? 'both') as ContentType,
     sort: (p.get('sort') ?? 'priority_desc') as ContentSort,
-    pipelineTags: {} as Record<string, string[]>,
+    pipelineTags: decodePipelineTags(p),
   };
-  // Parse dynamic pipeline tag filters: tag_{pipelineId}=val1,val2
-  for (const [key, value] of p.entries()) {
-    if (key.startsWith('tag_')) {
-      const pipelineId = key.slice(4);
-      raw.pipelineTags[pipelineId] = value.split(',').filter(Boolean);
-    }
-  }
   // Validate hasAgent
   if (!['yes', 'no', 'any'].includes(raw.hasAgent)) raw.hasAgent = 'any';
   return raw;
@@ -1169,6 +1164,10 @@ export function ContentBrowser() {
     if (debouncedFilters.hasAgent !== 'any') p.hasAgent = debouncedFilters.hasAgent;
     if (debouncedFilters.from) p.from = debouncedFilters.from;
     if (debouncedFilters.to) p.to = debouncedFilters.to;
+    const activeTags = Object.fromEntries(
+      Object.entries(debouncedFilters.pipelineTags).filter(([, v]) => v.length > 0),
+    );
+    if (Object.keys(activeTags).length > 0) p.pipelineTags = activeTags;
     return p;
   }, [debouncedFilters, offset]);
 

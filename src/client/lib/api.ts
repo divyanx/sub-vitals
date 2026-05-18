@@ -814,6 +814,13 @@ export const api = {
     if (params.sort) q.set('sort', params.sort);
     q.set('limit', String(params.limit ?? 50));
     q.set('offset', String(params.offset ?? 0));
+    if (params.pipelineTags) {
+      for (const [pipelineId, values] of Object.entries(params.pipelineTags)) {
+        if (values.length > 0) {
+          q.set(`tag_${pipelineId}`, values.join(','));
+        }
+      }
+    }
     const raw = await getJson<ContentSearchResult>(`/api/content/search?${q.toString()}`);
     return { ...raw, items: arr<ContentItem>(raw.items) };
   },
@@ -1122,6 +1129,8 @@ export interface ContentSearchParams {
   sort?: ContentSort;
   limit?: number;
   offset?: number;
+  /** Dynamic pipeline tag filters: pipelineId → selected values (OR within, AND across) */
+  pipelineTags?: Record<string, string[]>;
 }
 
 export interface ContentSearchResult {

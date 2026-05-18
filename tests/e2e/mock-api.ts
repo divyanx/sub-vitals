@@ -440,7 +440,7 @@ export async function setupMocks(page: Page): Promise<void> {
     if (pathname === '/api/pipelines/enabled' && method === 'GET') {
       return route.fulfill({
         json: {
-          count: 6,
+          count: 7,
           pipelines: [
             {
               id: 'intent',
@@ -502,6 +502,18 @@ export async function setupMocks(page: Page): Promise<void> {
               source: 'builtin',
               enabled: true,
               order: 5,
+            },
+            {
+              // Custom categorical pipeline — appears as a filter chip in Content Browser
+              id: 'intent',
+              name: 'Intent',
+              kind: 'categorical',
+              trigger: 'post-create',
+              outputSchema: 'single-label',
+              source: 'custom',
+              enabled: true,
+              labels: ['bug', 'praise', 'billing'],
+              order: 6,
             },
           ],
         },
@@ -756,9 +768,38 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ json: { deleted: 3 } });
     }
 
-    // Content search
+    // Content search — respects tag_* pipeline filter params for e2e test assertions
     if (pathname === '/api/content/search') {
-      return route.fulfill({ json: fixture('content-search') });
+      const allItems = (
+        fixture('content-search') as {
+          items: unknown[];
+          total: number;
+          offset: number;
+          limit: number;
+        }
+      ).items;
+      // Collect any tag_* filters from the query string
+      const tagFilters: Record<string, string[]> = {};
+      for (const [key, val] of url.searchParams.entries()) {
+        if (key.startsWith('tag_')) {
+          tagFilters[key.slice(4)] = val.split(',').filter(Boolean);
+        }
+      }
+      if (Object.keys(tagFilters).length === 0) {
+        return route.fulfill({ json: fixture('content-search') });
+      }
+      // Simple mock filtering: keep only items whose driverId matches intent filter values
+      // (This mirrors what the real server does for the intent pipeline in the test scenario.)
+      let filtered = allItems as Array<{ driverId: string | null }>;
+      const intentValues = tagFilters.intent;
+      if (intentValues && intentValues.length > 0) {
+        filtered = filtered.filter(
+          (item) => item.driverId !== null && intentValues.includes(item.driverId),
+        );
+      }
+      return route.fulfill({
+        json: { items: filtered, total: filtered.length, offset: 0, limit: 50 },
+      });
     }
 
     // Mod actions (Content Browser)

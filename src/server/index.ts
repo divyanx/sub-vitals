@@ -1193,30 +1193,32 @@ app.post('/api/posts/bulk-status', async (c) => {
 // Content Browser — unified post + comment search surface
 // ---------------------------------------------------------------------------
 
-const contentSearchQuerySchema = z.object({
-  q: z.string().optional(),
-  driver: z.string().optional(),
-  sentiment: z.string().optional(),
-  status: z.string().optional(),
-  author: z.string().optional(),
-  hasAgent: z.enum(['yes', 'no', 'any']).optional(),
-  from: z.string().optional(),
-  to: z.string().optional(),
-  type: z.enum(['post', 'comment', 'both']).optional().default('both'),
-  sort: z
-    .enum([
-      'priority_desc',
-      'createdAt_desc',
-      'createdAt_asc',
-      'sentimentScore_asc',
-      'sentimentScore_desc',
-      'responseTime_asc',
-    ])
-    .optional()
-    .default('priority_desc'),
-  limit: z.coerce.number().int().min(1).max(100).optional().default(50),
-  offset: z.coerce.number().int().min(0).optional().default(0),
-});
+const contentSearchQuerySchema = z
+  .object({
+    q: z.string().optional(),
+    driver: z.string().optional(),
+    sentiment: z.string().optional(),
+    status: z.string().optional(),
+    author: z.string().optional(),
+    hasAgent: z.enum(['yes', 'no', 'any']).optional(),
+    from: z.string().optional(),
+    to: z.string().optional(),
+    type: z.enum(['post', 'comment', 'both']).optional().default('both'),
+    sort: z
+      .enum([
+        'priority_desc',
+        'createdAt_desc',
+        'createdAt_asc',
+        'sentimentScore_asc',
+        'sentimentScore_desc',
+        'responseTime_asc',
+      ])
+      .optional()
+      .default('priority_desc'),
+    limit: z.coerce.number().int().min(1).max(100).optional().default(50),
+    offset: z.coerce.number().int().min(0).optional().default(0),
+  })
+  .passthrough(); // allow tag_* keys — parsed separately below
 
 app.get('/api/content/search', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
@@ -1240,6 +1242,18 @@ app.get('/api/content/search', async (c) => {
     offset,
   } = parsed.data;
 
+  // Extract tag_* params that Zod passed through
+  const rawQuery = c.req.query();
+  const pipelineTags: Record<string, string[]> = {};
+  for (const [key, value] of Object.entries(rawQuery)) {
+    if (key.startsWith('tag_') && typeof value === 'string') {
+      const pipelineId = key.slice(4);
+      const values = value.split(',').filter(Boolean);
+      if (values.length > 0) pipelineTags[pipelineId] = values;
+    }
+  }
+  const hasPipelineTagFilter = Object.keys(pipelineTags).length > 0;
+
   const fromMs = from ? Date.parse(from) : null;
   const toMs = to ? Date.parse(to) + 86_400_000 : null; // inclusive end-of-day
 
@@ -1247,7 +1261,39 @@ app.get('/api/content/search', async (c) => {
     getRecentPostIds(500),
     redis.get(K.pulsePostId()),
   ]);
-  const ids = rawIds.filter((id) => id !== dashboardPostId);
+  const allPostIds = rawIds.filter((id) => id !== dashboardPostId);
+
+  // Resolve pipeline tag intersection:
+  //   - For each dimension (pipelineId), union targetIds matching any of the values (OR within)
+  //   - Then intersect across all dimensions (AND across)
+  let tagCandidateSet: Set<string> | null = null;
+  if (hasPipelineTagFilter) {
+    for (const [pipelineId, values] of Object.entries(pipelineTags)) {
+      // Union all values within this dimension
+      const dimensionIds = new Set<string>();
+      const perValueResults = await Promise.all(
+        values.map((v) => getTargetsByTagValue(pipelineId, v, 1000)),
+      );
+      for (const idList of perValueResults) {
+        for (const id of idList) {
+          dimensionIds.add(id);
+        }
+      }
+      // AND with the running intersection
+      if (tagCandidateSet === null) {
+        tagCandidateSet = dimensionIds;
+      } else {
+        for (const id of tagCandidateSet) {
+          if (!dimensionIds.has(id)) tagCandidateSet.delete(id);
+        }
+      }
+    }
+  }
+
+  // If pipeline tag filters applied, restrict to their intersection; otherwise use all post ids
+  const ids = hasPipelineTagFilter
+    ? allPostIds.filter((id) => (tagCandidateSet as Set<string>).has(id))
+    : allPostIds;
 
   const [metas, tags, sents] = await Promise.all([
     getPostMetaMany(ids),
