@@ -22,6 +22,7 @@
   --text: #f5f5f5; /* neutral-100 */
   --text-muted: #a3a3a3; /* neutral-400 */
   --accent: #ff4500; /* orange-500 */
+  --input-bg: #262626; /* neutral-800 — input/chip backgrounds */
 }
 
 @media (prefers-color-scheme: light) {
@@ -32,6 +33,7 @@
     --text: #404040; /* neutral-700 */
     --text-muted: #737373; /* neutral-500 */
     --accent: #ff4500; /* orange-500 */
+    --input-bg: #f0f0f0; /* neutral-100 — slightly darker than surface for contrast */
   }
 }
 
@@ -42,6 +44,7 @@
   --text: #404040;
   --text-muted: #737373;
   --accent: #ff4500;
+  --input-bg: #f0f0f0;
 }
 
 [data-theme="dark"] {
@@ -51,6 +54,7 @@
   --text: #f5f5f5;
   --text-muted: #a3a3a3;
   --accent: #ff4500;
+  --input-bg: #262626;
 }
 
 /* ─── Base styles ──────────────────────────────────────────────────────────── */
