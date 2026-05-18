@@ -14,7 +14,8 @@ import { setupMocks } from './mock-api.ts';
 /** Navigate to the Drivers tab and open the Configure taxonomy accordion. */
 async function openTaxonomyConfig(page: Parameters<typeof setupMocks>[0]) {
   await page.goto('/');
-  await page.getByRole('tab', { name: /Contact drivers/i }).click();
+  await page.getByRole('tab', { name: 'Insights' }).click();
+  await page.getByRole('tab', { name: 'Drivers' }).click();
 
   // Open the "Configure taxonomy" accordion
   const configToggle = page.getByTestId('drivers-config-toggle');

@@ -10,16 +10,23 @@ type Tab = NonNullable<DashboardProps['initialTab']>;
 const VALID_TABS: Tab[] = [
   'inbox',
   'overview',
-  'drivers',
-  'sentiment',
+  'insights',
   'incidents',
-  'themes',
   'pipelines',
-  'agents',
+  'team',
   'export',
   'audit',
+  'lab',
   'settings',
 ];
+
+// Legacy tab aliases — redirect to new locations on load
+const LEGACY_TAB_MAP: Record<string, Tab> = {
+  drivers: 'insights',
+  sentiment: 'insights',
+  themes: 'insights',
+  agents: 'team',
+};
 
 type InitialState =
   | { view: 'pulse' }
@@ -33,9 +40,11 @@ function readInitialState(): InitialState {
   const viewParam = params.get('view');
   if (viewParam === 'pulse') return { view: 'pulse' };
 
-  const tabParam = params.get('tab') as Tab | null;
+  const rawTab = params.get('tab');
+  // Resolve legacy tab aliases at entry point so Dashboard gets canonical tab
+  const resolvedTab = rawTab != null && rawTab in LEGACY_TAB_MAP ? LEGACY_TAB_MAP[rawTab] : rawTab;
   const initialTab: Tab =
-    tabParam && (VALID_TABS as string[]).includes(tabParam) ? tabParam : 'inbox';
+    resolvedTab && (VALID_TABS as string[]).includes(resolvedTab) ? (resolvedTab as Tab) : 'inbox';
   const driverParam = params.get('driver');
   if (driverParam) {
     return { view: 'dashboard', initialTab, initialDriver: driverParam };

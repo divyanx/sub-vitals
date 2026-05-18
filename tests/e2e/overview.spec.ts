@@ -51,7 +51,7 @@ test.describe('Overview (Pulse) tab', () => {
   });
 
   test('driver sparklines section renders', async ({ page }) => {
-    await expect(page.getByText('Contact drivers · 14-day trend')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('Drivers · 14-day trend')).toBeVisible({ timeout: 8000 });
     // Fixture taxonomy has multiple drivers — at least 1 sparkline button rendered
     const sparklineButtons = page.getByRole('button', {
       name: /posts today\. Click to view driver/,

@@ -88,10 +88,10 @@ test.describe('a11y — Overview tab', () => {
 // Tab: Contact Drivers
 // ---------------------------------------------------------------------------
 
-test.describe('a11y — Contact Drivers tab', () => {
+test.describe('a11y — Insights/Drivers tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
-    await page.goto('/?tab=drivers');
+    await page.goto('/?tab=insights&section=drivers');
     await page.waitForTimeout(1500);
     await assertNoSeriousViolations(page, 'Drivers tab');
   });
@@ -104,7 +104,7 @@ test.describe('a11y — Contact Drivers tab', () => {
 test.describe('a11y — Sentiment tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
-    await page.goto('/?tab=sentiment');
+    await page.goto('/?tab=insights&section=sentiment');
     await page.waitForTimeout(1500);
     await assertNoSeriousViolations(page, 'Sentiment tab');
   });
@@ -114,10 +114,10 @@ test.describe('a11y — Sentiment tab', () => {
 // Tab: Agents
 // ---------------------------------------------------------------------------
 
-test.describe('a11y — Agents tab', () => {
+test.describe('a11y — Team tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
-    await page.goto('/?tab=agents');
+    await page.goto('/?tab=team');
     await page.waitForTimeout(1500);
     await assertNoSeriousViolations(page, 'Agents tab');
   });

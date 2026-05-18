@@ -12,6 +12,7 @@ test.describe('Themes tab', () => {
   test('themes/latest data renders in the Themes tab', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
+    await page.getByRole('tab', { name: 'Insights' }).click();
     await page.getByRole('tab', { name: 'Themes' }).click();
     // The fixture has a theme named "Checkout crash wave"
     await expect(page.getByText('Checkout crash wave')).toBeVisible({ timeout: 8000 });
@@ -20,6 +21,7 @@ test.describe('Themes tab', () => {
   test('Regenerate button is visible on the Themes tab', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
+    await page.getByRole('tab', { name: 'Insights' }).click();
     await page.getByRole('tab', { name: 'Themes' }).click();
     await expect(page.getByRole('button', { name: /regenerate/i })).toBeVisible({ timeout: 8000 });
   });

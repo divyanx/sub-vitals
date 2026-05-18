@@ -42,9 +42,10 @@ test.describe('Settings tab', () => {
   });
 });
 
-// Helper: navigate to the Contact Drivers tab and open the config panel
+// Helper: navigate to Insights › Drivers and open the config panel
 async function openDriversConfigPanel(page: import('@playwright/test').Page) {
-  await page.getByRole('tab', { name: 'Contact drivers' }).click();
+  await page.getByRole('tab', { name: 'Insights' }).click();
+  await page.getByRole('tab', { name: 'Drivers' }).click();
   await page.getByTestId('drivers-config-toggle').click();
   await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
 }

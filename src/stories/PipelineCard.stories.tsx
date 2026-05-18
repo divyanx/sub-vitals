@@ -43,6 +43,7 @@ export const ContactDrivers: PipelineStory = {
     pipeline: {
       id: 'contact-drivers',
       name: 'Contact Drivers',
+      kind: 'intent classification' as const,
       trigger: 'PostSubmit',
       logic: 'Lexicon → LLM',
       settingsLink: 'taxonomy',
@@ -56,6 +57,7 @@ export const SentimentScoring: PipelineStory = {
     pipeline: {
       id: 'sentiment',
       name: 'Sentiment scoring',
+      kind: 'sentiment' as const,
       trigger: 'PostSubmit + CommentCreate',
       logic: 'AFINN lexicon → LLM judge for ambiguous',
       moduleKey: 'sentiment',
@@ -68,6 +70,7 @@ export const ImpostorDetection: PipelineStory = {
     pipeline: {
       id: 'impostor',
       name: 'Impostor detection',
+      kind: 'identity verification' as const,
       trigger: 'CommentCreate (non-mods only)',
       logic: 'Regex pre-filter → LLM judge',
       moduleKey: 'impostor-detection',
@@ -80,6 +83,7 @@ export const CrisisDetection: PipelineStory = {
     pipeline: {
       id: 'crisis',
       name: 'Crisis detection',
+      kind: 'crisis detection' as const,
       trigger: 'CommentCreate',
       logic: 'Hourly volume + negative-share thresholds',
       moduleKey: 'crisis-detection',
@@ -93,6 +97,7 @@ export const NoSettingsLink: PipelineStory = {
     pipeline: {
       id: 'themes',
       name: 'Theme clustering',
+      kind: 'theme clustering' as const,
       trigger: 'Scheduler (daily 02:00 UTC)',
       logic: 'LLM clustering of negative posts',
       moduleKey: 'theme-clustering',

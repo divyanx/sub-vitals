@@ -1,7 +1,7 @@
 /**
  * Dashboard view — full multi-tab analytics surface.
  *
- * Tabs: Overview · Drivers · Sentiment · Agents.
+ * Tabs: Overview · Drivers · Sentiment · Team.
  * Each tab pulls its own data via TanStack Query. Drivers tab has
  * click-through to the per-driver post list; Overview shows a live recent-
  * activity feed with deep links back to the actual Reddit posts.
@@ -15,9 +15,10 @@ import { tinykeys } from 'tinykeys';
 import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { InfoTooltip } from '../components/InfoTooltip.tsx';
+import { NavOverflow } from '../components/NavOverflow.tsx';
 import { ShortcutsModal } from '../components/ShortcutsModal.tsx';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
-import { markThemesVisited, type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
+import { type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
 import { useTheme } from '../hooks/useTheme.ts';
 import {
   type Agent,
@@ -40,11 +41,13 @@ import {
   TaxonomyConfigSection,
   useDriversToast,
 } from './DriversConfig.tsx';
+import { type InsightSection, Insights } from './Insights.tsx';
 import { Onboarding } from './Onboarding.tsx';
 
 // Lazy-load heavy tabs — each is code-split into its own async chunk so the
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
 const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
+const LabLazy = lazy(() => import('./Lab.tsx').then((m) => ({ default: m.Lab })));
 const SentimentChartLazy = lazy(() =>
   import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
 );
@@ -52,14 +55,13 @@ const SentimentChartLazy = lazy(() =>
 type Tab =
   | 'inbox'
   | 'overview'
-  | 'drivers'
-  | 'sentiment'
+  | 'insights'
   | 'incidents'
-  | 'themes'
   | 'pipelines'
-  | 'agents'
+  | 'team'
   | 'export'
   | 'audit'
+  | 'lab'
   | 'settings';
 
 export interface DashboardProps {
@@ -69,17 +71,19 @@ export interface DashboardProps {
 
 export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProps) {
   const [tab, setTabState] = useState<Tab>(initialTab);
+  const [activeSection, setActiveSection] = useState<InsightSection>(() => {
+    const params = new URLSearchParams(window.location.search);
+    return (params.get('section') as InsightSection | null) ?? 'drivers';
+  });
   const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const { theme, cycle: cycleTheme } = useTheme();
   const badges = useNavBadges();
 
-  // Keep URL in sync whenever the tab changes, and listen to popstate for
-  // browser back/forward support.
+  // URL helpers
   const setTab = useCallback((t: Tab, extra?: Record<string, string>) => {
     setTabState(t);
-    if (t === 'themes') markThemesVisited();
     const cleanExtra: Record<string, string> = {};
     if (extra) {
       for (const [k, v] of Object.entries(extra)) {
@@ -90,16 +94,44 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
     history.pushState({ tab: t, ...cleanExtra }, '', `?${params.toString()}`);
   }, []);
 
+  const setInsightsSection = useCallback((section: InsightSection) => {
+    setActiveSection(section);
+    const params = new URLSearchParams({ tab: 'insights', section });
+    history.pushState({ tab: 'insights', section }, '', `?${params.toString()}`);
+  }, []);
+
+  // Deep-link redirects: old ?tab=drivers|sentiment|themes|agents → new locations
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const rawTab = params.get('tab');
+    if (rawTab === 'drivers' || rawTab === 'sentiment' || rawTab === 'themes') {
+      const section = rawTab as InsightSection;
+      setTabState('insights');
+      setActiveSection(section);
+      const p = new URLSearchParams({ tab: 'insights', section });
+      history.replaceState({ tab: 'insights', section }, '', `?${p.toString()}`);
+    } else if (rawTab === 'agents') {
+      setTabState('team');
+      history.replaceState({ tab: 'team' }, '', '?tab=team');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      const state = e.state as { tab?: Tab } | null;
+      const state = e.state as { tab?: Tab; section?: InsightSection } | null;
       if (state?.tab) {
         setTabState(state.tab);
+        if (state.tab === 'insights' && state.section) {
+          setActiveSection(state.section);
+        }
       } else {
-        // Fallback: parse from URL
         const params = new URLSearchParams(window.location.search);
         const t = params.get('tab') as Tab | null;
         setTabState(t ?? 'inbox');
+        if (t === 'insights') {
+          setActiveSection((params.get('section') as InsightSection | null) ?? 'drivers');
+        }
       }
     };
     window.addEventListener('popstate', onPop);
@@ -114,7 +146,6 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         setCmdOpen((o) => !o);
       },
       '?': (e: KeyboardEvent) => {
-        // Ignore when typing in an input/textarea
         const target = e.target as HTMLElement;
         if (
           target.tagName === 'INPUT' ||
@@ -128,7 +159,6 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         setCmdOpen(false);
         setShortcutsOpen(false);
       },
-      // Tab jumps: g i / g p / g d / g s / g n / g t / g a / g e / g u / g ,
       'g i': (e: KeyboardEvent) => {
         e.preventDefault();
         setTab('inbox');
@@ -137,25 +167,21 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         e.preventDefault();
         setTab('overview');
       },
-      'g d': (e: KeyboardEvent) => {
+      'g x': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('drivers');
-      },
-      'g s': (e: KeyboardEvent) => {
-        e.preventDefault();
-        setTab('sentiment');
+        setTab('insights');
       },
       'g n': (e: KeyboardEvent) => {
         e.preventDefault();
         setTab('incidents');
       },
-      'g t': (e: KeyboardEvent) => {
+      'g l': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('themes');
+        setTab('pipelines');
       },
-      'g a': (e: KeyboardEvent) => {
+      'g m': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('agents');
+        setTab('team');
       },
       'g e': (e: KeyboardEvent) => {
         e.preventDefault();
@@ -185,24 +211,44 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
       },
       {
         id: 'tab-overview',
-        label: 'Pulse (Overview)',
+        label: 'Pulse',
         group: 'Navigation',
         shortcut: ['g', 'p'],
         action: () => setTab('overview'),
       },
       {
-        id: 'tab-drivers',
-        label: 'Contact Drivers',
+        id: 'tab-insights',
+        label: 'Insights',
         group: 'Navigation',
-        shortcut: ['g', 'd'],
-        action: () => setTab('drivers'),
+        shortcut: ['g', 'x'],
+        action: () => setTab('insights'),
       },
       {
-        id: 'tab-sentiment',
-        label: 'Sentiment',
+        id: 'tab-insights-drivers',
+        label: 'Insights › Drivers',
         group: 'Navigation',
-        shortcut: ['g', 's'],
-        action: () => setTab('sentiment'),
+        action: () => {
+          setTab('insights');
+          setInsightsSection('drivers');
+        },
+      },
+      {
+        id: 'tab-insights-sentiment',
+        label: 'Insights › Sentiment',
+        group: 'Navigation',
+        action: () => {
+          setTab('insights');
+          setInsightsSection('sentiment');
+        },
+      },
+      {
+        id: 'tab-insights-themes',
+        label: 'Insights › Themes',
+        group: 'Navigation',
+        action: () => {
+          setTab('insights');
+          setInsightsSection('themes');
+        },
       },
       {
         id: 'tab-incidents',
@@ -212,24 +258,18 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         action: () => setTab('incidents'),
       },
       {
-        id: 'tab-themes',
-        label: 'Themes',
-        group: 'Navigation',
-        shortcut: ['g', 't'],
-        action: () => setTab('themes'),
-      },
-      {
         id: 'tab-pipelines',
         label: 'Pipelines',
         group: 'Navigation',
+        shortcut: ['g', 'l'],
         action: () => setTab('pipelines'),
       },
       {
-        id: 'tab-agents',
-        label: 'Agents',
+        id: 'tab-team',
+        label: 'Team',
         group: 'Navigation',
-        shortcut: ['g', 'a'],
-        action: () => setTab('agents'),
+        shortcut: ['g', 'm'],
+        action: () => setTab('team'),
       },
       {
         id: 'tab-export',
@@ -266,8 +306,10 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         action: () => setShortcutsOpen(true),
       },
     ],
-    [setTab, theme, cycleTheme],
+    [setTab, setInsightsSection, theme, cycleTheme],
   );
+
+  const customPipelines: Array<{ id: string; name: string; kind: string }> = [];
 
   return (
     <div className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--text)]">
@@ -280,20 +322,32 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
             {tab === 'inbox' && <Inbox />}
             {tab === 'overview' && (
               <Overview
-                onNavigate={(t, driver) => {
+                onNavigate={(t, driver, extra) => {
                   if (driver) setActiveDriver(driver);
-                  setTab(t, driver ? { driver } : undefined);
+                  // When navigating to insights with a section, set the section too
+                  if (t === 'insights' && extra?.section) {
+                    setActiveSection(extra.section as InsightSection);
+                  }
+                  setTab(t as Tab, { ...(driver ? { driver } : {}), ...(extra ?? {}) });
                 }}
               />
             )}
-            {tab === 'drivers' && <Drivers initialDriver={activeDriver} />}
-            {tab === 'sentiment' && <SentimentTab />}
+            {tab === 'insights' && (
+              <Insights
+                defaultSection={activeSection}
+                onSectionChange={setInsightsSection}
+                DriversContent={() => <Drivers initialDriver={activeDriver} />}
+                SentimentContent={() => <SentimentTab />}
+                ThemesContent={() => <Themes />}
+                customPipelines={customPipelines}
+              />
+            )}
             {tab === 'incidents' && <Incidents />}
-            {tab === 'themes' && <Themes />}
             {tab === 'pipelines' && <Pipelines onOpenSettings={() => setTab('settings')} />}
-            {tab === 'agents' && <Agents />}
+            {tab === 'team' && <Agents />}
             {tab === 'export' && <ExportTab />}
             {tab === 'audit' && <Audit />}
+            {tab === 'lab' && <LabLazy />}
             {tab === 'settings' && <Settings />}
           </Suspense>
         </ErrorBoundary>
@@ -370,37 +424,25 @@ function Header({
   );
 }
 
-const TABS: { id: Tab; label: string }[] = [
+// Primary tabs — always visible in the nav bar
+const PRIMARY_TABS: { id: Tab; label: string }[] = [
   { id: 'inbox', label: 'Inbox' },
   { id: 'overview', label: 'Pulse' },
-  { id: 'drivers', label: 'Contact drivers' },
-  { id: 'sentiment', label: 'Sentiment' },
+  { id: 'insights', label: 'Insights' },
   { id: 'incidents', label: 'Incidents' },
-  { id: 'themes', label: 'Themes' },
   { id: 'pipelines', label: 'Pipelines' },
-  { id: 'agents', label: 'Agents' },
-  { id: 'export', label: 'Export' },
-  { id: 'audit', label: 'Audit' },
-  { id: 'settings', label: 'Settings' },
 ];
 
 function Nav({ tab, setTab, badges }: { tab: Tab; setTab: (t: Tab) => void; badges: NavBadges }) {
   return (
-    <nav
-      className="relative border-b border-[var(--border)] bg-[var(--bg)]"
-      style={{
-        /* Gradient fade on the right edge hints at hidden tabs on mobile */
-        WebkitMaskImage: 'linear-gradient(to right, black calc(100% - 2rem), transparent 100%)',
-        maskImage: 'linear-gradient(to right, black calc(100% - 2rem), transparent 100%)',
-      }}
-    >
+    <nav className="relative border-b border-[var(--border)] bg-[var(--bg)]">
       <div
         role="tablist"
         aria-label="Dashboard tabs"
-        className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-6"
+        className="mx-auto flex max-w-6xl items-stretch gap-1 overflow-x-auto px-6"
         style={{ scrollbarWidth: 'none' }}
       >
-        {TABS.map((t) => {
+        {PRIMARY_TABS.map((t) => {
           const isActive = tab === t.id;
           const badge =
             t.id === 'inbox' && badges.inbox > 0
@@ -408,7 +450,6 @@ function Nav({ tab, setTab, badges }: { tab: Tab; setTab: (t: Tab) => void; badg
               : t.id === 'incidents' && badges.incidents > 0
                 ? badges.incidents
                 : null;
-          const dot = t.id === 'themes' && badges.themesDot;
 
           return (
             <button
@@ -429,16 +470,13 @@ function Nav({ tab, setTab, badges }: { tab: Tab; setTab: (t: Tab) => void; badg
                   {badge > 99 ? '99+' : badge}
                 </span>
               ) : null}
-              {dot ? (
-                <span
-                  className="inline-block h-1.5 w-1.5 rounded-full bg-orange-500"
-                  title="New themes available"
-                  aria-hidden="true"
-                />
-              ) : null}
             </button>
           );
         })}
+        {/* Overflow "More ▾" dropdown for secondary tabs */}
+        <div className="ml-auto">
+          <NavOverflow activeTab={tab} onSelect={(t) => setTab(t)} />
+        </div>
       </div>
     </nav>
   );
@@ -1279,11 +1317,15 @@ function HeatmapCell({ count, max, label }: { count: number; max: number; label:
 
 // --- Main Overview ---------------------------------------------------------
 
-function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => void }) {
+function Overview({
+  onNavigate,
+}: {
+  onNavigate?: (tab: Tab, driver?: string, extra?: Record<string, string>) => void;
+}) {
   const navigateTo = useCallback(
     (tab: Tab, extra?: Record<string, string>) => {
       if (onNavigate) {
-        onNavigate(tab, extra?.driver);
+        onNavigate(tab, extra?.driver, extra);
       }
     },
     [onNavigate],
@@ -1476,7 +1518,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
               label="Top driver"
               value={kpis.topDriver}
               sub={`${kpis.topDriverCount} post${kpis.topDriverCount === 1 ? '' : 's'}`}
-              onClick={() => navigateTo('drivers')}
+              onClick={() => navigateTo('insights', { section: 'drivers' })}
               tooltip={TOOLTIPS.topDriver}
             />
             <KpiTile
@@ -1490,8 +1532,8 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
             <KpiTile
               label="Avg first-response"
               value={kpis.avgLatencyMs !== null ? formatLatency(kpis.avgLatencyMs) : '—'}
-              sub="last 7 days · agents"
-              onClick={() => navigateTo('agents')}
+              sub="last 7 days · team"
+              onClick={() => navigateTo('team')}
               tooltip={TOOLTIPS.avgFirstResponse}
             />
             <KpiTile
@@ -1515,7 +1557,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
           {/* ── Per-driver sparklines ───────────────────────────────────── */}
           <section aria-label="Driver volume sparklines">
             <h2 className="mb-3 text-[11px] uppercase tracking-widest text-neutral-400">
-              Contact drivers · 14-day trend
+              Drivers · 14-day trend
             </h2>
             {volumeQ.isPending || taxonomyQ.isPending ? (
               <SkeletonGrid />
@@ -1533,7 +1575,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                   <button
                     key={node.id}
                     type="button"
-                    onClick={() => navigateTo('drivers', { driver: node.id })}
+                    onClick={() => navigateTo('insights', { section: 'drivers', driver: node.id })}
                     className="group flex flex-col gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900 p-3 text-left transition hover:border-neutral-700 hover:bg-neutral-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
                     aria-label={`${node.label}: ${current} posts today. Click to view driver.`}
                   >
@@ -1676,7 +1718,7 @@ function Overview({ onNavigate }: { onNavigate?: (tab: Tab, driver?: string) => 
                 <span>No themes generated yet.</span>
                 <button
                   type="button"
-                  onClick={() => navigateTo('themes')}
+                  onClick={() => navigateTo('insights', { section: 'themes' })}
                   className="text-xs text-orange-400 hover:underline"
                 >
                   Generate in Themes tab →
@@ -1926,7 +1968,7 @@ function Drivers({ initialDriver }: { initialDriver?: string | undefined }) {
 
       <div>
         <h2 className="mb-4 text-sm uppercase tracking-wide text-neutral-400">
-          Contact drivers · last 30 days · click to see posts
+          Drivers · last 30 days · click to see posts
         </h2>
         <ul className="space-y-2">
           {sorted.map((d) => (
@@ -2236,7 +2278,7 @@ function AgentSourceBadge({
   > = {
     'mod-list': { label: 'Mod team', title: 'Subreddit moderator (presumed brand employee)' },
     flair: { label: 'Verified · flair', title: 'Brand-team flair detected on author' },
-    record: { label: 'Verified', title: 'Mod-marked or whitelist-seeded as verified agent' },
+    record: { label: 'Verified', title: 'Mod-marked or whitelist-seeded as verified rep' },
   };
   const m = source ? meta[source] : meta.record;
   return (
@@ -2722,19 +2764,32 @@ function Themes() {
 // Pipelines — catalog of all classification/analysis pipelines
 // ---------------------------------------------------------------------------
 
+type PipelineKind =
+  | 'intent classification'
+  | 'sentiment'
+  | 'theme clustering'
+  | 'crisis detection'
+  | 'identity verification'
+  | 'performance'
+  | 'root cause';
+
 interface PipelineDef {
   id: string;
   name: string;
+  kind: PipelineKind;
   trigger: string;
   logic: string;
   settingsLink?: string;
   moduleKey?: string;
+  /** Alpha pipelines are stubbed / not yet fully functional */
+  alpha?: boolean;
 }
 
 const PIPELINE_DEFS: PipelineDef[] = [
   {
     id: 'contact-drivers',
     name: 'Contact Drivers',
+    kind: 'intent classification',
     trigger: 'PostSubmit',
     logic: 'Lexicon → LLM',
     settingsLink: 'taxonomy',
@@ -2743,6 +2798,7 @@ const PIPELINE_DEFS: PipelineDef[] = [
   {
     id: 'sentiment',
     name: 'Sentiment scoring',
+    kind: 'sentiment',
     trigger: 'PostSubmit + CommentCreate',
     logic: 'AFINN lexicon → LLM judge for ambiguous',
     moduleKey: 'sentiment',
@@ -2750,6 +2806,7 @@ const PIPELINE_DEFS: PipelineDef[] = [
   {
     id: 'impostor',
     name: 'Impostor detection',
+    kind: 'identity verification',
     trigger: 'CommentCreate (non-mods only)',
     logic: 'Regex pre-filter → LLM judge',
     moduleKey: 'impostor-detection',
@@ -2757,6 +2814,7 @@ const PIPELINE_DEFS: PipelineDef[] = [
   {
     id: 'crisis',
     name: 'Crisis detection',
+    kind: 'crisis detection',
     trigger: 'CommentCreate',
     logic: 'Hourly volume + negative-share thresholds',
     moduleKey: 'crisis-detection',
@@ -2764,16 +2822,27 @@ const PIPELINE_DEFS: PipelineDef[] = [
   {
     id: 'themes',
     name: 'Theme clustering',
+    kind: 'theme clustering',
     trigger: 'Scheduler (daily 02:00 UTC)',
     logic: 'LLM clustering of negative posts',
     moduleKey: 'theme-clustering',
   },
   {
     id: 'agent-metrics',
-    name: 'Agent metrics',
+    name: 'Response metrics',
+    kind: 'performance',
     trigger: 'CommentCreate',
     logic: 'First-response latency + sentiment delta tracking',
     moduleKey: 'agent-metrics',
+  },
+  {
+    id: 'root-cause',
+    name: 'Root cause summariser',
+    kind: 'root cause',
+    trigger: 'status-change (resolved)',
+    logic: 'AI summarises post + agent reply into root-cause string',
+    moduleKey: 'root-cause',
+    alpha: true,
   },
 ];
 
@@ -2878,6 +2947,11 @@ export function PipelineCard({
               />
               Active
             </span>
+            {pipeline.alpha ? (
+              <span className="rounded-full border border-amber-700 bg-amber-950/50 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+                alpha
+              </span>
+            ) : null}
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -2904,6 +2978,10 @@ export function PipelineCard({
       </div>
 
       <dl className="flex flex-col gap-1.5 text-xs">
+        <div className="flex gap-2">
+          <dt className="w-14 shrink-0 text-neutral-400">Kind</dt>
+          <dd className="text-neutral-300">{pipeline.kind}</dd>
+        </div>
         <div className="flex gap-2">
           <dt className="w-14 shrink-0 text-neutral-400">Trigger</dt>
           <dd className="rounded bg-neutral-800 px-1.5 py-0.5 font-mono text-neutral-300">
@@ -3498,6 +3576,7 @@ function NewPipelineModal({
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
+  const [kind, setKind] = useState<PipelineKind>('intent classification');
   const [trigger, setTrigger] = useState<'post-create' | 'comment-create'>('post-create');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
@@ -3620,6 +3699,25 @@ function NewPipelineModal({
               aria-label="Pipeline description"
               className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
             />
+          </div>
+
+          {/* Kind */}
+          <div>
+            <p className="mb-1 text-xs font-medium text-neutral-300">Kind *</p>
+            <select
+              value={kind}
+              onChange={(e) => setKind(e.target.value as PipelineKind)}
+              aria-label="Pipeline kind"
+              className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+            >
+              <option value="intent classification">Intent classification</option>
+              <option value="sentiment">Sentiment</option>
+              <option value="theme clustering">Theme clustering</option>
+              <option value="crisis detection">Crisis detection</option>
+              <option value="identity verification">Identity verification</option>
+              <option value="performance">Performance</option>
+              <option value="root cause">Root cause</option>
+            </select>
           </div>
 
           {/* Trigger */}
@@ -3849,19 +3947,47 @@ function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
         </button>
       </header>
 
-      <div
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3"
-        data-testid="pipelines-grid"
-      >
-        {PIPELINE_DEFS.map((p) => (
-          <PipelineCard
-            key={p.id}
-            pipeline={p}
-            onOpenSettings={onOpenSettings}
-            onOpenDrawer={setDrawerPipeline}
-          />
-        ))}
-        <StubPipelineCard onOpen={() => setStudioOpen(true)} />
+      <div data-testid="pipelines-grid" className="space-y-6">
+        {/* Group pipeline cards by kind */}
+        {(
+          [
+            'intent classification',
+            'sentiment',
+            'theme clustering',
+            'crisis detection',
+            'identity verification',
+            'performance',
+            'root cause',
+          ] as PipelineKind[]
+        ).map((k) => {
+          const group = PIPELINE_DEFS.filter((p) => p.kind === k);
+          if (group.length === 0) return null;
+          return (
+            <section key={k}>
+              <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-neutral-500">
+                {k.charAt(0).toUpperCase() + k.slice(1)}
+              </h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {group.map((p) => (
+                  <PipelineCard
+                    key={p.id}
+                    pipeline={p}
+                    onOpenSettings={onOpenSettings}
+                    onOpenDrawer={setDrawerPipeline}
+                  />
+                ))}
+              </div>
+            </section>
+          );
+        })}
+        <section>
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-neutral-500">
+            Custom
+          </h3>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <StubPipelineCard onOpen={() => setStudioOpen(true)} />
+          </div>
+        </section>
       </div>
     </div>
   );
@@ -3912,8 +4038,8 @@ function AgentLeaderboard({
   if (rows.length === 0) {
     return (
       <EmptyHint>
-        No agent activity recorded in this window yet. Agents need to comment on tagged posts for
-        metrics to appear.
+        No team activity recorded in this window yet. Verified reps need to comment on tagged posts
+        for metrics to appear.
       </EmptyHint>
     );
   }
@@ -3922,7 +4048,7 @@ function AgentLeaderboard({
       <table className="w-full text-sm">
         <thead className="bg-neutral-950/50 text-left text-xs uppercase tracking-wide text-neutral-400">
           <tr>
-            <th className="px-4 py-2">Agent</th>
+            <th className="px-4 py-2">Rep</th>
             <th className="px-4 py-2 text-right">Replies</th>
             <th className="px-4 py-2 text-right">First responses</th>
             <th className="px-4 py-2 text-right">First-response rate</th>
@@ -3952,7 +4078,7 @@ function AgentLeaderboard({
                         ? 'text-rose-300'
                         : 'text-neutral-300'
                 }`}
-                title="Avg change in thread sentiment in the 5 comments following the agent's reply"
+                title="Avg change in thread sentiment in the 5 comments following the rep's reply"
               >
                 {r.avgSentimentDelta != null
                   ? `${r.avgSentimentDelta > 0 ? '+' : ''}${r.avgSentimentDelta.toFixed(2)}`
@@ -3978,8 +4104,8 @@ function AgentList({ agents }: { agents: Agent[] }) {
     return (
       <EmptyState
         icon="🤝"
-        title="No verified agents yet"
-        body="Mark a comment author as a verified agent to track their response stats and sentiment lift."
+        title="No verified reps yet"
+        body="Mark a comment author as a verified rep to track their response stats and sentiment lift."
         cta={
           <a
             href="https://developers.reddit.com/docs/devvit"
@@ -3987,7 +4113,7 @@ function AgentList({ agents }: { agents: Agent[] }) {
             rel="noopener noreferrer"
             className="text-xs text-orange-400 underline-offset-2 hover:underline"
           >
-            View agent verification docs →
+            View rep verification docs →
           </a>
         }
       />
@@ -4161,12 +4287,19 @@ const AUDIT_ACTIONS: AuditAction[] = [
   'incident-resolve',
   'theme-regenerate',
   'bulk-status',
+  'mod-approve',
+  'mod-remove',
+  'mod-spam',
+  'mod-lock',
+  'mod-distinguish',
+  'mod-reply',
 ];
 
 function auditActionBadgeStyle(action: AuditAction): string {
   switch (action) {
     case 'mark-resolved':
     case 'incident-resolve':
+    case 'mod-approve':
       return 'border-emerald-700 bg-emerald-900/40 text-emerald-200';
     case 'mark-open':
       return 'border-amber-700 bg-amber-900/40 text-amber-200';
@@ -4174,10 +4307,20 @@ function auditActionBadgeStyle(action: AuditAction): string {
     case 'unmark-agent':
     case 'settings-update':
       return 'border-neutral-600 bg-neutral-800 text-neutral-300';
+    case 'mod-remove':
+    case 'mod-spam':
+      return 'border-rose-700 bg-rose-900/40 text-rose-200';
+    case 'mod-lock':
+    case 'mod-distinguish':
+      return 'border-violet-700 bg-violet-900/40 text-violet-200';
+    case 'mod-reply':
+      return 'border-sky-700 bg-sky-900/40 text-sky-200';
     case 'tag-issue':
     case 'bulk-status':
     case 'theme-regenerate':
       return 'border-blue-700 bg-blue-900/40 text-blue-200';
+    default:
+      return 'border-neutral-600 bg-neutral-800 text-neutral-300';
   }
 }
 
