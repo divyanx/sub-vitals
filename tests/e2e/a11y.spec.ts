@@ -91,7 +91,7 @@ test.describe('a11y — Overview tab', () => {
 test.describe('a11y — Insights/Drivers tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
-    await page.goto('/?tab=insights&section=drivers');
+    await page.goto('/?tab=insights&section=intent');
     await page.waitForTimeout(1500);
     await assertNoSeriousViolations(page, 'Drivers tab');
   });
@@ -105,6 +105,7 @@ test.describe('a11y — Sentiment tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/?tab=insights&section=sentiment');
+
     await page.waitForTimeout(1500);
     await assertNoSeriousViolations(page, 'Sentiment tab');
   });

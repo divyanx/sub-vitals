@@ -72,6 +72,15 @@ export const K = {
   llmCache: (hash: string) => `rl:llm:cache:${hash}`,
   llmCostMonth: (yyyymm: string) => `rl:cost:${yyyymm}`,
 
+  // tag system — per-target hash + per-pipeline-value sorted index
+  tagTarget: (targetType: 'post' | 'comment', targetId: string) =>
+    `rl:tags:${targetType}:${targetId}`,
+  tagValueIndex: (pipelineId: string, value: string) =>
+    `rl:tag:idx:${pipelineId}:${encodeURIComponent(value)}`,
+
+  // custom pipeline display order
+  pipelineOrder: (id: string) => `rl:pipeline:${id}:order`,
+
   // audit-log
   auditLog: () => 'rl:audit:log',
 

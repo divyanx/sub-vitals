@@ -140,14 +140,46 @@ export type CustomPipelineAction =
   | { type: 'send-modmail'; bodyTemplate: string }
   | { type: 'set-status'; status: 'open' | 'in-progress' | 'resolved' };
 
+export type PipelineKind = 'categorical' | 'ordinal' | 'cluster' | 'scalar' | 'boolean';
+export type PipelineTrigger = 'post-create' | 'comment-create' | 'status-change' | 'scheduled';
+export type PipelineOutputSchema =
+  | 'single-label'
+  | 'label-confidence'
+  | 'boolean'
+  | 'scalar'
+  | 'cluster';
+export type PipelineSource = 'builtin' | 'custom';
+
+export interface PipelineRecord {
+  id: string;
+  name: string;
+  description?: string;
+  kind: PipelineKind;
+  trigger: PipelineTrigger;
+  systemPrompt?: string;
+  userPrompt?: string;
+  outputSchema: PipelineOutputSchema;
+  source: PipelineSource;
+  enabled: boolean;
+  labels?: string[];
+  order?: number;
+}
+
+export interface TagDistributionEntry {
+  value: string;
+  count: number;
+}
+
 export interface CustomPipelineSummary {
   id: string;
   name: string;
   description: string;
+  kind: PipelineKind;
   trigger: 'post-create' | 'comment-create';
   systemPrompt: string;
   userPrompt: string;
-  outputSchema: 'single-label' | 'label-confidence' | 'boolean';
+  outputSchema: PipelineOutputSchema;
+  labels?: string[];
   action: CustomPipelineAction;
   createdAt: number;
   updatedAt: number;
@@ -156,10 +188,12 @@ export interface CustomPipelineSummary {
 export interface CustomPipelineBody {
   name: string;
   description: string;
+  kind: PipelineKind;
   trigger: 'post-create' | 'comment-create';
   systemPrompt: string;
   userPrompt: string;
-  outputSchema: 'single-label' | 'label-confidence' | 'boolean';
+  outputSchema: PipelineOutputSchema;
+  labels?: string[];
   action: CustomPipelineAction;
 }
 
@@ -713,6 +747,52 @@ export const api = {
         method: 'DELETE',
       });
       if (!r.ok) throw new Error(`delete failed: HTTP ${r.status}`);
+    },
+
+    all: async () => {
+      const raw = await getJson<{ count: number; pipelines: PipelineRecord[] }>(
+        '/api/pipelines/all',
+      );
+      return { ...raw, pipelines: arr<PipelineRecord>(raw.pipelines) };
+    },
+
+    enabled: async () => {
+      const raw = await getJson<{ count: number; pipelines: PipelineRecord[] }>(
+        '/api/pipelines/enabled',
+      );
+      return { ...raw, pipelines: arr<PipelineRecord>(raw.pipelines) };
+    },
+
+    setOrder: async (id: string, order: number): Promise<void> => {
+      const r = await fetch(`/api/pipelines/${encodeURIComponent(id)}/order`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ order }),
+      });
+      if (!r.ok) throw new Error(`set order failed: HTTP ${r.status}`);
+    },
+  },
+
+  tags: {
+    distribution: async (pipelineId: string, labels: string[], days?: number) => {
+      const q = new URLSearchParams({ pipelineId, labels: labels.join(',') });
+      if (days) q.set('days', String(days));
+      const raw = await getJson<{ pipelineId: string; distribution: TagDistributionEntry[] }>(
+        `/api/tags/distribution?${q.toString()}`,
+      );
+      return { ...raw, distribution: arr<TagDistributionEntry>(raw.distribution) };
+    },
+
+    posts: async (pipelineId: string, value: string, limit?: number) => {
+      const q = new URLSearchParams({ pipelineId, value });
+      if (limit) q.set('limit', String(limit));
+      const raw = await getJson<{
+        pipelineId: string;
+        value: string;
+        count: number;
+        posts: RecentPost[];
+      }>(`/api/tags/posts?${q.toString()}`);
+      return { ...raw, posts: arr<RecentPost>(raw.posts) };
     },
   },
 

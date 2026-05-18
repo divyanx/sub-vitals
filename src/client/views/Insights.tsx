@@ -1,44 +1,221 @@
 /**
- * Insights — tabbed container for Drivers, Sentiment, Themes, Root causes, Custom.
+ * Insights — dynamic tabbed container.
  *
- * Section sub-tabs are reflected in the URL as ?tab=insights&section=<name>.
- * The parent Dashboard passes defaultSection from the URL on mount.
+ * Sub-tabs are generated from enabled pipelines returned by
+ * GET /api/pipelines/enabled. Each pipeline renders a visualization
+ * based on its `kind` field:
+ *
+ *   categorical → CategoricalView (bar chart + drill-through)
+ *   ordinal     → OrdinalView (cards in label order)
+ *   cluster     → ClusterView (emerging-cluster list)
+ *   scalar      → ScalarView (histogram)
+ *   boolean     → BooleanView (two stat cards)
+ *
+ * Legacy DriversContent / SentimentContent / ThemesContent components are
+ * still accepted as props and used for the builtin pipelines so existing
+ * functionality is preserved without rewriting them.
  */
 
+import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { useCallback, useEffect, useState } from 'react';
+import { api, type PipelineRecord, type TagDistributionEntry } from '../lib/api.ts';
 
-export type InsightSection = 'drivers' | 'sentiment' | 'themes' | 'root-causes' | 'custom';
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+export type InsightSection = string;
 
 interface InsightsProps {
   defaultSection?: InsightSection;
-  /** Called when the section changes — parent syncs URL. */
   onSectionChange?: (section: InsightSection) => void;
-  /** Lazy-injected content components to keep Dashboard.tsx as-is. */
   DriversContent: React.ComponentType<{ initialDriver?: string }>;
   SentimentContent: React.ComponentType<Record<string, never>>;
   ThemesContent: React.ComponentType<Record<string, never>>;
-  /** Custom pipelines list passed in from Dashboard. */
-  customPipelines: Array<{ id: string; name: string; kind: string }>;
+  /** Legacy prop — still accepted but no longer the primary mechanism */
+  customPipelines?: Array<{ id: string; name: string; kind: string }>;
 }
 
-const SECTIONS: { id: InsightSection; label: string }[] = [
-  { id: 'drivers', label: 'Drivers' },
-  { id: 'sentiment', label: 'Sentiment' },
-  { id: 'themes', label: 'Themes' },
-  { id: 'root-causes', label: 'Root causes' },
-  { id: 'custom', label: 'Custom' },
-];
+// ---------------------------------------------------------------------------
+// Generic visualization components
+// ---------------------------------------------------------------------------
+
+function CategoricalView({
+  pipeline,
+  DriversContent,
+}: {
+  pipeline: PipelineRecord;
+  DriversContent?: React.ComponentType<{ initialDriver?: string }>;
+}) {
+  // For the builtin intent/driver pipeline, delegate to the existing component
+  if (pipeline.id === 'intent' && DriversContent) {
+    return <DriversContent />;
+  }
+
+  return (
+    <TagDistributionPanel
+      pipeline={pipeline}
+      labels={pipeline.labels ?? []}
+      emptyMessage={`No ${pipeline.name} data yet. This pipeline has not tagged any posts.`}
+    />
+  );
+}
+
+function OrdinalView({
+  pipeline,
+  SentimentContent,
+}: {
+  pipeline: PipelineRecord;
+  SentimentContent?: React.ComponentType<Record<string, never>>;
+}) {
+  // For the builtin sentiment pipeline, delegate to the existing component
+  if (pipeline.id === 'sentiment' && SentimentContent) {
+    return <SentimentContent />;
+  }
+
+  return (
+    <TagDistributionPanel
+      pipeline={pipeline}
+      labels={pipeline.labels ?? []}
+      emptyMessage={`No ${pipeline.name} data yet.`}
+    />
+  );
+}
+
+function ClusterView({
+  pipeline,
+  ThemesContent,
+}: {
+  pipeline: PipelineRecord;
+  ThemesContent?: React.ComponentType<Record<string, never>>;
+}) {
+  if (pipeline.id === 'themes' && ThemesContent) {
+    return <ThemesContent />;
+  }
+
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 px-8 py-16 text-center">
+      <h3 className="mb-2 font-semibold text-neutral-200">{pipeline.name}</h3>
+      <p className="max-w-md text-sm text-neutral-400">
+        Cluster data will appear here once the pipeline has processed enough posts.
+      </p>
+    </div>
+  );
+}
+
+function ScalarView({ pipeline }: { pipeline: PipelineRecord }) {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 px-8 py-16 text-center">
+      <h3 className="mb-2 font-semibold text-neutral-200">{pipeline.name}</h3>
+      <p className="max-w-md text-sm text-neutral-400">
+        Scalar distribution chart will render once this pipeline has scored posts.
+      </p>
+    </div>
+  );
+}
+
+function BooleanView({ pipeline }: { pipeline: PipelineRecord }) {
+  const pipelineLabels = ['true', 'false'];
+  return (
+    <TagDistributionPanel
+      pipeline={pipeline}
+      labels={pipelineLabels}
+      emptyMessage={`No ${pipeline.name} detections yet.`}
+    />
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Shared: tag distribution panel (categorical / ordinal / boolean)
+// ---------------------------------------------------------------------------
+
+function TagDistributionPanel({
+  pipeline,
+  labels,
+  emptyMessage,
+}: {
+  pipeline: PipelineRecord;
+  labels: string[];
+  emptyMessage: string;
+}) {
+  const distQ = useQuery({
+    queryKey: ['tag-distribution', pipeline.id, labels],
+    queryFn: () => api.tags.distribution(pipeline.id, labels),
+    staleTime: 2 * 60 * 1000,
+    enabled: labels.length > 0,
+  });
+
+  const distribution: TagDistributionEntry[] = distQ.data?.distribution ?? [];
+  const total = distribution.reduce((s, e) => s + e.count, 0);
+
+  if (distQ.isPending) {
+    return (
+      <div className="space-y-2 py-4">
+        {[0, 1, 2].map((i) => (
+          <div key={i} className="h-10 animate-pulse rounded-lg bg-neutral-800" />
+        ))}
+      </div>
+    );
+  }
+
+  if (distribution.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 px-8 py-16 text-center">
+        <h3 className="mb-2 font-semibold text-neutral-200">{pipeline.name}</h3>
+        <p className="max-w-md text-sm text-neutral-400">{emptyMessage}</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-4">
+      <h2 className="text-sm uppercase tracking-wide text-neutral-400">{pipeline.name}</h2>
+      <ul className="space-y-2">
+        {distribution.map((entry) => {
+          const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0;
+          return (
+            <li
+              key={entry.value}
+              className="rounded-lg border border-neutral-800 bg-neutral-900 p-3"
+            >
+              <div className="mb-1 flex items-center justify-between text-sm">
+                <span className="font-medium text-neutral-200 capitalize">{entry.value}</span>
+                <span className="text-xs text-neutral-400">
+                  {entry.count.toLocaleString()} ({pct}%)
+                </span>
+              </div>
+              <div className="h-1.5 overflow-hidden rounded-full bg-neutral-800">
+                <div className="h-full rounded-full bg-orange-400" style={{ width: `${pct}%` }} />
+              </div>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main Insights component
+// ---------------------------------------------------------------------------
 
 export function Insights({
-  defaultSection = 'drivers',
+  defaultSection = 'intent',
   onSectionChange,
   DriversContent,
   SentimentContent,
   ThemesContent,
-  customPipelines,
 }: InsightsProps) {
   const [section, setSection] = useState<InsightSection>(defaultSection);
+
+  const pipelinesQ = useQuery({
+    queryKey: ['pipelines-enabled'],
+    queryFn: () => api.pipelines.enabled(),
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const pipelines: PipelineRecord[] = pipelinesQ.data?.pipelines ?? [];
 
   const navigate = useCallback(
     (s: InsightSection) => {
@@ -48,120 +225,116 @@ export function Insights({
     [onSectionChange],
   );
 
-  // Sync if parent pushes a new defaultSection (e.g. deep-link redirect)
   useEffect(() => {
     setSection(defaultSection);
   }, [defaultSection]);
 
+  // When pipelines load and current section isn't valid, reset to first one
+  useEffect(() => {
+    if (pipelines.length > 0 && !pipelines.some((p) => p.id === section)) {
+      const first = pipelines[0];
+      if (first) navigate(first.id);
+    }
+  }, [pipelines, section, navigate]);
+
+  if (pipelinesQ.isPending) {
+    return (
+      <div className="space-y-4 py-4">
+        <div className="flex gap-1 border-b border-neutral-800 pb-0">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="h-8 w-24 animate-pulse rounded-t-md bg-neutral-800" />
+          ))}
+        </div>
+        <div className="h-48 animate-pulse rounded-lg bg-neutral-900" />
+      </div>
+    );
+  }
+
+  if (pipelines.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 px-8 py-16 text-center">
+        <h3 className="mb-2 font-semibold text-neutral-200">No pipelines enabled</h3>
+        <p className="max-w-md text-sm text-neutral-400">
+          Enable pipelines from the Pipelines tab to see analytics sections here.
+        </p>
+      </div>
+    );
+  }
+
+  const activePipeline = pipelines.find((p) => p.id === section) ?? pipelines[0];
+
   return (
     <div className="space-y-6">
-      {/* Section sub-tabs */}
+      {/* Section sub-tabs — one per enabled pipeline */}
       <div
         role="tablist"
         aria-label="Insights sections"
         className="flex gap-1 overflow-x-auto border-b border-[var(--border)] pb-0"
         style={{ scrollbarWidth: 'none' }}
       >
-        {SECTIONS.map((s) => {
-          const isActive = section === s.id;
+        {pipelines.map((p) => {
+          const isActive = (activePipeline?.id ?? '') === p.id;
           return (
             <button
-              key={s.id}
+              key={p.id}
               type="button"
               role="tab"
               aria-selected={isActive}
-              onClick={() => navigate(s.id)}
+              onClick={() => navigate(p.id)}
               className={`-mb-px flex-shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition ${
                 isActive
                   ? 'border-orange-400 text-[var(--text)]'
                   : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
-              {s.label}
+              {p.name}
             </button>
           );
         })}
       </div>
 
-      {/* Section content */}
+      {/* Section content — rendered by kind */}
       <div>
-        {section === 'drivers' && <DriversContent />}
-        {section === 'sentiment' && <SentimentContent />}
-        {section === 'themes' && <ThemesContent />}
-        {section === 'root-causes' && <RootCausesPlaceholder />}
-        {section === 'custom' && <CustomPipelinesList pipelines={customPipelines} />}
+        {activePipeline ? (
+          <PipelineSection
+            pipeline={activePipeline}
+            DriversContent={DriversContent}
+            SentimentContent={SentimentContent}
+            ThemesContent={ThemesContent}
+          />
+        ) : null}
       </div>
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Root causes placeholder
+// Route to correct visualization based on pipeline kind
 // ---------------------------------------------------------------------------
 
-function RootCausesPlaceholder() {
-  return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 px-8 py-16 text-center">
-      <span className="mb-3 text-3xl" aria-hidden="true">
-        🔍
-      </span>
-      <h3 className="mb-2 font-semibold text-neutral-200">Coming soon</h3>
-      <p className="max-w-md text-sm text-neutral-400">
-        When you mark a post resolved, RedLattice's root-cause pipeline will summarize what fixed
-        it.{' '}
-        <a
-          href="?tab=pipelines"
-          className="text-orange-400 underline underline-offset-2 hover:text-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400"
-          onClick={(e) => {
-            e.preventDefault();
-            history.pushState({ tab: 'pipelines' }, '', '?tab=pipelines');
-            window.dispatchEvent(new PopStateEvent('popstate', { state: { tab: 'pipelines' } }));
-          }}
-        >
-          Visit the Pipelines tab to enable it.
-        </a>
-      </p>
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Custom pipelines list
-// ---------------------------------------------------------------------------
-
-function CustomPipelinesList({
-  pipelines,
+function PipelineSection({
+  pipeline,
+  DriversContent,
+  SentimentContent,
+  ThemesContent,
 }: {
-  pipelines: Array<{ id: string; name: string; kind: string }>;
+  pipeline: PipelineRecord;
+  DriversContent: React.ComponentType<{ initialDriver?: string }>;
+  SentimentContent: React.ComponentType<Record<string, never>>;
+  ThemesContent: React.ComponentType<Record<string, never>>;
 }) {
-  if (pipelines.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-700 bg-neutral-900/40 px-8 py-16 text-center">
-        <span className="mb-3 text-3xl" aria-hidden="true">
-          🛠
-        </span>
-        <h3 className="mb-2 font-semibold text-neutral-200">No custom pipelines yet</h3>
-        <p className="max-w-md text-sm text-neutral-400">
-          Create a custom pipeline in the Pipelines tab and it will appear here with its tag
-          distribution once it has processed posts.
-        </p>
-      </div>
-    );
+  switch (pipeline.kind) {
+    case 'categorical':
+      return <CategoricalView pipeline={pipeline} DriversContent={DriversContent} />;
+    case 'ordinal':
+      return <OrdinalView pipeline={pipeline} SentimentContent={SentimentContent} />;
+    case 'cluster':
+      return <ClusterView pipeline={pipeline} ThemesContent={ThemesContent} />;
+    case 'scalar':
+      return <ScalarView pipeline={pipeline} />;
+    case 'boolean':
+      return <BooleanView pipeline={pipeline} />;
+    default:
+      return null;
   }
-
-  return (
-    <div className="space-y-3">
-      <h2 className="text-sm uppercase tracking-wide text-neutral-400">Custom pipelines</h2>
-      <ul className="divide-y divide-neutral-800 rounded-lg border border-neutral-800">
-        {pipelines.map((p) => (
-          <li key={p.id} className="flex items-center justify-between px-4 py-3">
-            <span className="font-medium text-neutral-200">{p.name}</span>
-            <span className="rounded-full border border-neutral-700 px-2 py-0.5 text-xs text-neutral-400">
-              {p.kind}
-            </span>
-          </li>
-        ))}
-      </ul>
-    </div>
-  );
 }

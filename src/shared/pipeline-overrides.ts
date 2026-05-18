@@ -16,8 +16,10 @@
  */
 
 import { redis } from '@devvit/web/server';
+import { BUILTIN_PIPELINES } from './builtin-pipelines.js';
 import { K } from './keys.js';
 import { log } from './log.js';
+import type { Pipeline } from './types.js';
 
 export interface PipelineOverrides {
   systemPrompt?: string;
@@ -30,13 +32,17 @@ export interface CustomPipeline {
   id: string;
   name: string;
   description: string;
+  kind: 'categorical' | 'ordinal' | 'cluster' | 'scalar' | 'boolean';
   trigger: 'post-create' | 'comment-create';
   systemPrompt: string;
   userPrompt: string;
-  outputSchema: 'single-label' | 'label-confidence' | 'boolean';
+  outputSchema: 'single-label' | 'label-confidence' | 'boolean' | 'scalar' | 'cluster';
+  /** Labels for categorical/ordinal pipelines */
+  labels?: string[];
   action: CustomPipelineAction;
   createdAt: number;
   updatedAt: number;
+  order?: number;
 }
 
 export type CustomPipelineAction =
@@ -142,4 +148,81 @@ export async function saveCustomPipeline(pipeline: CustomPipeline): Promise<void
 export async function deleteCustomPipeline(id: string): Promise<void> {
   await redis.del(K.customPipeline(id));
   await redis.zRem(K.customPipelineList(), [id]);
+}
+
+// ---------------------------------------------------------------------------
+// Unified pipeline listing (builtin + custom)
+// ---------------------------------------------------------------------------
+
+/**
+ * Convert a CustomPipeline to the shared Pipeline interface shape so the
+ * frontend and server can treat all pipelines uniformly.
+ */
+export function customToUnified(cp: CustomPipeline): Pipeline {
+  return {
+    id: cp.id,
+    name: cp.name,
+    description: cp.description,
+    kind: cp.kind,
+    trigger: cp.trigger,
+    systemPrompt: cp.systemPrompt,
+    userPrompt: cp.userPrompt,
+    outputSchema: cp.outputSchema,
+    labels: cp.labels,
+    source: 'custom',
+    enabled: true,
+    order: cp.order,
+  };
+}
+
+/**
+ * Return all pipelines (builtin + custom), merging per-pipeline overrides
+ * (enabled flag, order) into the builtin records.
+ */
+export async function listAllPipelines(): Promise<Pipeline[]> {
+  const builtins = await Promise.all(
+    BUILTIN_PIPELINES.map(async (bp) => {
+      const overrides = await getEffectiveOverrides(bp.id);
+      const order = await getPipelineOrder(bp.id);
+      return {
+        ...bp,
+        enabled: overrides.enabled !== false,
+        order: order ?? bp.order,
+        systemPrompt: overrides.systemPrompt ?? bp.systemPrompt,
+        userPrompt: overrides.userPrompt ?? bp.userPrompt,
+      } satisfies Pipeline;
+    }),
+  );
+
+  const customs = await listCustomPipelines();
+  const customPipelines = customs.map(customToUnified);
+
+  return [...builtins, ...customPipelines].sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+}
+
+/**
+ * Return only enabled pipelines, sorted by order.
+ */
+export async function listEnabledPipelines(): Promise<Pipeline[]> {
+  const all = await listAllPipelines();
+  return all.filter((p) => p.enabled);
+}
+
+// ---------------------------------------------------------------------------
+// Pipeline display order
+// ---------------------------------------------------------------------------
+
+export async function getPipelineOrder(id: string): Promise<number | null> {
+  try {
+    const raw = await redis.get(K.pipelineOrder(id));
+    if (!raw) return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function setPipelineOrder(id: string, order: number): Promise<void> {
+  await redis.set(K.pipelineOrder(id), String(order));
 }

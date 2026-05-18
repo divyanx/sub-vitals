@@ -69,11 +69,23 @@ export interface DashboardProps {
   initialDriver?: string;
 }
 
+/** Map legacy section names to new pipeline IDs (for deep-link backward compat). */
+const SECTION_ALIAS: Record<string, string> = {
+  drivers: 'intent',
+  sentiment: 'sentiment',
+  themes: 'themes',
+  'root-causes': 'root-cause',
+  custom: 'intent',
+};
+
 export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProps) {
   const [tab, setTabState] = useState<Tab>(initialTab);
   const [activeSection, setActiveSection] = useState<InsightSection>(() => {
     const params = new URLSearchParams(window.location.search);
-    return (params.get('section') as InsightSection | null) ?? 'drivers';
+    const raw = params.get('section') ?? 'intent';
+    // Remap legacy section names on mount
+    const ALIAS: Record<string, string> = { drivers: 'intent', themes: 'themes' };
+    return ALIAS[raw] ?? raw;
   });
   const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
   const [cmdOpen, setCmdOpen] = useState(false);
@@ -104,12 +116,17 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawTab = params.get('tab');
+    const rawSection = params.get('section');
     if (rawTab === 'drivers' || rawTab === 'sentiment' || rawTab === 'themes') {
-      const section = rawTab as InsightSection;
+      const section = SECTION_ALIAS[rawTab] ?? rawTab;
       setTabState('insights');
       setActiveSection(section);
       const p = new URLSearchParams({ tab: 'insights', section });
       history.replaceState({ tab: 'insights', section }, '', `?${p.toString()}`);
+    } else if (rawTab === 'insights' && rawSection && SECTION_ALIAS[rawSection]) {
+      // Remap old section names to new pipeline IDs
+      const section = SECTION_ALIAS[rawSection] ?? rawSection;
+      setActiveSection(section);
     } else if (rawTab === 'agents') {
       setTabState('team');
       history.replaceState({ tab: 'team' }, '', '?tab=team');
@@ -130,7 +147,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         const t = params.get('tab') as Tab | null;
         setTabState(t ?? 'inbox');
         if (t === 'insights') {
-          setActiveSection((params.get('section') as InsightSection | null) ?? 'drivers');
+          setActiveSection((params.get('section') as InsightSection | null) ?? 'intent');
         }
       }
     };
@@ -1518,7 +1535,7 @@ function Overview({
               label="Top driver"
               value={kpis.topDriver}
               sub={`${kpis.topDriverCount} post${kpis.topDriverCount === 1 ? '' : 's'}`}
-              onClick={() => navigateTo('insights', { section: 'drivers' })}
+              onClick={() => navigateTo('insights', { section: 'intent' })}
               tooltip={TOOLTIPS.topDriver}
             />
             <KpiTile
@@ -1575,7 +1592,7 @@ function Overview({
                   <button
                     key={node.id}
                     type="button"
-                    onClick={() => navigateTo('insights', { section: 'drivers', driver: node.id })}
+                    onClick={() => navigateTo('insights', { section: 'intent', driver: node.id })}
                     className="group flex flex-col gap-1.5 rounded-lg border border-neutral-800 bg-neutral-900 p-3 text-left transition hover:border-neutral-700 hover:bg-neutral-800/60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
                     aria-label={`${node.label}: ${current} posts today. Click to view driver.`}
                   >
@@ -2999,6 +3016,66 @@ export function PipelineCard({
   );
 }
 
+/** Card for a user-created custom pipeline */
+function CustomPipelineCard({
+  pipeline,
+  onDelete,
+}: {
+  pipeline: { id: string; name: string; kind: string; trigger: string; enabled: boolean };
+  onDelete: () => void;
+}) {
+  const [confirming, setConfirming] = useState(false);
+
+  return (
+    <div className="flex flex-col rounded-xl border border-neutral-700 bg-neutral-900 p-5">
+      <div className="mb-2 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <p className="truncate font-semibold text-neutral-100">{pipeline.name}</p>
+          <div className="mt-1 flex items-center gap-2">
+            <span className="rounded-full border border-neutral-600 px-2 py-0.5 text-xs text-neutral-400">
+              {pipeline.kind}
+            </span>
+            <span className="rounded-full border border-emerald-800 bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-300">
+              Custom
+            </span>
+          </div>
+        </div>
+      </div>
+      <p className="mb-3 text-xs text-neutral-400">
+        Trigger: <span className="text-neutral-300">{pipeline.trigger}</span>
+      </p>
+      <div className="mt-auto flex gap-2">
+        {confirming ? (
+          <>
+            <button
+              type="button"
+              onClick={() => setConfirming(false)}
+              className="rounded border border-neutral-700 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-800"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={onDelete}
+              className="rounded border border-rose-700 bg-rose-900/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-900/60"
+            >
+              Delete
+            </button>
+          </>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setConfirming(true)}
+            className="text-xs text-neutral-500 underline-offset-2 hover:text-rose-400 hover:underline"
+          >
+            Delete
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
 /** Stub card for the future Studio custom pipeline */
 export function StubPipelineCard({ onOpen }: { onOpen: () => void }) {
   return (
@@ -3576,13 +3653,16 @@ function NewPipelineModal({
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
-  const [kind, setKind] = useState<PipelineKind>('intent classification');
+  const [pipelineVisualizationKind, setPipelineVisualizationKind] = useState<
+    'categorical' | 'ordinal' | 'cluster' | 'scalar' | 'boolean'
+  >('categorical');
   const [trigger, setTrigger] = useState<'post-create' | 'comment-create'>('post-create');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
-  const [outputSchema, setOutputSchema] = useState<'single-label' | 'label-confidence' | 'boolean'>(
-    'single-label',
-  );
+  const [outputSchema, setOutputSchema] = useState<
+    'single-label' | 'label-confidence' | 'boolean' | 'scalar' | 'cluster'
+  >('single-label');
+  const [labelsText, setLabelsText] = useState<string>('');
   const [actionType, setActionType] = useState<CustomPipelineAction['type']>('tag-driver');
   const [actionDriverId, setActionDriverId] = useState('');
   const [actionModmailTemplate, setActionModmailTemplate] = useState('');
@@ -3620,17 +3700,25 @@ function NewPipelineModal({
     setError(null);
     setBusy(true);
     try {
+      const labels = labelsText
+        .split(',')
+        .map((l) => l.trim())
+        .filter(Boolean);
       const body: CustomPipelineBody = {
         name: name.trim(),
         description: description.trim(),
+        kind: pipelineVisualizationKind,
         trigger,
         systemPrompt: systemPrompt.trim(),
         userPrompt: userPrompt.trim(),
         outputSchema,
+        ...(labels.length > 0 ? { labels } : {}),
         action: buildAction(),
       };
       await api.pipelines.createCustom(body);
       await qc.invalidateQueries({ queryKey: ['custom-pipelines'] });
+      await qc.invalidateQueries({ queryKey: ['pipelines-enabled'] });
+      await qc.invalidateQueries({ queryKey: ['pipelines-all'] });
       onClose();
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
@@ -3701,24 +3789,48 @@ function NewPipelineModal({
             />
           </div>
 
-          {/* Kind */}
+          {/* Kind (visualization type) */}
           <div>
-            <p className="mb-1 text-xs font-medium text-neutral-300">Kind *</p>
+            <p className="mb-1 text-xs font-medium text-neutral-300">Visualization kind *</p>
             <select
-              value={kind}
-              onChange={(e) => setKind(e.target.value as PipelineKind)}
+              value={pipelineVisualizationKind}
+              onChange={(e) =>
+                setPipelineVisualizationKind(
+                  e.target.value as 'categorical' | 'ordinal' | 'cluster' | 'scalar' | 'boolean',
+                )
+              }
               aria-label="Pipeline kind"
               className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
             >
-              <option value="intent classification">Intent classification</option>
-              <option value="sentiment">Sentiment</option>
-              <option value="theme clustering">Theme clustering</option>
-              <option value="crisis detection">Crisis detection</option>
-              <option value="identity verification">Identity verification</option>
-              <option value="performance">Performance</option>
-              <option value="root cause">Root cause</option>
+              <option value="categorical">Categorical (bar chart by label)</option>
+              <option value="ordinal">Ordinal (ordered label cards)</option>
+              <option value="cluster">Cluster (grouped topics)</option>
+              <option value="scalar">Scalar (histogram / average)</option>
+              <option value="boolean">Boolean (yes / no cards)</option>
             </select>
+            <p className="mt-1 text-xs text-neutral-500">
+              Determines how this pipeline's output appears in the Insights tab.
+            </p>
           </div>
+
+          {/* Labels (for categorical / ordinal) */}
+          {pipelineVisualizationKind === 'categorical' ||
+          pipelineVisualizationKind === 'ordinal' ? (
+            <div>
+              <p className="mb-1 text-xs font-medium text-neutral-300">Labels (comma-separated)</p>
+              <input
+                type="text"
+                value={labelsText}
+                onChange={(e) => setLabelsText(e.target.value)}
+                placeholder="e.g. urgent, normal, low"
+                aria-label="Pipeline labels"
+                className="w-full rounded-md border border-neutral-700 bg-neutral-800 px-3 py-2 text-sm text-neutral-100 outline-none focus:border-orange-500"
+              />
+              <p className="mt-1 text-xs text-neutral-500">
+                Expected output values from this pipeline — used for filtering and visualization.
+              </p>
+            </div>
+          ) : null}
 
           {/* Trigger */}
           <div>
@@ -3800,6 +3912,8 @@ function NewPipelineModal({
                     label: 'Label + confidence ({ label, confidence })',
                   },
                   { value: 'boolean', label: 'Boolean (true/false)' },
+                  { value: 'scalar', label: 'Scalar (numeric value)' },
+                  { value: 'cluster', label: 'Cluster (grouped output)' },
                 ] as const
               ).map((opt) => (
                 <label
@@ -3909,9 +4023,31 @@ function NewPipelineModal({
 }
 
 function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
+  const qc = useQueryClient();
   const [studioOpen, setStudioOpen] = useState(false);
   const [drawerPipeline, setDrawerPipeline] = useState<PipelineDef | null>(null);
   const [newPipelineOpen, setNewPipelineOpen] = useState(false);
+
+  const allPipelinesQ = useQuery({
+    queryKey: ['pipelines-all'],
+    queryFn: () => api.pipelines.all(),
+    staleTime: 60 * 1000,
+  });
+
+  const customPipelinesFromAPI = (allPipelinesQ.data?.pipelines ?? []).filter(
+    (p) => p.source === 'custom',
+  );
+
+  const handleDeleteCustom = async (id: string) => {
+    try {
+      await api.pipelines.deleteCustom(id);
+      await qc.invalidateQueries({ queryKey: ['pipelines-all'] });
+      await qc.invalidateQueries({ queryKey: ['pipelines-enabled'] });
+      await qc.invalidateQueries({ queryKey: ['custom-pipelines'] });
+    } catch {
+      // non-fatal; user can retry
+    }
+  };
 
   return (
     <div className="space-y-6">
@@ -3985,6 +4121,13 @@ function Pipelines({ onOpenSettings }: { onOpenSettings: () => void }) {
             Custom
           </h3>
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {customPipelinesFromAPI.map((cp) => (
+              <CustomPipelineCard
+                key={cp.id}
+                pipeline={cp}
+                onDelete={() => handleDeleteCustom(cp.id)}
+              />
+            ))}
             <StubPipelineCard onOpen={() => setStudioOpen(true)} />
           </div>
         </section>

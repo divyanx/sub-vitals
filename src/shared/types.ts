@@ -190,6 +190,52 @@ export interface ThemeSnapshot {
 }
 
 // ---------------------------------------------------------------------------
+// Pipeline system — first-class records for all classification pipelines
+// ---------------------------------------------------------------------------
+
+export type PipelineKind = 'categorical' | 'ordinal' | 'cluster' | 'scalar' | 'boolean';
+export type PipelineTrigger = 'post-create' | 'comment-create' | 'status-change' | 'scheduled';
+export type PipelineOutputSchema =
+  | 'single-label'
+  | 'label-confidence'
+  | 'boolean'
+  | 'scalar'
+  | 'cluster';
+export type PipelineSource = 'builtin' | 'custom';
+
+export interface Pipeline {
+  id: string;
+  name: string;
+  description?: string | undefined;
+  kind: PipelineKind;
+  trigger: PipelineTrigger;
+  systemPrompt?: string | undefined;
+  userPrompt?: string | undefined;
+  outputSchema: PipelineOutputSchema;
+  source: PipelineSource;
+  enabled: boolean;
+  /** For categorical/ordinal pipelines: the set of expected label values */
+  labels?: string[] | undefined;
+  /** Display order in Insights tab (lower = earlier) */
+  order?: number | undefined;
+}
+
+export interface Tag {
+  pipelineId: string;
+  targetType: 'post' | 'comment';
+  targetId: string;
+  value: string | number | boolean;
+  confidence?: number | undefined;
+  by: 'lexicon' | 'ai' | 'manual';
+  createdAt: number;
+}
+
+export interface TagDistributionEntry {
+  value: string;
+  count: number;
+}
+
+// ---------------------------------------------------------------------------
 // Settings keys (mirrors devvit.json settings declarations)
 // ---------------------------------------------------------------------------
 

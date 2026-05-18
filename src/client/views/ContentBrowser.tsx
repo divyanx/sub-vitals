@@ -17,6 +17,7 @@ import {
   type ContentSort,
   type ContentType,
   formatDriverPath,
+  type PipelineRecord,
   type PostStatus,
   type TaxonomyNode,
 } from '../lib/api.ts';
@@ -37,6 +38,8 @@ export interface ContentFilters {
   to: string;
   type: ContentType;
   sort: ContentSort;
+  /** Dynamic pipeline tag filters: pipelineId → selected values */
+  pipelineTags: Record<string, string[]>;
 }
 
 export const DEFAULT_FILTERS: ContentFilters = {
@@ -51,6 +54,7 @@ export const DEFAULT_FILTERS: ContentFilters = {
   to: '',
   type: 'both',
   sort: 'priority_desc',
+  pipelineTags: {},
 };
 
 export function filtersToSearchParams(f: ContentFilters): URLSearchParams {
@@ -81,7 +85,15 @@ export function searchParamsToFilters(p: URLSearchParams): ContentFilters {
     to: p.get('to') ?? '',
     type: (p.get('type') ?? 'both') as ContentType,
     sort: (p.get('sort') ?? 'priority_desc') as ContentSort,
+    pipelineTags: {} as Record<string, string[]>,
   };
+  // Parse dynamic pipeline tag filters: tag_{pipelineId}=val1,val2
+  for (const [key, value] of p.entries()) {
+    if (key.startsWith('tag_')) {
+      const pipelineId = key.slice(4);
+      raw.pipelineTags[pipelineId] = value.split(',').filter(Boolean);
+    }
+  }
   // Validate hasAgent
   if (!['yes', 'no', 'any'].includes(raw.hasAgent)) raw.hasAgent = 'any';
   return raw;
@@ -1172,7 +1184,21 @@ export function ContentBrowser() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const pipelinesQ = useQuery({
+    queryKey: ['pipelines-enabled'],
+    queryFn: () => api.pipelines.enabled(),
+    staleTime: 5 * 60 * 1000,
+  });
+
   const taxonomy = taxonomyQ.data?.taxonomy ?? [];
+
+  // Pipelines that can produce filterable tag dimensions (not builtin intent/sentiment handled separately)
+  const filterablePipelines: PipelineRecord[] = (pipelinesQ.data?.pipelines ?? []).filter(
+    (p) =>
+      p.source === 'custom' &&
+      (p.kind === 'categorical' || p.kind === 'ordinal' || p.kind === 'boolean') &&
+      (p.labels?.length ?? 0) > 0,
+  );
   const items = contentQ.data?.items ?? [];
   const total = contentQ.data?.total ?? 0;
 
@@ -1335,7 +1361,8 @@ export function ContentBrowser() {
     filters.author ||
     filters.hasAgent !== 'any' ||
     filters.from ||
-    filters.to;
+    filters.to ||
+    Object.values(filters.pipelineTags).some((v) => v.length > 0);
 
   const allIds = items.map((i) => i.id);
   const allSelected = allIds.length > 0 && allIds.every((id) => selected.has(id));
@@ -1464,6 +1491,17 @@ export function ContentBrowser() {
           selected={filters.statuses}
           onChange={(v) => updateFilter('statuses', v)}
         />
+
+        {/* Dynamic pipeline tag filters */}
+        {filterablePipelines.map((p) => (
+          <ChipDropdown
+            key={p.id}
+            label={p.name}
+            options={(p.labels ?? []).map((l) => ({ value: l, label: l }))}
+            selected={filters.pipelineTags[p.id] ?? []}
+            onChange={(v) => updateFilter('pipelineTags', { ...filters.pipelineTags, [p.id]: v })}
+          />
+        ))}
 
         {/* Author */}
         <div className="relative">

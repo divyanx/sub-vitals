@@ -29,6 +29,7 @@ import {
   setSentimentScore,
 } from '@shared/storage.js';
 import { forwardToStudio } from '@shared/studio-bridge.js';
+import { recordTag } from '@shared/tags.js';
 import {
   type CommentMeta,
   type OnCommentCreateRequest,
@@ -298,6 +299,17 @@ async function persistScore(args: {
   if (args.contentType === 'post') {
     await addToSentimentLabelIndex(args.contentId, args.label, Date.now());
   }
+
+  // Mirror into unified tag storage so Insights tab can render dynamically.
+  void recordTag({
+    pipelineId: 'sentiment',
+    targetType: args.contentType,
+    targetId: args.contentId,
+    value: args.label,
+    confidence: undefined,
+    by: args.scoredBy,
+    createdAt: record.scoredAt,
+  });
 
   // Forward to Studio (best-effort — never blocks the handler).
   void forwardToStudio('sentiment-score', {

@@ -67,10 +67,13 @@ import {
   deleteCustomPipeline,
   getCustomPipeline,
   getEffectiveOverrides,
+  listAllPipelines,
   listCustomPipelines,
+  listEnabledPipelines,
   type PipelineOverrides,
   saveCustomPipeline,
   saveOverrides,
+  setPipelineOrder,
 } from '@shared/pipeline-overrides.js';
 import {
   readAllEffectiveSettings,
@@ -99,6 +102,7 @@ import {
   setTaxonomy,
 } from '@shared/storage.js';
 import { forwardToStudio } from '@shared/studio-bridge.js';
+import { getTagDistribution, getTargetsByTagValue } from '@shared/tags.js';
 import ecommerceTemplate from '@shared/taxonomy-templates/ecommerce.json';
 import financeTemplate from '@shared/taxonomy-templates/finance.json';
 import gamingTemplate from '@shared/taxonomy-templates/gaming.json';
@@ -895,10 +899,12 @@ const customPipelineActionSchema = z.discriminatedUnion('type', [
 const customPipelineBodySchema = z.object({
   name: z.string().min(1).max(100),
   description: z.string().max(500).default(''),
+  kind: z.enum(['categorical', 'ordinal', 'cluster', 'scalar', 'boolean']).default('categorical'),
   trigger: z.enum(['post-create', 'comment-create']),
   systemPrompt: z.string().min(1).max(4000),
   userPrompt: z.string().min(1).max(4000),
-  outputSchema: z.enum(['single-label', 'label-confidence', 'boolean']),
+  outputSchema: z.enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster']),
+  labels: z.array(z.string().min(1).max(100)).max(50).optional(),
   action: customPipelineActionSchema,
 });
 
@@ -931,11 +937,13 @@ app.post('/api/pipelines/custom', async (c) => {
   // Generate a short ID (8 chars, alphanumeric)
   const id = `cp_${Math.random().toString(36).slice(2, 10)}`;
   const now = Date.now();
+  const { labels, ...rest } = parsed.data;
   const pipeline: CustomPipeline = {
     id,
-    ...parsed.data,
+    ...rest,
     createdAt: now,
     updatedAt: now,
+    ...(labels !== undefined ? { labels } : {}),
   };
   await saveCustomPipeline(pipeline);
   return c.json({ pipeline }, 201);
@@ -1025,6 +1033,74 @@ app.post('/api/pipelines/custom/:id/test', async (c) => {
     tokensOut: result.tokensOut,
     costCents: Number(result.costCents.toFixed(4)),
   });
+});
+
+// ---------------------------------------------------------------------------
+// Dynamic pipeline catalog endpoints
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/pipelines/all — returns builtin + custom, merged, sorted by order.
+ */
+app.get('/api/pipelines/all', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const pipelines = await listAllPipelines();
+  return c.json({ count: pipelines.length, pipelines });
+});
+
+/**
+ * GET /api/pipelines/enabled — filtered to enabled only.
+ */
+app.get('/api/pipelines/enabled', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const pipelines = await listEnabledPipelines();
+  return c.json({ count: pipelines.length, pipelines });
+});
+
+/**
+ * PATCH /api/pipelines/:id/order — set display order for a pipeline.
+ */
+app.patch('/api/pipelines/:id/order', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+  const parsed = z.object({ order: z.number().int().min(0) }).safeParse(rawBody);
+  if (!parsed.success) return c.json({ error: 'order (integer) required' }, 400);
+  await setPipelineOrder(id, parsed.data.order);
+  return c.json({ ok: true, id, order: parsed.data.order });
+});
+
+/**
+ * GET /api/tags/distribution?pipelineId=&days= — returns [{value, count}] for chart rendering.
+ * For builtin pipelines with known labels, uses those. For custom, uses provided labels query param.
+ */
+app.get('/api/tags/distribution', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const pipelineId = c.req.query('pipelineId');
+  if (!pipelineId) return c.json({ error: 'pipelineId required' }, 400);
+  const labelsParam = c.req.query('labels');
+  const knownLabels = labelsParam ? labelsParam.split(',').filter(Boolean) : [];
+  const distribution = await getTagDistribution(pipelineId, knownLabels);
+  return c.json({ pipelineId, distribution });
+});
+
+/**
+ * GET /api/tags/posts?pipelineId=&value=&limit= — returns posts with that tag value.
+ */
+app.get('/api/tags/posts', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const pipelineId = c.req.query('pipelineId');
+  const value = c.req.query('value');
+  if (!pipelineId || !value) return c.json({ error: 'pipelineId and value required' }, 400);
+  const limit = Math.min(Number(c.req.query('limit') ?? '50'), 200);
+  const postIds = await getTargetsByTagValue(pipelineId, value, limit);
+  const posts = await getPostMetaMany(postIds);
+  return c.json({ pipelineId, value, count: posts.length, posts });
 });
 
 // ---------------------------------------------------------------------------

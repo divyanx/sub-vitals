@@ -47,6 +47,7 @@ import {
   setPostTag,
 } from '@shared/storage.js';
 import { forwardToStudio } from '@shared/studio-bridge.js';
+import { recordTag } from '@shared/tags.js';
 import type {
   OnPostCreateRequest,
   PostStatus,
@@ -135,6 +136,17 @@ export const contactDriversModule: RedLatticeModule = {
     };
     await setPostTag(tag);
     await incrDriverRollup(final.id);
+
+    // Mirror into unified tag storage.
+    void recordTag({
+      pipelineId: 'intent',
+      targetType: 'post',
+      targetId: post.id,
+      value: final.id,
+      confidence: final.confidence,
+      by: llmResult ? 'ai' : 'lexicon',
+      createdAt: tag.taggedAt,
+    });
 
     // Forward to Studio (best-effort — never blocks the handler).
     void forwardToStudio('post-tag', {
@@ -281,6 +293,14 @@ export const contactDriversModule: RedLatticeModule = {
       };
       await setPostTag(tag);
       await incrDriverRollup(body.data.driverId);
+      void recordTag({
+        pipelineId: 'intent',
+        targetType: 'post',
+        targetId: tag.postId,
+        value: tag.driverId,
+        by: 'manual',
+        createdAt: tag.taggedAt,
+      });
       void forwardToStudio('post-tag', {
         postId: tag.postId,
         driverId: tag.driverId,

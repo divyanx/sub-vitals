@@ -366,6 +366,168 @@ export async function setupMocks(page: Page): Promise<void> {
       });
     }
 
+    // Dynamic pipeline catalog
+    if (pathname === '/api/pipelines/all' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          count: 6,
+          pipelines: [
+            {
+              id: 'intent',
+              name: 'Drivers',
+              kind: 'categorical',
+              trigger: 'post-create',
+              outputSchema: 'single-label',
+              source: 'builtin',
+              enabled: true,
+              order: 0,
+            },
+            {
+              id: 'sentiment',
+              name: 'Sentiment',
+              kind: 'ordinal',
+              trigger: 'post-create',
+              outputSchema: 'label-confidence',
+              source: 'builtin',
+              enabled: true,
+              labels: ['positive', 'neutral', 'negative'],
+              order: 1,
+            },
+            {
+              id: 'themes',
+              name: 'Themes',
+              kind: 'cluster',
+              trigger: 'scheduled',
+              outputSchema: 'cluster',
+              source: 'builtin',
+              enabled: true,
+              order: 2,
+            },
+            {
+              id: 'impostor',
+              name: 'Impostor detection',
+              kind: 'boolean',
+              trigger: 'comment-create',
+              outputSchema: 'boolean',
+              source: 'builtin',
+              enabled: true,
+              order: 3,
+            },
+            {
+              id: 'crisis',
+              name: 'Crisis detection',
+              kind: 'boolean',
+              trigger: 'comment-create',
+              outputSchema: 'boolean',
+              source: 'builtin',
+              enabled: true,
+              order: 4,
+            },
+            {
+              id: 'agent-metrics',
+              name: 'Agent metrics',
+              kind: 'scalar',
+              trigger: 'comment-create',
+              outputSchema: 'scalar',
+              source: 'builtin',
+              enabled: true,
+              order: 5,
+            },
+          ],
+        },
+      });
+    }
+    if (pathname === '/api/pipelines/enabled' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          count: 6,
+          pipelines: [
+            {
+              id: 'intent',
+              name: 'Drivers',
+              kind: 'categorical',
+              trigger: 'post-create',
+              outputSchema: 'single-label',
+              source: 'builtin',
+              enabled: true,
+              order: 0,
+            },
+            {
+              id: 'sentiment',
+              name: 'Sentiment',
+              kind: 'ordinal',
+              trigger: 'post-create',
+              outputSchema: 'label-confidence',
+              source: 'builtin',
+              enabled: true,
+              labels: ['positive', 'neutral', 'negative'],
+              order: 1,
+            },
+            {
+              id: 'themes',
+              name: 'Themes',
+              kind: 'cluster',
+              trigger: 'scheduled',
+              outputSchema: 'cluster',
+              source: 'builtin',
+              enabled: true,
+              order: 2,
+            },
+            {
+              id: 'impostor',
+              name: 'Impostor detection',
+              kind: 'boolean',
+              trigger: 'comment-create',
+              outputSchema: 'boolean',
+              source: 'builtin',
+              enabled: true,
+              order: 3,
+            },
+            {
+              id: 'crisis',
+              name: 'Crisis detection',
+              kind: 'boolean',
+              trigger: 'comment-create',
+              outputSchema: 'boolean',
+              source: 'builtin',
+              enabled: true,
+              order: 4,
+            },
+            {
+              id: 'agent-metrics',
+              name: 'Agent metrics',
+              kind: 'scalar',
+              trigger: 'comment-create',
+              outputSchema: 'scalar',
+              source: 'builtin',
+              enabled: true,
+              order: 5,
+            },
+          ],
+        },
+      });
+    }
+    if (pathname.match(/^\/api\/pipelines\/[^/]+\/order$/) && method === 'PATCH') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    // Tags distribution
+    if (pathname === '/api/tags/distribution' && method === 'GET') {
+      return route.fulfill({
+        json: { pipelineId: url.searchParams.get('pipelineId') ?? '', distribution: [] },
+      });
+    }
+    // Tags posts
+    if (pathname === '/api/tags/posts' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          pipelineId: url.searchParams.get('pipelineId') ?? '',
+          value: url.searchParams.get('value') ?? '',
+          count: 0,
+          posts: [],
+        },
+      });
+    }
+
     // Custom pipelines list
     if (pathname === '/api/pipelines/custom' && method === 'GET') {
       return route.fulfill({ json: fixture('pipeline-custom-list') });
