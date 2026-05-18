@@ -1,66 +1,69 @@
 /**
- * PipelineCard stories — Storybook 10 / CSF 3
- *
- * Covers both PipelineCard and StubPipelineCard exported from Dashboard.tsx.
+ * Storybook stories for the PipelineCard component.
+ * Pipeline shape mirrors the canonical Pipeline type from `src/shared/types.ts`.
  */
 
-import type { Meta, StoryObj } from '@storybook/react';
-import { fn } from '@storybook/test';
+import type { Meta, StoryObj } from '@storybook/react-vite';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { PipelineCard } from '../client/views/Dashboard.tsx';
+import type React from 'react';
+import { PipelineCard } from '../client/views/Dashboard.js';
 
-function QueryWrapper({ children }: { children: React.ReactNode }) {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-  return <QueryClientProvider client={qc}>{children}</QueryClientProvider>;
-}
-
-// ---------------------------------------------------------------------------
-// PipelineCard
-// ---------------------------------------------------------------------------
+const qc = new QueryClient();
 
 const pipelineMeta: Meta<typeof PipelineCard> = {
   title: 'Pipelines/PipelineCard',
   component: PipelineCard,
   decorators: [
-    (Story) => (
-      <QueryWrapper>
-        <div className="max-w-sm p-6 bg-neutral-900 min-h-screen">
-          <Story />
-        </div>
-      </QueryWrapper>
+    (Story: React.ComponentType) => (
+      <QueryClientProvider client={qc}>
+        <Story />
+      </QueryClientProvider>
     ),
   ],
+  parameters: {
+    layout: 'centered',
+    backgrounds: { default: 'dark' },
+  },
   args: {
-    onOpenSettings: fn(),
+    onOpenSettings: () => {},
+    onOpenDrawer: () => {},
   },
 };
 
 export default pipelineMeta;
 type PipelineStory = StoryObj<typeof PipelineCard>;
 
-export const ContactDrivers: PipelineStory = {
+export const Drivers: PipelineStory = {
   args: {
     pipeline: {
-      id: 'contact-drivers',
-      name: 'Contact Drivers',
-      kind: 'intent classification' as const,
-      trigger: 'PostSubmit',
-      logic: 'Lexicon → LLM',
-      settingsLink: 'taxonomy',
-      moduleKey: 'contact-drivers',
+      id: 'intent',
+      name: 'Drivers',
+      description: 'Classifies each post into a contact-driver category.',
+      kind: 'categorical',
+      trigger: 'post-create',
+      outputSchema: 'single-label',
+      source: 'builtin',
+      enabled: true,
+      logic: 'Lexicon → AI',
+      showIn: ['insights', 'pipelines'],
     },
   },
 };
 
-export const SentimentScoring: PipelineStory = {
+export const Sentiment: PipelineStory = {
   args: {
     pipeline: {
       id: 'sentiment',
-      name: 'Sentiment scoring',
-      kind: 'sentiment' as const,
-      trigger: 'PostSubmit + CommentCreate',
-      logic: 'AFINN lexicon → LLM judge for ambiguous',
-      moduleKey: 'sentiment',
+      name: 'Sentiment',
+      description: 'Scores sentiment on every post and comment.',
+      kind: 'ordinal',
+      trigger: 'post-create',
+      outputSchema: 'single-label',
+      source: 'builtin',
+      enabled: true,
+      logic: 'AFINN lexicon → AI judge for ambiguous',
+      labels: ['positive', 'neutral', 'negative'],
+      showIn: ['insights', 'pipelines'],
     },
   },
 };
@@ -70,10 +73,14 @@ export const ImpostorDetection: PipelineStory = {
     pipeline: {
       id: 'impostor',
       name: 'Impostor detection',
-      kind: 'identity verification' as const,
-      trigger: 'CommentCreate (non-mods only)',
-      logic: 'Regex pre-filter → LLM judge',
-      moduleKey: 'impostor-detection',
+      description: 'Flags non-verified users claiming to represent the brand.',
+      kind: 'boolean',
+      trigger: 'comment-create',
+      outputSchema: 'boolean',
+      source: 'builtin',
+      enabled: true,
+      logic: 'Regex pre-filter → AI judge',
+      showIn: ['pipelines', 'audit'],
     },
   },
 };
@@ -83,24 +90,32 @@ export const CrisisDetection: PipelineStory = {
     pipeline: {
       id: 'crisis',
       name: 'Crisis detection',
-      kind: 'crisis detection' as const,
-      trigger: 'CommentCreate',
+      description: 'Auto-groups negative-sentiment spikes into incidents.',
+      kind: 'cluster',
+      trigger: 'comment-create',
+      outputSchema: 'cluster',
+      source: 'builtin',
+      enabled: true,
       logic: 'Hourly volume + negative-share thresholds',
-      moduleKey: 'crisis-detection',
+      showIn: ['pipelines', 'incidents'],
     },
   },
 };
 
-export const NoSettingsLink: PipelineStory = {
-  name: 'Without settings link',
+export const Themes: PipelineStory = {
+  name: 'Themes (no settings link)',
   args: {
     pipeline: {
       id: 'themes',
-      name: 'Theme clustering',
-      kind: 'theme clustering' as const,
-      trigger: 'Scheduler (daily 02:00 UTC)',
-      logic: 'LLM clustering of negative posts',
-      moduleKey: 'theme-clustering',
+      name: 'Themes',
+      description: 'AI-clusters negative posts into emerging themes daily.',
+      kind: 'cluster',
+      trigger: 'scheduled',
+      outputSchema: 'cluster',
+      source: 'builtin',
+      enabled: true,
+      logic: 'AI clustering of negative posts',
+      showIn: ['insights', 'pipelines'],
     },
   },
 };

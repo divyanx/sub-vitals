@@ -203,6 +203,9 @@ export type PipelineOutputSchema =
   | 'cluster';
 export type PipelineSource = 'builtin' | 'custom';
 
+/** Which UI surfaces this pipeline's output should appear in. */
+export type PipelineShowIn = 'insights' | 'pipelines' | 'incidents' | 'team' | 'audit';
+
 export interface Pipeline {
   id: string;
   name: string;
@@ -218,6 +221,21 @@ export interface Pipeline {
   labels?: string[] | undefined;
   /** Display order in Insights tab (lower = earlier) */
   order?: number | undefined;
+  /** Human-readable description of the processing chain (e.g. "Lexicon → AI") */
+  logic?: string | undefined;
+  /** The module key used for stats lookup in the admin debug endpoint */
+  moduleKey?: string | undefined;
+  /** Alpha pipelines are stubbed / not yet fully functional */
+  alpha?: boolean | undefined;
+  /**
+   * Which UI surfaces render this pipeline's output.
+   * - 'insights' → rendered as a sub-tab section in the Insights tab
+   * - 'pipelines' → appears in the Pipelines catalog (default for all builtins)
+   * - 'incidents' → output feeds the Incidents tab (crisis-detection)
+   * - 'team'      → output feeds the Team tab (agent-metrics)
+   * - 'audit'     → output feeds the Audit tab (impostor-detection)
+   */
+  showIn?: PipelineShowIn[] | undefined;
 }
 
 export interface Tag {

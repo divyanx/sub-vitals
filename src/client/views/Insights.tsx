@@ -218,7 +218,12 @@ export function Insights({
     staleTime: 5 * 60 * 1000,
   });
 
-  const pipelines: PipelineRecord[] = pipelinesQ.data?.pipelines ?? [];
+  // Filter to pipelines that belong in the Insights sub-tab strip.
+  // Builtins that route to dedicated tabs (Incidents, Team, Audit) are excluded
+  // so they don't clutter the Insights section list.
+  const pipelines: PipelineRecord[] = (pipelinesQ.data?.pipelines ?? []).filter(
+    (p) => !p.showIn || p.showIn.includes('insights'),
+  );
 
   const navigate = useCallback(
     (s: InsightSection) => {

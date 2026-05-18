@@ -163,6 +163,11 @@ export interface PipelineRecord {
   enabled: boolean;
   labels?: string[];
   order?: number;
+  logic?: string;
+  moduleKey?: string;
+  alpha?: boolean;
+  /** Which UI surfaces render this pipeline's output (mirrors shared Pipeline.showIn) */
+  showIn?: Array<'insights' | 'pipelines' | 'incidents' | 'team' | 'audit'>;
 }
 
 export interface TagDistributionEntry {

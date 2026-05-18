@@ -12,6 +12,8 @@ import type React from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // @ts-expect-error — tinykeys exports map lacks a "types" field; types live at dist/tinykeys.d.ts
 import { tinykeys } from 'tinykeys';
+import { BUILTIN_PIPELINES } from '../../shared/builtin-pipelines.js';
+import type { Pipeline } from '../../shared/types.js';
 import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { InfoTooltip } from '../components/InfoTooltip.tsx';
@@ -2817,90 +2819,19 @@ function Themes() {
 }
 
 // ---------------------------------------------------------------------------
-// Pipelines — catalog of all classification/analysis pipelines
+// Pipelines — catalog driven by the shared BUILTIN_PIPELINES registry.
 // ---------------------------------------------------------------------------
 
-type PipelineKind =
-  | 'intent classification'
-  | 'sentiment'
-  | 'theme clustering'
-  | 'crisis detection'
-  | 'identity verification'
-  | 'performance'
-  | 'root cause';
+// Map from pipeline id to the dedicated tab it routes output to (for the
+// "View in <tab>" chip shown on cards that are NOT in the Insights sub-tabs).
+const PIPELINE_DEDICATED_TAB: Record<string, string> = {
+  crisis: 'Incidents',
+  impostor: 'Audit log',
+  'agent-metrics': 'Team',
+};
 
-interface PipelineDef {
-  id: string;
-  name: string;
-  kind: PipelineKind;
-  trigger: string;
-  logic: string;
-  settingsLink?: string;
-  moduleKey?: string;
-  /** Alpha pipelines are stubbed / not yet fully functional */
-  alpha?: boolean;
-}
-
-const PIPELINE_DEFS: PipelineDef[] = [
-  {
-    id: 'contact-drivers',
-    name: 'Contact Drivers',
-    kind: 'intent classification',
-    trigger: 'PostSubmit',
-    logic: 'Lexicon → LLM',
-    settingsLink: 'taxonomy',
-    moduleKey: 'contact-drivers',
-  },
-  {
-    id: 'sentiment',
-    name: 'Sentiment scoring',
-    kind: 'sentiment',
-    trigger: 'PostSubmit + CommentCreate',
-    logic: 'AFINN lexicon → LLM judge for ambiguous',
-    moduleKey: 'sentiment',
-  },
-  {
-    id: 'impostor',
-    name: 'Impostor detection',
-    kind: 'identity verification',
-    trigger: 'CommentCreate (non-mods only)',
-    logic: 'Regex pre-filter → LLM judge',
-    moduleKey: 'impostor-detection',
-  },
-  {
-    id: 'crisis',
-    name: 'Crisis detection',
-    kind: 'crisis detection',
-    trigger: 'CommentCreate',
-    logic: 'Hourly volume + negative-share thresholds',
-    moduleKey: 'crisis-detection',
-  },
-  {
-    id: 'themes',
-    name: 'Theme clustering',
-    kind: 'theme clustering',
-    trigger: 'Scheduler (daily 02:00 UTC)',
-    logic: 'LLM clustering of negative posts',
-    moduleKey: 'theme-clustering',
-  },
-  {
-    id: 'agent-metrics',
-    name: 'Response metrics',
-    kind: 'performance',
-    trigger: 'CommentCreate',
-    logic: 'First-response latency + sentiment delta tracking',
-    moduleKey: 'agent-metrics',
-  },
-  {
-    id: 'root-cause',
-    name: 'Root cause summariser',
-    kind: 'root cause',
-    trigger: 'status-change (resolved)',
-    logic: 'AI summarises post + agent reply into root-cause string',
-    moduleKey: 'root-cause',
-    alpha: true,
-  },
-];
+// Pipelines that have a "Settings →" shortcut (Drivers → taxonomy config).
+const PIPELINE_SETTINGS_LINK = new Set(['intent']);
 
 interface DebugStats {
   events_received?: number;
@@ -2981,9 +2912,9 @@ export function PipelineCard({
   onOpenSettings,
   onOpenDrawer,
 }: {
-  pipeline: PipelineDef;
+  pipeline: Pipeline;
   onOpenSettings?: () => void;
-  onOpenDrawer?: (pipeline: PipelineDef) => void;
+  onOpenDrawer?: (pipeline: Pipeline) => void;
 }) {
   const handleTune = () => {
     onOpenDrawer?.(pipeline);
@@ -3013,7 +2944,7 @@ export function PipelineCard({
           </div>
         </div>
         <div className="flex shrink-0 gap-2">
-          {pipeline.settingsLink === 'taxonomy' && onOpenSettings ? (
+          {pipeline.id === 'intent' && onOpenSettings ? (
             <button
               type="button"
               onClick={onOpenSettings}
@@ -3214,7 +3145,7 @@ const PROMPT_VARIABLES = [
   '{{current_sentiment}}',
 ];
 
-function PipelineDrawer({ pipeline, onClose }: { pipeline: PipelineDef; onClose: () => void }) {
+function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: () => void }) {
   const qc = useQueryClient();
   const [activeTab, setActiveTab] = useState<DrawerTab>('prompts');
   const [systemPrompt, setSystemPrompt] = useState('');
@@ -4078,7 +4009,7 @@ function Pipelines({
 }) {
   const qc = useQueryClient();
   const [studioOpen, setStudioOpen] = useState(false);
-  const [drawerPipeline, setDrawerPipeline] = useState<PipelineDef | null>(null);
+  const [drawerPipeline, setDrawerPipeline] = useState<Pipeline | null>(null);
   const [newPipelineOpen, setNewPipelineOpen] = useState(autoOpen);
   const [view, setView] = useState<PipelineView>(() => {
     if (typeof window === 'undefined') return 'grid';
@@ -4183,7 +4114,7 @@ function Pipelines({
       <div data-testid="pipelines-grid">
         {view === 'grid' ? (
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {PIPELINE_DEFS.map((p) => (
+            {BUILTIN_PIPELINES.map((p) => (
               <PipelineCard
                 key={p.id}
                 pipeline={p}
@@ -4202,7 +4133,7 @@ function Pipelines({
           </div>
         ) : (
           <PipelineListView
-            builtins={PIPELINE_DEFS}
+            builtins={BUILTIN_PIPELINES}
             customs={customPipelinesFromAPI}
             onOpenSettings={onOpenSettings}
             onOpenDrawer={setDrawerPipeline}
@@ -4234,10 +4165,10 @@ function PipelineListView({
   onDeleteCustom,
   onStudio,
 }: {
-  builtins: PipelineDef[];
+  builtins: Pipeline[];
   customs: Array<{ id: string; name: string; description?: string; kind: string; trigger: string }>;
   onOpenSettings: () => void;
-  onOpenDrawer: (p: PipelineDef) => void;
+  onOpenDrawer: (p: Pipeline) => void;
   onDeleteCustom: (id: string) => void;
   onStudio: () => void;
 }) {
