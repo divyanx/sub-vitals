@@ -45,7 +45,13 @@ export type AuditAction =
   | 'settings-update'
   | 'incident-resolve'
   | 'theme-regenerate'
-  | 'bulk-status';
+  | 'bulk-status'
+  | 'mod-approve'
+  | 'mod-remove'
+  | 'mod-spam'
+  | 'mod-lock'
+  | 'mod-distinguish'
+  | 'mod-reply';
 
 export interface AuditEntry {
   ts: number;

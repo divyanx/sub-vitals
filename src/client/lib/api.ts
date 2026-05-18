@@ -16,7 +16,13 @@ export type AuditAction =
   | 'settings-update'
   | 'incident-resolve'
   | 'theme-regenerate'
-  | 'bulk-status';
+  | 'bulk-status'
+  | 'mod-approve'
+  | 'mod-remove'
+  | 'mod-spam'
+  | 'mod-lock'
+  | 'mod-distinguish'
+  | 'mod-reply';
 
 export interface AuditEntry {
   ts: number;
@@ -789,6 +795,198 @@ export const api = {
       throw new Error((errBody as { error?: string }).error ?? `HTTP ${r.status}`);
     }
     return (await r.json()) as { succeeded: number; failed: number };
+  },
+
+  // ---------------------------------------------------------------------------
+  // Mod actions (Content Browser)
+  // ---------------------------------------------------------------------------
+
+  mod: {
+    approvePost: async (postId: string): Promise<void> => {
+      const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/approve`, { method: 'POST' });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+    },
+    removePost: async (postId: string, opts: { spam?: boolean } = {}): Promise<void> => {
+      const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/remove`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ spam: opts.spam ?? false }),
+      });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+    },
+    lockPost: async (postId: string): Promise<void> => {
+      const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/lock`, { method: 'POST' });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+    },
+    replyToPost: async (
+      postId: string,
+      body: string,
+      as_: 'app' | 'user',
+    ): Promise<{ commentId: string }> => {
+      const r = await fetch(`/api/posts/${encodeURIComponent(postId)}/reply`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ body, as: as_ }),
+      });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { commentId: string };
+    },
+    approveComment: async (commentId: string): Promise<void> => {
+      const r = await fetch(`/api/comments/${encodeURIComponent(commentId)}/approve`, {
+        method: 'POST',
+      });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+    },
+    removeComment: async (commentId: string, opts: { spam?: boolean } = {}): Promise<void> => {
+      const r = await fetch(`/api/comments/${encodeURIComponent(commentId)}/remove`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ spam: opts.spam ?? false }),
+      });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+    },
+    distinguishComment: async (commentId: string): Promise<void> => {
+      const r = await fetch(`/api/comments/${encodeURIComponent(commentId)}/distinguish`, {
+        method: 'POST',
+      });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+    },
+  },
+
+  // ---------------------------------------------------------------------------
+  // Data Lab
+  // ---------------------------------------------------------------------------
+
+  lab: {
+    simulatePost: async (body: {
+      title: string;
+      body?: string;
+      authorName?: string;
+      driverOverride?: string;
+      sentimentOverride?: 'positive' | 'neutral' | 'negative';
+    }): Promise<{ postId: string }> => {
+      const r = await fetch('/api/lab/simulate-post', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { postId: string };
+    },
+
+    simulateComment: async (body: {
+      postId: string;
+      body: string;
+      authorName?: string;
+    }): Promise<{ commentId: string }> => {
+      const r = await fetch('/api/lab/simulate-comment', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { commentId: string };
+    },
+
+    importJson: async (body: {
+      posts: Array<{
+        title: string;
+        body?: string;
+        author?: string;
+        comments?: Array<{ body: string; author?: string }>;
+      }>;
+    }): Promise<{ imported: number; results: Array<{ postId: string; commentIds: string[] }> }> => {
+      const r = await fetch('/api/lab/import-json', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as {
+        imported: number;
+        results: Array<{ postId: string; commentIds: string[] }>;
+      };
+    },
+
+    scenarios: () =>
+      getJson<{
+        scenarios: Array<{
+          name: string;
+          description: string;
+          status: {
+            state: 'idle' | 'running' | 'done' | 'error';
+            lastRunAt: number | null;
+            error?: string;
+          };
+        }>;
+      }>('/api/lab/scenarios'),
+
+    runScenario: async (name: string): Promise<{ status: string; name: string }> => {
+      const r = await fetch(`/api/lab/scenario/${encodeURIComponent(name)}`, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: '{}',
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { status: string; name: string };
+    },
+
+    scenarioStatus: (name: string) =>
+      getJson<{
+        name: string;
+        state: 'idle' | 'running' | 'done' | 'error';
+        lastRunAt: number | null;
+        error?: string;
+      }>(`/api/lab/scenario/status/${encodeURIComponent(name)}`),
+
+    recentPosts: () =>
+      getJson<{ posts: Array<{ postId: string; title: string }> }>('/api/lab/recent-posts-full'),
+
+    clear: async (): Promise<{ deleted: number }> => {
+      const r = await fetch('/api/lab/clear', {
+        method: 'DELETE',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ confirm: 'YES' }),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { deleted: number };
+    },
   },
 };
 

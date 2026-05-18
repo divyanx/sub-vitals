@@ -511,6 +511,119 @@ export async function setupMocks(page: Page): Promise<void> {
       });
     }
 
+    // ---------------------------------------------------------------------------
+    // Data Lab
+    // ---------------------------------------------------------------------------
+
+    if (pathname === '/api/lab/simulate-post' && method === 'POST') {
+      return route.fulfill({
+        json: { postId: `t3_lab_${Date.now()}_00001` },
+      });
+    }
+
+    if (pathname === '/api/lab/simulate-comment' && method === 'POST') {
+      return route.fulfill({
+        json: { commentId: `t1_lab_${Date.now()}_00001` },
+      });
+    }
+
+    if (pathname === '/api/lab/import-json' && method === 'POST') {
+      return route.fulfill({
+        json: { imported: 1, results: [{ postId: `t3_lab_${Date.now()}`, commentIds: [] }] },
+      });
+    }
+
+    const scenarioRunMatch = pathname.match(/^\/api\/lab\/scenario\/([^/]+)$/);
+    if (scenarioRunMatch && method === 'POST') {
+      return route.fulfill({ json: { status: 'started', name: scenarioRunMatch[1] } });
+    }
+
+    const scenarioStatusMatch = pathname.match(/^\/api\/lab\/scenario\/status\/([^/]+)$/);
+    if (scenarioStatusMatch && method === 'GET') {
+      return route.fulfill({
+        json: { name: scenarioStatusMatch[1], state: 'done', lastRunAt: Date.now() },
+      });
+    }
+
+    if (pathname === '/api/lab/scenarios' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          scenarios: [
+            {
+              name: 'crisis-cluster',
+              description: '8 negative bug posts in 30 min window, 20 angry comments.',
+              status: { state: 'idle', lastRunAt: null },
+            },
+            {
+              name: 'happy-weekend',
+              description: '12 positive praise posts simulating a good weekend.',
+              status: { state: 'idle', lastRunAt: null },
+            },
+            {
+              name: 'sla-breach',
+              description: '5 posts that arrive unanswered.',
+              status: { state: 'idle', lastRunAt: null },
+            },
+            {
+              name: 'mixed-brand-mentions',
+              description: '15 posts mixing brand + 3 competitor names.',
+              status: { state: 'idle', lastRunAt: null },
+            },
+            {
+              name: 'root-cause-test',
+              description: '5 resolved posts each with an agent reply.',
+              status: { state: 'idle', lastRunAt: null },
+            },
+          ],
+        },
+      });
+    }
+
+    if (pathname === '/api/lab/recent-posts-full' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          posts: [
+            { postId: 't3_lab_111', title: 'App crashes on startup' },
+            { postId: 't3_lab_222', title: 'Billing error on my invoice' },
+          ],
+        },
+      });
+    }
+
+    if (pathname === '/api/lab/clear' && method === 'DELETE') {
+      return route.fulfill({ json: { deleted: 3 } });
+    }
+
+    // Content search
+    if (pathname === '/api/content/search') {
+      return route.fulfill({ json: fixture('content-search') });
+    }
+
+    // Mod actions (Content Browser)
+    if (pathname.match(/^\/api\/posts\/[^/]+\/approve$/) && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname.match(/^\/api\/posts\/[^/]+\/remove$/) && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname.match(/^\/api\/posts\/[^/]+\/lock$/) && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname.match(/^\/api\/posts\/[^/]+\/reply$/) && method === 'POST') {
+      return route.fulfill({ json: { commentId: 'mock_comment_001' } });
+    }
+    if (pathname.match(/^\/api\/comments\/[^/]+\/approve$/) && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname.match(/^\/api\/comments\/[^/]+\/remove$/) && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname.match(/^\/api\/comments\/[^/]+\/distinguish$/) && method === 'POST') {
+      return route.fulfill({ json: { ok: true } });
+    }
+
+    // Content browser (bulk-tag already handled above via /api/posts/bulk-tag)
+
     // Fallback: abort unknown API paths so tests get a clear failure signal
     console.warn(`[mock-api] Unhandled request: ${method} ${pathname}`);
     return route.fulfill({ status: 404, json: { error: `mock: no handler for ${pathname}` } });

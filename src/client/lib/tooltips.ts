@@ -13,7 +13,7 @@ export const TOOLTIPS = {
   activeIncidents:
     'Open incidents auto-detected when comment volume or negative-sentiment ratio spikes above your 14-day baseline.',
   avgFirstResponse:
-    'Mean time from post submission to first verified-agent comment, averaged across all agents over the last 7 days.',
+    'Mean time from post submission to first verified rep comment, averaged across all reps over the last 7 days.',
   aiSpendMtd:
     'Month-to-date LLM cost in USD, accumulated across contact-driver classification, sentiment judging, theme clustering, and AI draft replies.',
 
@@ -24,14 +24,14 @@ export const TOOLTIPS = {
     'Posts with a sentiment score near zero (−0.1 to +0.1). Often factual questions or announcements.',
   sentimentNegative: 'Posts scored negative. These drive incident detection and theme clustering.',
 
-  // Agent leaderboard columns
-  agentReplies: 'Total comments left by this agent on tagged posts in the selected window.',
+  // Team performance columns
+  agentReplies: 'Total comments left by this rep on tagged posts in the selected window.',
   agentFirstResponseRate:
-    'Percentage of open posts where this agent left the first verified-agent comment.',
+    'Percentage of open posts where this rep left the first verified rep comment.',
   agentAvgLatency:
-    "Mean time (hh:mm) from post submission to this agent's first comment. Lower is better.",
+    "Mean time (hh:mm) from post submission to this rep's first comment. Lower is better.",
   agentSentimentLift:
-    'Average change in thread sentiment score after this agent replied. Positive = the thread got less negative after the response.',
+    'Average change in thread sentiment score after this rep replied. Positive = the thread got less negative after the response.',
 
   // Pipeline logic
   pipelineContactDrivers:
@@ -45,7 +45,7 @@ export const TOOLTIPS = {
   pipelineThemes:
     'Daily scheduler clusters the last 7 days of negative posts using an LLM and stores named theme groups.',
   pipelineAgentMetrics:
-    'Fires on every comment to record first-response timestamps and update per-agent latency counters.',
+    'Fires on every comment to record first-response timestamps and update per-rep latency counters.',
 
   // Settings sliders
   escalationThreshold:
@@ -53,7 +53,7 @@ export const TOOLTIPS = {
   volumeMultiplier:
     'Crisis triggers when hourly post volume exceeds this multiple of the 14-day hourly average.',
   slaMinutes:
-    'Agents are flagged as breaching SLA when their first response takes longer than this many minutes.',
+    'Reps are flagged as breaching SLA when their first response takes longer than this many minutes.',
 } as const;
 
 export type TooltipKey = keyof typeof TOOLTIPS;

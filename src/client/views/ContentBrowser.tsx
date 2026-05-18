@@ -442,17 +442,159 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
 }
 
 // ---------------------------------------------------------------------------
-// Row action dropdown
+// Row action dropdown — full mod actions
 // ---------------------------------------------------------------------------
+
+type ConfirmAction = 'remove' | 'spam';
+
+interface ModReplyDrawerProps {
+  item: ContentItem;
+  onClose: () => void;
+  onToast: (msg: string) => void;
+}
+
+function ModReplyDrawer({ item, onClose, onToast }: ModReplyDrawerProps) {
+  const qc = useQueryClient();
+  const [body, setBody] = useState('');
+  const [as_, setAs] = useState<'app' | 'user'>('user');
+  const [drafting, setDrafting] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    setTimeout(() => textareaRef.current?.focus(), 50);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleDraft = async () => {
+    setDrafting(true);
+    try {
+      const result = await api.draftReply(item.postId);
+      if (result.candidates.length > 0) setBody(result.candidates[0]?.reply ?? '');
+    } catch (err) {
+      onToast(`Draft failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setDrafting(false);
+    }
+  };
+
+  const handleSubmit = async () => {
+    if (!body.trim()) return;
+    setBusy(true);
+    try {
+      await api.mod.replyToPost(item.postId, body, as_);
+      onToast('Reply submitted');
+      await qc.invalidateQueries({ queryKey: ['content-search'] });
+      onClose();
+    } catch (err) {
+      onToast(`Reply failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: keyboard handled via useEffect above
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-end bg-black/60 backdrop-blur-sm"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+    >
+      <div
+        className="flex h-full max-w-lg flex-col border-l border-neutral-700 bg-neutral-950 text-neutral-100"
+        style={{ width: 'min(480px, 100vw)' }}
+      >
+        <div className="flex items-center justify-between border-b border-neutral-800 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs text-neutral-400">Reply…</p>
+            <p className="mt-0.5 truncate text-sm font-medium">{item.title || '(no title)'}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="ml-3 text-neutral-400 hover:text-neutral-200"
+            aria-label="Close reply drawer"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+          <textarea
+            ref={textareaRef}
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            placeholder="Write your reply…"
+            rows={6}
+            className="w-full resize-none rounded-lg border border-neutral-700 bg-neutral-900 px-3 py-2 text-sm text-neutral-100 placeholder-neutral-500 focus:border-orange-500 focus:outline-none"
+            aria-label="Reply text"
+          />
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-neutral-400">Send as:</span>
+            <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer">
+              <input
+                type="radio"
+                name="reply-as"
+                value="user"
+                checked={as_ === 'user'}
+                onChange={() => setAs('user')}
+                className="accent-orange-500"
+              />
+              Me (moderator)
+            </label>
+            <label className="flex items-center gap-1.5 text-xs text-neutral-300 cursor-pointer">
+              <input
+                type="radio"
+                name="reply-as"
+                value="app"
+                checked={as_ === 'app'}
+                onChange={() => setAs('app')}
+                className="accent-orange-500"
+              />
+              RedLattice bot
+            </label>
+          </div>
+        </div>
+        <div className="border-t border-neutral-800 px-5 py-4 flex gap-2">
+          <button
+            type="button"
+            onClick={handleDraft}
+            disabled={drafting}
+            className="rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1.5 text-xs text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+          >
+            {drafting ? 'Drafting…' : '✨ AI draft'}
+          </button>
+          <button
+            type="button"
+            onClick={handleSubmit}
+            disabled={!body.trim() || busy}
+            className="ml-auto rounded-md border border-emerald-700 bg-emerald-900/40 px-4 py-1.5 text-xs font-medium text-emerald-200 transition hover:bg-emerald-900/70 disabled:opacity-50"
+          >
+            {busy ? 'Sending…' : 'Send reply'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface RowActionsProps {
   item: ContentItem;
   onRespond: () => void;
   onStatusChange: (status: PostStatus) => void;
+  onToast: (msg: string) => void;
 }
 
-function RowActions({ item, onRespond, onStatusChange }: RowActionsProps) {
+function RowActions({ item, onRespond, onStatusChange, onToast }: RowActionsProps) {
+  const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [confirming, setConfirming] = useState<ConfirmAction | null>(null);
+  const [showReply, setShowReply] = useState(false);
+  const [busy, setBusy] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -465,69 +607,240 @@ function RowActions({ item, onRespond, onStatusChange }: RowActionsProps) {
     return () => document.removeEventListener('mousedown', handler);
   }, []);
 
+  const isPost = item.type === 'post';
+
+  const runAction = async (action: () => Promise<void>, label: string) => {
+    setBusy(true);
+    setOpen(false);
+    try {
+      await action();
+      onToast(`${label} succeeded`);
+      await qc.invalidateQueries({ queryKey: ['content-search'] });
+    } catch (err) {
+      onToast(`${label} failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleApprove = () =>
+    runAction(
+      isPost ? () => api.mod.approvePost(item.id) : () => api.mod.approveComment(item.id),
+      'Approve',
+    );
+
+  const handleRemove = (spam: boolean) =>
+    runAction(
+      isPost
+        ? () => api.mod.removePost(item.id, { spam })
+        : () => api.mod.removeComment(item.id, { spam }),
+      spam ? 'Mark spam' : 'Remove',
+    );
+
+  const handleLock = () => runAction(() => api.mod.lockPost(item.postId), 'Lock');
+
+  const handleDistinguish = () =>
+    runAction(() => api.mod.distinguishComment(item.id), 'Distinguish');
+
   return (
-    <div ref={ref} className="relative">
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-700"
-        aria-label="Row actions"
-        aria-haspopup="menu"
-        aria-expanded={open}
-      >
-        ⋯
-      </button>
-      {open ? (
-        <div
-          role="menu"
-          className="absolute right-0 top-full z-30 mt-1 min-w-[160px] rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-xl"
+    <>
+      <div ref={ref} className="relative">
+        <button
+          type="button"
+          onClick={() => setOpen((o) => !o)}
+          disabled={busy}
+          className="rounded border border-neutral-700 bg-neutral-800 px-2 py-1 text-xs text-neutral-300 hover:bg-neutral-700 disabled:opacity-50"
+          aria-label="Row actions"
+          aria-haspopup="menu"
+          aria-expanded={open}
         >
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onRespond();
-            }}
-            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+          {busy ? '…' : '⋯'}
+        </button>
+        {open ? (
+          <div
+            role="menu"
+            className="absolute right-0 top-full z-30 mt-1 min-w-[180px] rounded-lg border border-neutral-700 bg-neutral-900 py-1 shadow-xl"
           >
-            Respond
-          </button>
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onStatusChange('resolved');
-            }}
-            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
-          >
-            Mark resolved
-          </button>
-          <button
-            role="menuitem"
-            type="button"
-            onClick={() => {
-              setOpen(false);
-              onStatusChange('in-progress');
-            }}
-            className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
-          >
-            Mark in-progress
-          </button>
-          <a
-            role="menuitem"
-            href={item.url}
-            target="_top"
-            rel="noopener noreferrer"
-            onClick={() => setOpen(false)}
-            className="block px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800"
-          >
-            Open on Reddit ↗
-          </a>
+            {/* Approve */}
+            <button
+              role="menuitem"
+              type="button"
+              onClick={handleApprove}
+              className="block w-full px-3 py-1.5 text-left text-xs text-emerald-300 hover:bg-neutral-800"
+            >
+              Approve
+            </button>
+
+            <div className="my-1 border-t border-neutral-800" />
+
+            {/* Remove / Spam — destructive, need confirm */}
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setConfirming('remove');
+              }}
+              className="block w-full px-3 py-1.5 text-left text-xs text-rose-300 hover:bg-neutral-800"
+            >
+              Remove
+            </button>
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setConfirming('spam');
+              }}
+              className="block w-full px-3 py-1.5 text-left text-xs text-rose-300 hover:bg-neutral-800"
+            >
+              Mark spam
+            </button>
+
+            <div className="my-1 border-t border-neutral-800" />
+
+            {/* Lock — applies to parent post for comments too */}
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                void handleLock();
+              }}
+              className="block w-full px-3 py-1.5 text-left text-xs text-violet-300 hover:bg-neutral-800"
+            >
+              Lock{!isPost ? ' (parent post)' : ''}
+            </button>
+
+            {/* Distinguish — comment only */}
+            {!isPost ? (
+              <button
+                role="menuitem"
+                type="button"
+                onClick={() => {
+                  setOpen(false);
+                  void handleDistinguish();
+                }}
+                className="block w-full px-3 py-1.5 text-left text-xs text-violet-300 hover:bg-neutral-800"
+              >
+                Distinguish
+              </button>
+            ) : null}
+
+            <div className="my-1 border-t border-neutral-800" />
+
+            {/* Reply with send-mode choice */}
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                setShowReply(true);
+              }}
+              className="block w-full px-3 py-1.5 text-left text-xs text-sky-300 hover:bg-neutral-800"
+            >
+              Reply…
+            </button>
+
+            {/* Respond (existing tag/status drawer) */}
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onRespond();
+              }}
+              className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+            >
+              Respond (tag/status)
+            </button>
+
+            <div className="my-1 border-t border-neutral-800" />
+
+            {/* Status shortcuts */}
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onStatusChange('resolved');
+              }}
+              className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+            >
+              Mark resolved
+            </button>
+            <button
+              role="menuitem"
+              type="button"
+              onClick={() => {
+                setOpen(false);
+                onStatusChange('in-progress');
+              }}
+              className="block w-full px-3 py-1.5 text-left text-xs text-neutral-200 hover:bg-neutral-800"
+            >
+              Mark in-progress
+            </button>
+            <a
+              role="menuitem"
+              href={item.url}
+              target="_top"
+              rel="noopener noreferrer"
+              onClick={() => setOpen(false)}
+              className="block px-3 py-1.5 text-xs text-neutral-200 hover:bg-neutral-800"
+            >
+              Open on Reddit ↗
+            </a>
+          </div>
+        ) : null}
+      </div>
+
+      {/* Confirmation dialog for destructive actions */}
+      {confirming ? (
+        // biome-ignore lint/a11y/noStaticElementInteractions lint/a11y/useKeyWithClickEvents: keyboard ESC handled by outer handler
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirming(null);
+          }}
+        >
+          <div className="w-80 rounded-xl border border-neutral-700 bg-neutral-950 p-5 shadow-2xl">
+            <h3 className="mb-2 text-sm font-semibold text-neutral-100">
+              {confirming === 'spam' ? 'Mark as spam?' : 'Remove this content?'}
+            </h3>
+            <p className="mb-4 text-xs text-neutral-400">
+              {confirming === 'spam'
+                ? 'This will remove the content and flag it as spam.'
+                : 'This will remove the content from the subreddit.'}
+            </p>
+            <div className="flex gap-2 justify-end">
+              <button
+                type="button"
+                onClick={() => setConfirming(null)}
+                className="rounded-md border border-neutral-700 px-3 py-1.5 text-xs text-neutral-300 hover:bg-neutral-800"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const c = confirming;
+                  setConfirming(null);
+                  void handleRemove(c === 'spam');
+                }}
+                className="rounded-md border border-rose-700 bg-rose-900/40 px-3 py-1.5 text-xs text-rose-200 hover:bg-rose-900/70"
+              >
+                {confirming === 'spam' ? 'Mark spam' : 'Remove'}
+              </button>
+            </div>
+          </div>
         </div>
       ) : null}
-    </div>
+
+      {/* Reply drawer */}
+      {showReply ? (
+        <ModReplyDrawer item={item} onClose={() => setShowReply(false)} onToast={onToast} />
+      ) : null}
+    </>
   );
 }
 
@@ -1166,18 +1479,18 @@ export function ContentBrowser() {
           />
         </div>
 
-        {/* Has agent reply — simple toggle */}
+        {/* Has rep reply — simple toggle */}
         <select
           value={filters.hasAgent}
           onChange={(e) => updateFilter('hasAgent', e.target.value as ContentFilters['hasAgent'])}
           className={`rounded-full border bg-neutral-900 px-3 py-1 text-xs text-neutral-200 ${
             filters.hasAgent !== 'any' ? 'border-orange-500' : 'border-neutral-700'
           }`}
-          aria-label="Has agent reply"
+          aria-label="Has rep reply"
         >
-          <option value="any">Agent reply: any</option>
-          <option value="yes">Agent reply: yes</option>
-          <option value="no">Agent reply: no</option>
+          <option value="any">Rep reply: any</option>
+          <option value="yes">Rep reply: yes</option>
+          <option value="no">Rep reply: no</option>
         </select>
 
         {/* Date range */}
@@ -1371,6 +1684,10 @@ export function ContentBrowser() {
                     showScore={visibleCols.score}
                     currentSort={filters.sort}
                     onSort={(s) => updateFilter('sort', s)}
+                    onToast={(msg) => {
+                      setBulkToast(msg);
+                      setTimeout(() => setBulkToast(null), 3500);
+                    }}
                   />
                 ))}
               </tbody>
@@ -1445,6 +1762,7 @@ interface ContentRowProps {
   showScore: boolean;
   currentSort: ContentSort;
   onSort: (s: ContentSort) => void;
+  onToast: (msg: string) => void;
 }
 
 function ContentRow({
@@ -1455,6 +1773,7 @@ function ContentRow({
   onRespond,
   onStatusChange,
   showScore,
+  onToast,
 }: ContentRowProps) {
   const [expanded, setExpanded] = useState(false);
 
@@ -1553,7 +1872,12 @@ function ContentRow({
 
       {/* Actions */}
       <td className="px-3 py-2.5">
-        <RowActions item={item} onRespond={onRespond} onStatusChange={onStatusChange} />
+        <RowActions
+          item={item}
+          onRespond={onRespond}
+          onStatusChange={onStatusChange}
+          onToast={onToast}
+        />
       </td>
     </tr>
   );

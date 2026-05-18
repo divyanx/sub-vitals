@@ -33,14 +33,12 @@ test.describe('Team tab', () => {
   });
 
   test('verified dates are displayed for reps', async ({ page }) => {
-    // Dates are rendered by toLocaleDateString — just check dates are present somewhere
-    const listItems = page.locator('ul > li');
+    // Dates are rendered as relative time — check a <time> element is present
+    const roster = page.locator('ul.divide-y').last();
+    const listItems = roster.locator('li');
     await expect(listItems).toHaveCount(3);
-
-    // Each list item should have some date-like text
-    const firstItem = listItems.first();
-    const text = await firstItem.textContent();
-    expect(text).toMatch(/\d{1,2}\/\d{1,2}\/\d{4}|\d{4}-\d{2}-\d{2}/);
+    // Each list item should have a <time> element
+    await expect(listItems.first().locator('time')).toBeVisible();
   });
 
   test('rep list is inside a bordered container', async ({ page }) => {

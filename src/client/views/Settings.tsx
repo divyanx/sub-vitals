@@ -432,11 +432,11 @@ function IdentityTrustSection({
   return (
     <Section
       title="Identity & trust"
-      description="Configure how RedLattice detects and displays verified brand agents."
+      description="Configure how RedLattice detects and displays verified brand reps."
     >
       <div className="space-y-4">
         <div>
-          <Label htmlFor={patternId}>Verified-agent flair regex</Label>
+          <Label htmlFor={patternId}>Verified-rep flair regex</Label>
           <Input
             id={patternId}
             value={pattern}
@@ -470,7 +470,7 @@ function IdentityTrustSection({
             ) : null}
           </div>
           <p className="mt-1 text-xs text-neutral-400">
-            Commenters whose flair matches this regex are treated as verified agents.
+            Commenters whose flair matches this regex are treated as verified reps.
           </p>
         </div>
         <div>

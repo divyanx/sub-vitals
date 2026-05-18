@@ -21,7 +21,7 @@ const SHORTCUTS: Array<{ keys: string[]; label: string }> = [
   { keys: ['g', ' ', 's'], label: 'Go to Sentiment' },
   { keys: ['g', ' ', 'n'], label: 'Go to Incidents' },
   { keys: ['g', ' ', 't'], label: 'Go to Themes' },
-  { keys: ['g', ' ', 'a'], label: 'Go to Agents' },
+  { keys: ['g', ' ', 'a'], label: 'Go to Team' },
   { keys: ['g', ' ', 'e'], label: 'Go to Export' },
   { keys: ['g', ' ', 'u'], label: 'Go to Audit' },
   { keys: ['g', ' ', ','], label: 'Go to Settings' },

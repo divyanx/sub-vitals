@@ -67,15 +67,15 @@
         "endpoint": "/internal/menu/mark-open"
       },
       {
-        "label": "Mark verified agent",
-        "description": "Mark this comment's author as a verified company agent",
+        "label": "Mark verified rep",
+        "description": "Mark this comment's author as a verified company rep",
         "location": "comment",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/mark-agent"
       },
       {
-        "label": "Remove verified agent",
-        "description": "Remove the comment author's verified-agent status",
+        "label": "Remove verified rep",
+        "description": "Remove the comment author's verified-rep status",
         "location": "comment",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/unmark-agent"

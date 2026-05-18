@@ -37,6 +37,7 @@ import {
   crisisDetectionModule,
 } from '@modules/crisis-detection/index.js';
 import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/index.js';
+import { dataLabModule } from '@modules/data-lab/index.js';
 import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { studioBridgeModule } from '@modules/studio-bridge/index.js';
@@ -121,6 +122,7 @@ registerModule(agentVerificationModule);
 registerModule(contactDriversModule);
 registerModule(sentimentModule);
 registerModule(dashboardOrchestratorModule);
+registerModule(dataLabModule);
 registerModule(impostorDetectionModule);
 registerModule(crisisDetectionModule);
 registerModule(themeClusteringModule);
@@ -1295,7 +1297,10 @@ app.get('/api/content/search', async (c) => {
   return c.json({ items: page, total, offset, limit });
 });
 
-const postReplyBodySchema = z.object({ body: z.string().min(1).max(10000) });
+const postReplyBodySchema = z.object({
+  body: z.string().min(1).max(10000),
+  as: z.enum(['app', 'user']).optional().default('user'),
+});
 
 app.post('/api/posts/:postId/reply', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
@@ -1313,15 +1318,119 @@ app.post('/api/posts/:postId/reply', async (c) => {
     return c.json({ error: 'validation failed', issues: parsedReply.error.issues }, 400);
   }
 
+  const actor = context.username ?? 'api';
   try {
     const comment = await reddit.submitComment({
       id: `t3_${postId}`,
       text: parsedReply.data.body,
     });
+    void recordAudit('mod-reply', postId, { as: parsedReply.data.as, actor });
     return c.json({ commentId: comment.id });
   } catch (err) {
     log.error('post-reply-failed', { postId, err: String(err) });
     return c.json({ error: 'failed to submit comment', hint: String(err) }, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Mod actions — approve / remove / lock / distinguish
+// ---------------------------------------------------------------------------
+
+app.post('/api/posts/:postId/approve', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const postId = c.req.param('postId');
+  try {
+    await reddit.approve(`t3_${postId}`);
+    void recordAudit('mod-approve', postId, { type: 'post' });
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('mod-approve-post-failed', { postId, err: String(err) });
+    return c.json({ error: 'approve failed', hint: String(err) }, 500);
+  }
+});
+
+const modRemoveBodySchema = z.object({ spam: z.boolean().optional().default(false) });
+
+app.post('/api/posts/:postId/remove', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const postId = c.req.param('postId');
+  let raw: unknown;
+  try {
+    raw = await c.req.json().catch(() => ({}));
+  } catch {
+    raw = {};
+  }
+  const parsed = modRemoveBodySchema.safeParse(raw);
+  const spam = parsed.success ? parsed.data.spam : false;
+  try {
+    await reddit.remove(`t3_${postId}`, spam);
+    void recordAudit(spam ? 'mod-spam' : 'mod-remove', postId, { type: 'post', spam });
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('mod-remove-post-failed', { postId, err: String(err) });
+    return c.json({ error: 'remove failed', hint: String(err) }, 500);
+  }
+});
+
+app.post('/api/posts/:postId/lock', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const postId = c.req.param('postId');
+  try {
+    const post = await reddit.getPostById(`t3_${postId}` as `t3_${string}`);
+    await post.lock();
+    void recordAudit('mod-lock', postId, { type: 'post' });
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('mod-lock-post-failed', { postId, err: String(err) });
+    return c.json({ error: 'lock failed', hint: String(err) }, 500);
+  }
+});
+
+app.post('/api/comments/:commentId/approve', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const commentId = c.req.param('commentId');
+  try {
+    await reddit.approve(`t1_${commentId}`);
+    void recordAudit('mod-approve', commentId, { type: 'comment' });
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('mod-approve-comment-failed', { commentId, err: String(err) });
+    return c.json({ error: 'approve failed', hint: String(err) }, 500);
+  }
+});
+
+app.post('/api/comments/:commentId/remove', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const commentId = c.req.param('commentId');
+  let raw: unknown;
+  try {
+    raw = await c.req.json().catch(() => ({}));
+  } catch {
+    raw = {};
+  }
+  const parsed = modRemoveBodySchema.safeParse(raw);
+  const spam = parsed.success ? parsed.data.spam : false;
+  try {
+    await reddit.remove(`t1_${commentId}`, spam);
+    void recordAudit(spam ? 'mod-spam' : 'mod-remove', commentId, { type: 'comment', spam });
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('mod-remove-comment-failed', { commentId, err: String(err) });
+    return c.json({ error: 'remove failed', hint: String(err) }, 500);
+  }
+});
+
+app.post('/api/comments/:commentId/distinguish', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const commentId = c.req.param('commentId');
+  try {
+    const comment = await reddit.getCommentById(`t1_${commentId}` as `t1_${string}`);
+    await comment.distinguish();
+    void recordAudit('mod-distinguish', commentId, { type: 'comment' });
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('mod-distinguish-comment-failed', { commentId, err: String(err) });
+    return c.json({ error: 'distinguish failed', hint: String(err) }, 500);
   }
 });
 
