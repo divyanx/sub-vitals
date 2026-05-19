@@ -405,8 +405,8 @@ function Header({
   onCycleTheme: () => void;
   onOpenCmd: () => void;
 }) {
-  const themeIcon = theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '⚙️';
-  const themeLabel = `Theme: ${theme}. Click to cycle.`;
+  const themeIcon = theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '🌓';
+  const themeLabel = `Theme: ${theme === 'system' ? 'auto (system)' : theme}. Click to cycle dark / light / auto.`;
 
   return (
     <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-4 backdrop-blur">
