@@ -4503,7 +4503,7 @@ function Pipelines({
                   <InstanceCard
                     key={inst.id}
                     instance={inst}
-                    template={tpl}
+                    {...(tpl !== undefined ? { template: tpl } : {})}
                     onToggle={(enabled) => handleToggleInstance(inst.id, enabled)}
                     onDuplicate={() => handleDuplicateInstance(inst.id)}
                     onDelete={() => handleDeleteInstance(inst.id)}
