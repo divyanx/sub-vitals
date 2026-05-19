@@ -43,12 +43,20 @@ export const K = {
   // sentiment — per-label ZSET (score = createdAt ms, member = postId)
   sentimentLabelIndex: (label: 'positive' | 'neutral' | 'negative') => `rl:sent:label:${label}`,
 
-  // pipeline overrides (STRING: JSON blob per pipeline id)
+  // pipeline overrides (STRING: JSON blob per pipeline id) — legacy, kept for migration
   pipelineOverrides: (id: string) => `rl:pipeline:${id}:overrides`,
 
-  // custom pipelines (ZSET: score = createdAt, member = id) + per-pipeline detail
+  // custom pipelines (ZSET: score = createdAt, member = id) + per-pipeline detail — legacy
   customPipelineList: () => 'rl:pipeline:custom:list',
   customPipeline: (id: string) => `rl:pipeline:custom:${id}`,
+
+  // pipeline instances — new model
+  /** HASH: instanceId → JSON(PipelineInstance) */
+  pipelineInstances: () => 'rl:pipelines:instances',
+  /** LIST: ordered instance ids */
+  pipelineOrder2: () => 'rl:pipelines:order',
+  /** SETNX sentinel: set once on AppInstall to seed pre-installed instances */
+  pipelineSeedDone: () => 'rl:pipelines:seed:done',
 
   // crisis-detection — per-hour rolling counters (HASH: total, neg)
   hourBucket: (hourSlot: string) => `rl:hr:cmt:${hourSlot}`,
@@ -80,6 +88,10 @@ export const K = {
 
   // custom pipeline display order
   pipelineOrder: (id: string) => `rl:pipeline:${id}:order`,
+
+  // webhooks — HASH of all webhook configs + per-webhook delivery ZSET
+  webhooks: () => 'rl:webhooks',
+  webhookDeliveries: (webhookId: string) => `rl:webhook:del:${webhookId}`,
 
   // audit-log
   auditLog: () => 'rl:audit:log',
