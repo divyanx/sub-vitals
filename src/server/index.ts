@@ -40,6 +40,7 @@ import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/ind
 import { dataLabModule } from '@modules/data-lab/index.js';
 import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
+import { rulesModule } from '@modules/rules/index.js';
 import { studioBridgeModule } from '@modules/studio-bridge/index.js';
 import { regenerateThemes, themeClusteringModule } from '@modules/theme-clustering/index.js';
 import * as Sentry from '@sentry/core';
@@ -76,6 +77,18 @@ import {
   setPipelineOrder,
 } from '@shared/pipeline-overrides.js';
 import {
+  createScratchInstance,
+  deleteInstance,
+  duplicateInstance,
+  getInstance,
+  installFromTemplate,
+  listInstances,
+  patchInstance,
+  reorderInstances,
+  seedInstancesIfNeeded,
+} from '@shared/pipeline-instances.js';
+import { PIPELINE_TEMPLATES } from '@shared/pipeline-templates.js';
+import {
   readAllEffectiveSettings,
   readEffectiveSetting,
   writeOverrideSetting,
@@ -103,6 +116,17 @@ import {
 } from '@shared/storage.js';
 import { forwardToStudio } from '@shared/studio-bridge.js';
 import { getTagDistribution, getTargetsByTagValue } from '@shared/tags.js';
+import {
+  deleteWebhook,
+  deliverWebhook,
+  detectFormat,
+  getDeliveries,
+  getWebhook,
+  listWebhooks,
+  saveWebhook,
+  type Webhook,
+  type WebhookFormat,
+} from '@shared/webhook-delivery.js';
 import ecommerceTemplate from '@shared/taxonomy-templates/ecommerce.json';
 import financeTemplate from '@shared/taxonomy-templates/finance.json';
 import gamingTemplate from '@shared/taxonomy-templates/gaming.json';
@@ -132,6 +156,7 @@ registerModule(crisisDetectionModule);
 registerModule(themeClusteringModule);
 registerModule(agentMetricsModule);
 registerModule(auditLogModule);
+registerModule(rulesModule);
 registerModule(studioBridgeModule);
 
 // ---------------------------------------------------------------------------
@@ -1104,6 +1129,186 @@ app.get('/api/tags/posts', async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// Pipeline Templates + Instances API  (new unified model)
+// ---------------------------------------------------------------------------
+
+/**
+ * GET /api/templates — list all pipeline templates from catalogue.
+ */
+app.get('/api/templates', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  return c.json({ count: PIPELINE_TEMPLATES.length, templates: PIPELINE_TEMPLATES });
+});
+
+/**
+ * GET /api/pipelines/instances — list all installed instances (seeds if needed).
+ */
+app.get('/api/pipelines/instances', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const instances = await listInstances();
+  return c.json({ count: instances.length, instances });
+});
+
+const instanceFromTemplateSchema = z.object({
+  templateId: z.string().min(1),
+  name: z.string().min(1).max(100).optional(),
+  configOverrides: z
+    .object({
+      trigger: z.enum(['post-create', 'comment-create', 'status-change', 'scheduled']).optional(),
+      systemPrompt: z.string().max(4000).optional(),
+      userPrompt: z.string().max(4000).optional(),
+      outputSchema: z.enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster']).optional(),
+      labels: z.array(z.string().min(1).max(100)).max(50).optional(),
+      threshold: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
+  showIn: z.array(z.enum(['insights', 'incidents', 'team', 'audit'])).optional(),
+});
+
+const instanceFromScratchSchema = z.object({
+  name: z.string().min(1).max(100),
+  kind: z.enum(['categorical', 'ordinal', 'cluster', 'scalar', 'boolean']),
+  config: z.object({
+    trigger: z.enum(['post-create', 'comment-create', 'status-change', 'scheduled']),
+    systemPrompt: z.string().min(1).max(4000),
+    userPrompt: z.string().min(1).max(4000),
+    outputSchema: z.enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster']),
+    labels: z.array(z.string().min(1).max(100)).max(50).optional(),
+    threshold: z.number().min(0).max(1).optional(),
+  }),
+  showIn: z.array(z.enum(['insights', 'incidents', 'team', 'audit'])).optional(),
+});
+
+/**
+ * POST /api/pipelines/instances — install from template or create from scratch.
+ */
+app.post('/api/pipelines/instances', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+
+  if (typeof rawBody === 'object' && rawBody !== null && 'templateId' in rawBody) {
+    const parsed = instanceFromTemplateSchema.safeParse(rawBody);
+    if (!parsed.success)
+      return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+    try {
+      const tfOpts = { templateId: parsed.data.templateId } as Parameters<typeof installFromTemplate>[0];
+      if (parsed.data.name !== undefined) tfOpts.name = parsed.data.name;
+      if (parsed.data.showIn !== undefined) tfOpts.showIn = parsed.data.showIn;
+      // configOverrides is Partial so spread is safe at runtime; cast to satisfy strict check
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      if (parsed.data.configOverrides !== undefined) tfOpts.configOverrides = parsed.data.configOverrides as any;
+      const instance = await installFromTemplate(tfOpts);
+      return c.json({ instance }, 201);
+    } catch (err) {
+      return c.json({ error: String(err) }, 400);
+    }
+  }
+
+  const parsed = instanceFromScratchSchema.safeParse(rawBody);
+  if (!parsed.success)
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+  const scratchOpts = {
+    name: parsed.data.name,
+    kind: parsed.data.kind,
+    config: parsed.data.config as import('@shared/types.js').PipelineInstanceConfig,
+  } as Parameters<typeof createScratchInstance>[0];
+  if (parsed.data.showIn !== undefined) scratchOpts.showIn = parsed.data.showIn;
+  const instance = await createScratchInstance(scratchOpts);
+  return c.json({ instance }, 201);
+});
+
+const instancePatchSchema = z.object({
+  name: z.string().min(1).max(100).optional(),
+  description: z.string().max(500).optional(),
+  enabled: z.boolean().optional(),
+  config: z
+    .object({
+      trigger: z.enum(['post-create', 'comment-create', 'status-change', 'scheduled']).optional(),
+      systemPrompt: z.string().max(4000).optional(),
+      userPrompt: z.string().max(4000).optional(),
+      outputSchema: z.enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster']).optional(),
+      labels: z.array(z.string().min(1).max(100)).max(50).optional(),
+      threshold: z.number().min(0).max(1).optional(),
+    })
+    .optional(),
+  showIn: z.array(z.enum(['insights', 'incidents', 'team', 'audit'])).optional(),
+  order: z.number().int().min(0).optional(),
+});
+
+/** PATCH /api/pipelines/instances/order — reorder bulk. Must be before :id route. */
+app.patch('/api/pipelines/instances/order', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+  const parsed = z.object({ orderedIds: z.array(z.string()).min(1) }).safeParse(rawBody);
+  if (!parsed.success) return c.json({ error: 'orderedIds (string[]) required' }, 400);
+  await reorderInstances(parsed.data.orderedIds);
+  return c.json({ ok: true });
+});
+
+/** PATCH /api/pipelines/instances/:id */
+app.patch('/api/pipelines/instances/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+  const parsed = instancePatchSchema.safeParse(rawBody);
+  if (!parsed.success)
+    return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
+
+  const existing = await getInstance(id);
+  if (!existing) return c.json({ error: 'not found' }, 404);
+
+  const patch: Parameters<typeof patchInstance>[1] = {};
+  if (parsed.data.name !== undefined) patch.name = parsed.data.name;
+  if (parsed.data.description !== undefined) patch.description = parsed.data.description;
+  if (parsed.data.enabled !== undefined) patch.enabled = parsed.data.enabled;
+  if (parsed.data.showIn !== undefined) patch.showIn = parsed.data.showIn;
+  if (parsed.data.order !== undefined) patch.order = parsed.data.order;
+  if (parsed.data.config !== undefined) {
+    const merged = { ...existing.config, ...parsed.data.config };
+    // After spread, trigger must be defined (existing.config always has it)
+    patch.config = merged as import('@shared/types.js').PipelineInstanceConfig;
+  }
+
+  const updated = await patchInstance(id, patch);
+  return c.json({ instance: updated });
+});
+
+/** DELETE /api/pipelines/instances/:id */
+app.delete('/api/pipelines/instances/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const result = await deleteInstance(id);
+  if (!result.deleted && !result.disabled) return c.json({ error: 'not found' }, 404);
+  return c.json({ ok: true, ...result });
+});
+
+/** POST /api/pipelines/instances/:id/duplicate */
+app.post('/api/pipelines/instances/:id/duplicate', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const copy = await duplicateInstance(id);
+  if (!copy) return c.json({ error: 'not found' }, 404);
+  return c.json({ instance: copy }, 201);
+});
+
+// ---------------------------------------------------------------------------
+// Mount module-owned /api routes
+// ---------------------------------------------------------------------------
 // Mount module-owned /api routes
 // ---------------------------------------------------------------------------
 
@@ -1608,6 +1813,8 @@ app.post('/api/posts/bulk-tag', async (c) => {
 
 app.post('/internal/triggers/app-install', async (c) => {
   await dispatch('onAppInstall', await c.req.json());
+  // Idempotently seed pre-installed pipeline instances on first install.
+  await seedInstancesIfNeeded();
   return c.json({ ok: true });
 });
 
@@ -2360,6 +2567,132 @@ app.get('/api/ai/status', async (c) => {
     defaultModel: DEFAULT_MODEL,
     catalog: CURATED_MODELS,
   });
+});
+
+// ---------------------------------------------------------------------------
+// Webhooks (mod-only)
+// ---------------------------------------------------------------------------
+
+const webhookCreateSchema = z.object({
+  name: z.string().min(1).max(100),
+  targetUrl: z.string().url(),
+  events: z.array(z.string()).min(1),
+  format: z.enum(['auto', 'slack', 'discord', 'pagerduty', 'generic']).default('auto'),
+});
+
+const webhookPatchSchema = z.object({
+  enabled: z.boolean().optional(),
+  events: z.array(z.string()).min(1).optional(),
+  format: z.enum(['slack', 'discord', 'pagerduty', 'generic']).optional(),
+  name: z.string().min(1).max(100).optional(),
+});
+
+/** Generate a 32-char hex secret for new webhooks. */
+function genWebhookSecret(): string {
+  const buf = new Uint8Array(16);
+  crypto.getRandomValues(buf);
+  return Array.from(buf)
+    .map((b) => b.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+/** Tiny ID — same approach as crisis-detection/nanoid.ts */
+function webhookNanoid(): string {
+  return crypto.randomUUID().replace(/-/g, '').slice(0, 20);
+}
+
+/** Sample payloads for the /test endpoint */
+const SAMPLE_PAYLOADS: Record<string, Record<string, unknown>> = {
+  'post-tag': { postId: 'test_post', driverId: 'billing', taggedBy: 'auto', confidence: 0.9 },
+  'sentiment-spike': { postId: 'test_post', score: -0.8, label: 'negative', threshold: -0.5 },
+  'incident-open': { incidentId: 'test_inc', reason: 'Negative spike', startedAt: Date.now() },
+  'incident-resolve': { incidentId: 'test_inc', resolvedAt: Date.now(), resolvedBy: 'mod' },
+  'theme-regenerate': { generatedAt: Date.now(), themeCount: 5 },
+  'custom-rule-fire': { ruleId: 'rule_1', ruleName: 'High-priority alert', postId: 'test_post' },
+};
+
+app.get('/api/webhooks', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const hooks = await listWebhooks();
+  return c.json({ count: hooks.length, webhooks: hooks });
+});
+
+app.post('/api/webhooks', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const body = await c.req.json().catch(() => null);
+  const parsed = webhookCreateSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'invalid body', issues: parsed.error.issues }, 400);
+
+  const { name, targetUrl, events, format: rawFormat } = parsed.data;
+  const resolvedFormat: WebhookFormat =
+    rawFormat === 'auto' ? detectFormat(targetUrl, 'generic') : rawFormat;
+
+  const hook: Webhook = {
+    id: webhookNanoid(),
+    name,
+    targetUrl,
+    events,
+    enabled: true,
+    secret: genWebhookSecret(),
+    format: resolvedFormat,
+    createdAt: Date.now(),
+  };
+  await saveWebhook(hook);
+  log.info('webhook created', { id: hook.id, name, format: resolvedFormat });
+  return c.json({ webhook: hook }, 201);
+});
+
+app.patch('/api/webhooks/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const hook = await getWebhook(id);
+  if (!hook) return c.json({ error: 'not found' }, 404);
+
+  const body = await c.req.json().catch(() => null);
+  const parsed = webhookPatchSchema.safeParse(body);
+  if (!parsed.success) return c.json({ error: 'invalid body', issues: parsed.error.issues }, 400);
+
+  const patch = parsed.data;
+  const updated: Webhook = {
+    ...hook,
+    ...(patch.name !== undefined ? { name: patch.name } : {}),
+    ...(patch.enabled !== undefined ? { enabled: patch.enabled } : {}),
+    ...(patch.events !== undefined ? { events: patch.events } : {}),
+    ...(patch.format !== undefined ? { format: patch.format } : {}),
+  };
+  await saveWebhook(updated);
+  return c.json({ webhook: updated });
+});
+
+app.delete('/api/webhooks/:id', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const hook = await getWebhook(id);
+  if (!hook) return c.json({ error: 'not found' }, 404);
+  await deleteWebhook(id);
+  return c.json({ ok: true });
+});
+
+app.post('/api/webhooks/:id/test', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const hook = await getWebhook(id);
+  if (!hook) return c.json({ error: 'not found' }, 404);
+
+  const firstEvent = hook.events.find((e) => e !== '*') ?? 'post-tag';
+  const samplePayload = SAMPLE_PAYLOADS[firstEvent] ?? { test: true };
+
+  const result = await deliverWebhook(id, firstEvent, samplePayload, { skipLog: true });
+  return c.json(result);
+});
+
+app.get('/api/webhooks/:id/deliveries', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const hook = await getWebhook(id);
+  if (!hook) return c.json({ error: 'not found' }, 404);
+  const deliveries = await getDeliveries(id);
+  return c.json({ count: deliveries.length, deliveries });
 });
 
 // ---------------------------------------------------------------------------
