@@ -190,7 +190,7 @@ export interface ThemeSnapshot {
 }
 
 // ---------------------------------------------------------------------------
-// Pipeline system — first-class records for all classification pipelines
+// Pipeline system — Templates (catalogue) + Instances (installed, running)
 // ---------------------------------------------------------------------------
 
 export type PipelineKind = 'categorical' | 'ordinal' | 'cluster' | 'scalar' | 'boolean';
@@ -201,11 +201,88 @@ export type PipelineOutputSchema =
   | 'boolean'
   | 'scalar'
   | 'cluster';
+export type PipelineCategory = 'tagging' | 'scoring' | 'flagging' | 'clustering' | 'extraction';
+
+/** Which UI surfaces this pipeline instance's output should appear in. */
+export type PipelineShowIn = 'insights' | 'incidents' | 'team' | 'audit';
+
+// ---------------------------------------------------------------------------
+// Template — immutable catalogue entry defined in code
+// ---------------------------------------------------------------------------
+
+export interface PipelineTemplateConfig {
+  trigger: PipelineTrigger;
+  systemPrompt: string;
+  userPrompt: string;
+  outputSchema: PipelineOutputSchema;
+  labels?: string[] | undefined;
+  threshold?: number | undefined;
+}
+
+export interface PipelineTemplate {
+  id: string;
+  name: string;
+  shortDescription: string;
+  description: string;
+  category: PipelineCategory;
+  kind: PipelineKind;
+  iconEmoji?: string | undefined;
+  defaultConfig: PipelineTemplateConfig;
+  /** Which fields mods are allowed to override when installing or tuning. */
+  configurable: Array<'systemPrompt' | 'userPrompt' | 'labels' | 'threshold' | 'trigger'>;
+  example?: { input: string; output: string } | undefined;
+  /** The module key used for stats lookup in the admin debug endpoint */
+  moduleKey?: string | undefined;
+  /** Human-readable description of the processing chain */
+  logic?: string | undefined;
+  /** Alpha templates are stubbed / not yet fully functional */
+  alpha?: boolean | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Instance — Redis-stored, mutable, installed from a template or from scratch
+// ---------------------------------------------------------------------------
+
+export type PipelineInstanceSource = 'preinstalled' | 'installed' | 'scratch';
+
+export interface PipelineInstanceConfig {
+  trigger: PipelineTrigger;
+  systemPrompt: string;
+  userPrompt: string;
+  outputSchema: PipelineOutputSchema;
+  labels?: string[] | undefined;
+  threshold?: number | undefined;
+}
+
+export interface PipelineInstance {
+  id: string;
+  templateId: string;
+  name: string;
+  description?: string | undefined;
+  enabled: boolean;
+  config: PipelineInstanceConfig;
+  /**
+   * - 'preinstalled' = shipped as default, cannot be deleted (but can be disabled)
+   * - 'installed'    = mod clicked Install from catalogue
+   * - 'scratch'      = mod created from blank (no template)
+   */
+  source: PipelineInstanceSource;
+  createdAt: number;
+  updatedAt: number;
+  showIn: PipelineShowIn[];
+  /** Display order in Pipelines tab (lower = earlier) */
+  order?: number | undefined;
+}
+
+// ---------------------------------------------------------------------------
+// Legacy Pipeline shape — kept for backward-compat with server routes that
+// haven't been migrated yet. New code should use PipelineInstance.
+// ---------------------------------------------------------------------------
+
+/** @deprecated Use PipelineInstance */
 export type PipelineSource = 'builtin' | 'custom';
 
-/** Which UI surfaces this pipeline's output should appear in. */
-export type PipelineShowIn = 'insights' | 'pipelines' | 'incidents' | 'team' | 'audit';
-
+/** @deprecated Use PipelineInstance */
 export interface Pipeline {
   id: string;
   name: string;
@@ -217,25 +294,12 @@ export interface Pipeline {
   outputSchema: PipelineOutputSchema;
   source: PipelineSource;
   enabled: boolean;
-  /** For categorical/ordinal pipelines: the set of expected label values */
   labels?: string[] | undefined;
-  /** Display order in Insights tab (lower = earlier) */
   order?: number | undefined;
-  /** Human-readable description of the processing chain (e.g. "Lexicon → AI") */
   logic?: string | undefined;
-  /** The module key used for stats lookup in the admin debug endpoint */
   moduleKey?: string | undefined;
-  /** Alpha pipelines are stubbed / not yet fully functional */
   alpha?: boolean | undefined;
-  /**
-   * Which UI surfaces render this pipeline's output.
-   * - 'insights' → rendered as a sub-tab section in the Insights tab
-   * - 'pipelines' → appears in the Pipelines catalog (default for all builtins)
-   * - 'incidents' → output feeds the Incidents tab (crisis-detection)
-   * - 'team'      → output feeds the Team tab (agent-metrics)
-   * - 'audit'     → output feeds the Audit tab (impostor-detection)
-   */
-  showIn?: PipelineShowIn[] | undefined;
+  showIn?: Array<'insights' | 'pipelines' | 'incidents' | 'team' | 'audit'> | undefined;
 }
 
 export interface Tag {
