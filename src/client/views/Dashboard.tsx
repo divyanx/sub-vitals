@@ -21,7 +21,6 @@ import { NavOverflow } from '../components/NavOverflow.tsx';
 import { ShortcutsModal } from '../components/ShortcutsModal.tsx';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import { type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
-import { useTheme } from '../hooks/useTheme.ts';
 import {
   type Agent,
   type AuditAction,
@@ -93,7 +92,6 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const [pipelinesAutoOpen, setPipelinesAutoOpen] = useState(false);
-  const { theme, cycle: cycleTheme } = useTheme();
   const badges = useNavBadges();
 
   // URL helpers
@@ -320,12 +318,6 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         action: () => setTab('settings'),
       },
       {
-        id: 'theme-cycle',
-        label: `Theme: ${theme} → cycle`,
-        group: 'Preferences',
-        action: cycleTheme,
-      },
-      {
         id: 'shortcuts',
         label: 'Keyboard shortcuts',
         group: 'Help',
@@ -333,7 +325,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         action: () => setShortcutsOpen(true),
       },
     ],
-    [setTab, setInsightsSection, theme, cycleTheme],
+    [setTab, setInsightsSection],
   );
 
   const customPipelines: Array<{ id: string; name: string; kind: string }> = [];
@@ -341,7 +333,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   return (
     <div className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--text)]">
       <Onboarding />
-      <Header theme={theme} onCycleTheme={cycleTheme} onOpenCmd={() => setCmdOpen(true)} />
+      <Header onOpenCmd={() => setCmdOpen(true)} />
       <Nav tab={tab} setTab={setTab} badges={badges} />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
@@ -396,18 +388,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   );
 }
 
-function Header({
-  theme,
-  onCycleTheme,
-  onOpenCmd,
-}: {
-  theme: 'system' | 'dark' | 'light';
-  onCycleTheme: () => void;
-  onOpenCmd: () => void;
-}) {
-  const themeIcon = theme === 'light' ? '☀️' : theme === 'dark' ? '🌙' : '🌓';
-  const themeLabel = `Theme: ${theme === 'system' ? 'auto (system)' : theme}. Click to cycle dark / light / auto.`;
-
+function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
   return (
     <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-4 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-3">
@@ -443,17 +424,6 @@ function Header({
             <kbd className="hidden rounded border border-[var(--border)] bg-[var(--bg)] px-1 font-mono text-[10px] sm:inline">
               ⌘K
             </kbd>
-          </button>
-
-          {/* Theme toggle */}
-          <button
-            type="button"
-            onClick={onCycleTheme}
-            aria-label={themeLabel}
-            title={themeLabel}
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-sm transition hover:border-[var(--accent)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
-          >
-            {themeIcon}
           </button>
         </div>
       </div>
