@@ -1131,29 +1131,29 @@ function StudioSection({
 
       <FieldError msg={error} />
 
-      <div className="mt-4 flex flex-wrap gap-3">
-        <SaveButton onClick={() => saveMut.mutate()} loading={saveMut.isPending} />
+      <div className="mt-4 flex flex-wrap items-center gap-2">
         <button
           type="button"
           onClick={testConnection}
           disabled={testLoading || !token.trim()}
-          className="rounded-md border border-blue-700 bg-blue-900/20 px-4 py-1.5 text-sm font-medium text-blue-200 transition hover:bg-blue-900/40 disabled:opacity-50"
+          className="rounded-md border border-blue-700 bg-blue-900/20 px-3 py-1.5 text-xs font-medium text-blue-200 transition hover:bg-blue-900/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
           data-testid="studio-test-button"
         >
-          {testLoading ? 'Testing…' : 'Test connection'}
+          {testLoading ? 'Testing…' : '🔌 Test connection'}
         </button>
         {connected ? (
           <button
             type="button"
             onClick={() => disconnectMut.mutate()}
             disabled={disconnectMut.isPending}
-            className="rounded-md border border-rose-700 bg-rose-900/20 px-4 py-1.5 text-sm font-medium text-rose-200 transition hover:bg-rose-900/40 disabled:opacity-50"
+            className="rounded-md border border-rose-800 bg-rose-950/30 px-3 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-900/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-500"
             data-testid="studio-disconnect-button"
           >
             {disconnectMut.isPending ? 'Disconnecting…' : 'Disconnect'}
           </button>
         ) : null}
       </div>
+      <SaveButton onClick={() => saveMut.mutate()} loading={saveMut.isPending} />
     </Section>
   );
 }
