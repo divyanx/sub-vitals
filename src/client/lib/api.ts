@@ -170,6 +170,54 @@ export interface PipelineRecord {
   showIn?: Array<'insights' | 'pipelines' | 'incidents' | 'team' | 'audit'>;
 }
 
+// ---------------------------------------------------------------------------
+// Pipeline instance + template types (new model)
+// ---------------------------------------------------------------------------
+
+export type PipelineInstanceSource = 'preinstalled' | 'installed' | 'scratch';
+export type PipelineShowIn = 'insights' | 'incidents' | 'team' | 'audit';
+
+export interface PipelineInstanceConfig {
+  trigger: PipelineTrigger;
+  systemPrompt: string;
+  userPrompt: string;
+  outputSchema: PipelineOutputSchema;
+  labels?: string[];
+  threshold?: number;
+}
+
+export interface PipelineInstance {
+  id: string;
+  templateId: string;
+  name: string;
+  description?: string;
+  enabled: boolean;
+  config: PipelineInstanceConfig;
+  source: PipelineInstanceSource;
+  createdAt: number;
+  updatedAt: number;
+  showIn: PipelineShowIn[];
+  order?: number;
+}
+
+export type PipelineCategory = 'tagging' | 'scoring' | 'flagging' | 'clustering' | 'extraction';
+
+export interface PipelineTemplateRecord {
+  id: string;
+  name: string;
+  shortDescription: string;
+  description: string;
+  category: PipelineCategory;
+  kind: PipelineKind;
+  iconEmoji?: string;
+  defaultConfig: PipelineInstanceConfig;
+  configurable: string[];
+  example?: { input: string; output: string };
+  moduleKey?: string;
+  logic?: string;
+  alpha?: boolean;
+}
+
 export interface TagDistributionEntry {
   value: string;
   count: number;
@@ -200,6 +248,40 @@ export interface CustomPipelineBody {
   outputSchema: PipelineOutputSchema;
   labels?: string[];
   action: CustomPipelineAction;
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks
+// ---------------------------------------------------------------------------
+
+export type WebhookFormat = 'slack' | 'discord' | 'pagerduty' | 'generic';
+
+export type WebhookEventKind =
+  | 'post-tag'
+  | 'sentiment-spike'
+  | 'incident-open'
+  | 'incident-resolve'
+  | 'theme-regenerate'
+  | 'custom-rule-fire'
+  | '*';
+
+export interface Webhook {
+  id: string;
+  name: string;
+  targetUrl: string;
+  events: string[];
+  enabled: boolean;
+  secret: string;
+  format: WebhookFormat;
+  createdAt: number;
+}
+
+export interface WebhookDelivery {
+  eventKind: string;
+  statusCode: number | null;
+  success: boolean;
+  responseExcerpt: string;
+  attemptedAt: number;
 }
 
 async function getJson<T>(path: string): Promise<T> {
@@ -776,6 +858,84 @@ export const api = {
       });
       if (!r.ok) throw new Error(`set order failed: HTTP ${r.status}`);
     },
+
+    // New instances API
+    listInstances: async () => {
+      const raw = await getJson<{ count: number; instances: PipelineInstance[] }>(
+        '/api/pipelines/instances',
+      );
+      return { ...raw, instances: arr<PipelineInstance>(raw.instances) };
+    },
+
+    installFromTemplate: async (body: {
+      templateId: string;
+      name?: string;
+      configOverrides?: Partial<PipelineInstanceConfig>;
+      showIn?: string[];
+    }) => {
+      const r = await fetch('/api/pipelines/instances', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { instance: PipelineInstance };
+    },
+
+    patchInstance: async (
+      id: string,
+      patch: Partial<
+        Pick<PipelineInstance, 'name' | 'description' | 'enabled' | 'config' | 'showIn' | 'order'>
+      >,
+    ) => {
+      const r = await fetch(`/api/pipelines/instances/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { instance: PipelineInstance };
+    },
+
+    deleteInstance: async (id: string) => {
+      const r = await fetch(`/api/pipelines/instances/${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+      });
+      if (!r.ok) throw new Error(`delete failed: HTTP ${r.status}`);
+      return (await r.json()) as { ok: boolean; deleted: boolean; disabled?: boolean };
+    },
+
+    duplicateInstance: async (id: string) => {
+      const r = await fetch(`/api/pipelines/instances/${encodeURIComponent(id)}/duplicate`, {
+        method: 'POST',
+      });
+      if (!r.ok) throw new Error(`duplicate failed: HTTP ${r.status}`);
+      return (await r.json()) as { instance: PipelineInstance };
+    },
+
+    reorderInstances: async (orderedIds: string[]) => {
+      const r = await fetch('/api/pipelines/instances/order', {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ orderedIds }),
+      });
+      if (!r.ok) throw new Error(`reorder failed: HTTP ${r.status}`);
+    },
+  },
+
+  templates: {
+    list: async () => {
+      const raw = await getJson<{ count: number; templates: PipelineTemplateRecord[] }>(
+        '/api/templates',
+      );
+      return { ...raw, templates: arr<PipelineTemplateRecord>(raw.templates) };
+    },
   },
 
   tags: {
@@ -969,6 +1129,59 @@ export const api = {
   // ---------------------------------------------------------------------------
   // Data Lab
   // ---------------------------------------------------------------------------
+
+  webhooks: {
+    list: async () => {
+      const raw = await getJson<{ count: number; webhooks: Webhook[] }>('/api/webhooks');
+      return { ...raw, webhooks: arr<Webhook>(raw.webhooks) };
+    },
+    create: async (body: {
+      name: string;
+      targetUrl: string;
+      events: string[];
+      format?: 'auto' | WebhookFormat;
+    }) => {
+      const r = await fetch('/api/webhooks', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { webhook: Webhook };
+    },
+    update: async (
+      id: string,
+      patch: { enabled?: boolean; events?: string[]; format?: WebhookFormat; name?: string },
+    ) => {
+      const r = await fetch(`/api/webhooks/${encodeURIComponent(id)}`, {
+        method: 'PATCH',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(patch),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { webhook: Webhook };
+    },
+    delete: async (id: string) => {
+      const r = await fetch(`/api/webhooks/${encodeURIComponent(id)}`, { method: 'DELETE' });
+      if (!r.ok) throw new Error(`delete webhook failed: HTTP ${r.status}`);
+    },
+    test: async (id: string) => {
+      const r = await fetch(`/api/webhooks/${encodeURIComponent(id)}/test`, { method: 'POST' });
+      return (await r.json()) as { ok: boolean; statusCode?: number; error?: string };
+    },
+    deliveries: async (id: string) => {
+      const raw = await getJson<{ count: number; deliveries: WebhookDelivery[] }>(
+        `/api/webhooks/${encodeURIComponent(id)}/deliveries`,
+      );
+      return { ...raw, deliveries: arr<WebhookDelivery>(raw.deliveries) };
+    },
+  },
 
   lab: {
     simulatePost: async (body: {
