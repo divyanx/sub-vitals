@@ -17,7 +17,6 @@ import type { Pipeline } from '../../shared/types.js';
 import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { InfoTooltip } from '../components/InfoTooltip.tsx';
-import { NavOverflow } from '../components/NavOverflow.tsx';
 import { ShortcutsModal } from '../components/ShortcutsModal.tsx';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import { type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
@@ -55,23 +54,30 @@ const SentimentChartLazy = lazy(() =>
   import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
 );
 const RulesLazy = lazy(() => import('./Rules.tsx').then((m) => ({ default: m.Rules })));
+const ContentBrowserLazy = lazy(() =>
+  import('./ContentBrowser.tsx').then((m) => ({ default: m.ContentBrowser })),
+);
 
-type Tab =
-  | 'inbox'
-  | 'overview'
-  | 'insights'
-  | 'incidents'
+type Tab = 'triage' | 'content' | 'watch' | 'respond' | 'configure';
+
+/** Sections under the Configure dropdown */
+type ConfigureSection =
   | 'pipelines'
   | 'rules'
-  | 'team'
-  | 'export'
+  | 'webhooks'
+  | 'brand'
+  | 'team-roster'
+  | 'thresholds'
+  | 'ai'
   | 'audit'
-  | 'lab'
-  | 'settings';
+  | 'export'
+  | 'lab';
 
 export interface DashboardProps {
   initialTab?: Tab;
-  initialDriver?: string;
+  /** Initial sub-section when initialTab === 'configure' */
+  initialSection?: string | undefined;
+  initialDriver?: string | undefined;
 }
 
 /** Map legacy section names to new pipeline IDs (for deep-link backward compat). */
@@ -83,8 +89,15 @@ const SECTION_ALIAS: Record<string, string> = {
   custom: 'intent',
 };
 
-export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProps) {
+export function Dashboard({
+  initialTab = 'triage',
+  initialSection,
+  initialDriver,
+}: DashboardProps) {
   const [tab, setTabState] = useState<Tab>(initialTab);
+  const [configSection, setConfigSection] = useState<ConfigureSection>(
+    (initialSection as ConfigureSection) ?? 'pipelines',
+  );
   const [activeSection, setActiveSection] = useState<InsightSection>(() => {
     const params = new URLSearchParams(window.location.search);
     const raw = params.get('section') ?? 'intent';
@@ -102,8 +115,7 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   const setTab = useCallback(
     (t: Tab, extra?: Record<string, string>) => {
       setTabState(t);
-      // If navigating away from pipelines-with-auto-open, reset the flag
-      if (t !== 'pipelines') setPipelinesAutoOpen(false);
+      if (t !== 'configure') setPipelinesAutoOpen(false);
       const cleanExtra: Record<string, string> = {};
       if (extra) {
         for (const [k, v] of Object.entries(extra)) {
@@ -118,48 +130,93 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
     [],
   );
 
-  const setInsightsSection = useCallback((section: InsightSection) => {
-    setActiveSection(section);
-    const params = new URLSearchParams({ tab: 'insights', section });
-    history.pushState({ tab: 'insights', section }, '', `?${params.toString()}`);
+  const navigateToConfigure = useCallback((section: ConfigureSection) => {
+    setTabState('configure');
+    setConfigSection(section);
+    const params = new URLSearchParams({ tab: 'configure', section });
+    history.pushState({ tab: 'configure', section }, '', `?${params.toString()}`);
   }, []);
 
-  // Deep-link redirects: old ?tab=drivers|sentiment|themes|agents → new locations
+  const setInsightsSection = useCallback((section: InsightSection) => {
+    setActiveSection(section);
+    const params = new URLSearchParams({ tab: 'watch', section });
+    history.pushState({ tab: 'watch', section }, '', `?${params.toString()}`);
+  }, []);
+
+  // Deep-link redirects: legacy tab names → new IA locations
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawTab = params.get('tab');
     const rawSection = params.get('section');
-    if (rawTab === 'drivers' || rawTab === 'sentiment' || rawTab === 'themes') {
-      const section = SECTION_ALIAS[rawTab] ?? rawTab;
-      setTabState('insights');
-      setActiveSection(section);
-      const p = new URLSearchParams({ tab: 'insights', section });
-      history.replaceState({ tab: 'insights', section }, '', `?${p.toString()}`);
-    } else if (rawTab === 'insights' && rawSection && SECTION_ALIAS[rawSection]) {
-      // Remap old section names to new pipeline IDs
+
+    const CONFIGURE_SECTIONS: Record<string, ConfigureSection> = {
+      pipelines: 'pipelines',
+      rules: 'rules',
+      export: 'export',
+      audit: 'audit',
+      lab: 'lab',
+      settings: 'brand',
+      webhooks: 'webhooks',
+    };
+
+    if (!rawTab) return;
+
+    if (
+      rawTab === 'triage' ||
+      rawTab === 'content' ||
+      rawTab === 'watch' ||
+      rawTab === 'respond' ||
+      rawTab === 'configure'
+    ) {
+      // Already canonical — just sync configure section if present
+      if (rawTab === 'configure' && rawSection) {
+        setConfigSection((rawSection as ConfigureSection) ?? 'pipelines');
+      }
+    } else if (rawTab === 'inbox') {
+      setTabState('triage');
+      history.replaceState({ tab: 'triage' }, '', '?tab=triage');
+    } else if (
+      rawTab === 'overview' ||
+      rawTab === 'pulse' ||
+      rawTab === 'insights' ||
+      rawTab === 'drivers' ||
+      rawTab === 'sentiment' ||
+      rawTab === 'themes' ||
+      rawTab === 'incidents'
+    ) {
+      setTabState('watch');
+      history.replaceState({ tab: 'watch' }, '', '?tab=watch');
+    } else if (rawTab === 'agents' || rawTab === 'team') {
+      setTabState('respond');
+      history.replaceState({ tab: 'respond' }, '', '?tab=respond');
+    } else if (rawTab in CONFIGURE_SECTIONS) {
+      const section = CONFIGURE_SECTIONS[rawTab] ?? 'pipelines';
+      setTabState('configure');
+      setConfigSection(section);
+      const p = new URLSearchParams({ tab: 'configure', section });
+      history.replaceState({ tab: 'configure', section }, '', `?${p.toString()}`);
+    } else if (rawSection && SECTION_ALIAS[rawSection]) {
+      // Old insights section aliases
       const section = SECTION_ALIAS[rawSection] ?? rawSection;
       setActiveSection(section);
-    } else if (rawTab === 'agents') {
-      setTabState('team');
-      history.replaceState({ tab: 'team' }, '', '?tab=team');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      const state = e.state as { tab?: Tab; section?: InsightSection } | null;
+      const state = e.state as { tab?: Tab; section?: string } | null;
       if (state?.tab) {
         setTabState(state.tab);
-        if (state.tab === 'insights' && state.section) {
-          setActiveSection(state.section);
+        if (state.tab === 'configure' && state.section) {
+          setConfigSection(state.section as ConfigureSection);
         }
       } else {
         const params = new URLSearchParams(window.location.search);
         const t = params.get('tab') as Tab | null;
-        setTabState(t ?? 'inbox');
-        if (t === 'insights') {
-          setActiveSection((params.get('section') as InsightSection | null) ?? 'intent');
+        setTabState(t ?? 'triage');
+        if (t === 'configure') {
+          setConfigSection((params.get('section') as ConfigureSection | null) ?? 'pipelines');
         }
       }
     };
@@ -188,45 +245,25 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         setCmdOpen(false);
         setShortcutsOpen(false);
       },
-      'g i': (e: KeyboardEvent) => {
+      'g t': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('inbox');
+        setTab('triage');
       },
-      'g p': (e: KeyboardEvent) => {
+      'g c': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('overview');
+        setTab('content');
       },
-      'g x': (e: KeyboardEvent) => {
+      'g w': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('insights');
-      },
-      'g n': (e: KeyboardEvent) => {
-        e.preventDefault();
-        setTab('incidents');
-      },
-      'g l': (e: KeyboardEvent) => {
-        e.preventDefault();
-        setTab('pipelines');
+        setTab('watch');
       },
       'g r': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('rules');
-      },
-      'g m': (e: KeyboardEvent) => {
-        e.preventDefault();
-        setTab('team');
-      },
-      'g e': (e: KeyboardEvent) => {
-        e.preventDefault();
-        setTab('export');
-      },
-      'g u': (e: KeyboardEvent) => {
-        e.preventDefault();
-        setTab('audit');
+        setTab('respond');
       },
       'g ,': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('settings');
+        setTab('configure');
       },
     });
     return () => unsub();
@@ -236,94 +273,74 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
   const commands: Command[] = useMemo(
     () => [
       {
-        id: 'tab-inbox',
-        label: 'Inbox',
+        id: 'tab-triage',
+        label: 'Triage',
         group: 'Navigation',
-        shortcut: ['g', 'i'],
-        action: () => setTab('inbox'),
+        shortcut: ['g', 't'],
+        action: () => setTab('triage'),
       },
       {
-        id: 'tab-overview',
-        label: 'Pulse',
+        id: 'tab-content',
+        label: 'Content',
         group: 'Navigation',
-        shortcut: ['g', 'p'],
-        action: () => setTab('overview'),
+        shortcut: ['g', 'c'],
+        action: () => setTab('content'),
       },
       {
-        id: 'tab-insights',
-        label: 'Insights',
+        id: 'tab-watch',
+        label: 'Watch',
         group: 'Navigation',
-        shortcut: ['g', 'x'],
-        action: () => setTab('insights'),
+        shortcut: ['g', 'w'],
+        action: () => setTab('watch'),
       },
       {
-        id: 'tab-insights-drivers',
-        label: 'Insights › Drivers',
+        id: 'tab-respond',
+        label: 'Respond',
         group: 'Navigation',
-        action: () => {
-          setTab('insights');
-          setInsightsSection('drivers');
-        },
+        shortcut: ['g', 'r'],
+        action: () => setTab('respond'),
       },
       {
-        id: 'tab-insights-sentiment',
-        label: 'Insights › Sentiment',
-        group: 'Navigation',
-        action: () => {
-          setTab('insights');
-          setInsightsSection('sentiment');
-        },
+        id: 'configure-pipelines',
+        label: 'Configure › Pipelines',
+        group: 'Configure',
+        action: () => navigateToConfigure('pipelines'),
       },
       {
-        id: 'tab-insights-themes',
-        label: 'Insights › Themes',
-        group: 'Navigation',
-        action: () => {
-          setTab('insights');
-          setInsightsSection('themes');
-        },
+        id: 'configure-rules',
+        label: 'Configure › Rules',
+        group: 'Configure',
+        action: () => navigateToConfigure('rules'),
       },
       {
-        id: 'tab-incidents',
-        label: 'Incidents',
-        group: 'Navigation',
-        shortcut: ['g', 'n'],
-        action: () => setTab('incidents'),
+        id: 'configure-webhooks',
+        label: 'Configure › Webhooks',
+        group: 'Configure',
+        action: () => navigateToConfigure('webhooks'),
       },
       {
-        id: 'tab-pipelines',
-        label: 'Pipelines',
-        group: 'Navigation',
-        shortcut: ['g', 'l'],
-        action: () => setTab('pipelines'),
+        id: 'configure-brand',
+        label: 'Configure › Brand',
+        group: 'Configure',
+        action: () => navigateToConfigure('brand'),
       },
       {
-        id: 'tab-team',
-        label: 'Team',
-        group: 'Navigation',
-        shortcut: ['g', 'm'],
-        action: () => setTab('team'),
+        id: 'configure-audit',
+        label: 'Configure › Audit log',
+        group: 'Configure',
+        action: () => navigateToConfigure('audit'),
       },
       {
-        id: 'tab-export',
-        label: 'Export',
-        group: 'Navigation',
-        shortcut: ['g', 'e'],
-        action: () => setTab('export'),
+        id: 'configure-export',
+        label: 'Configure › Export',
+        group: 'Configure',
+        action: () => navigateToConfigure('export'),
       },
       {
-        id: 'tab-audit',
-        label: 'Audit',
-        group: 'Navigation',
-        shortcut: ['g', 'u'],
-        action: () => setTab('audit'),
-      },
-      {
-        id: 'tab-settings',
-        label: 'Settings',
-        group: 'Navigation',
-        shortcut: ['g', ','],
-        action: () => setTab('settings'),
+        id: 'configure-lab',
+        label: 'Configure › Lab',
+        group: 'Configure',
+        action: () => navigateToConfigure('lab'),
       },
       {
         id: 'shortcuts',
@@ -333,60 +350,45 @@ export function Dashboard({ initialTab = 'inbox', initialDriver }: DashboardProp
         action: () => setShortcutsOpen(true),
       },
     ],
-    [setTab, setInsightsSection],
+    [setTab, navigateToConfigure],
   );
-
-  const customPipelines: Array<{ id: string; name: string; kind: string }> = [];
 
   return (
     <div className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--text)]">
       <Onboarding />
       <Header onOpenCmd={() => setCmdOpen(true)} />
-      <Nav tab={tab} setTab={setTab} badges={badges} />
+      <Nav
+        tab={tab}
+        setTab={setTab}
+        configSection={configSection}
+        onConfigSection={navigateToConfigure}
+        badges={badges}
+      />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
           <Suspense fallback={<SkeletonGrid />}>
-            {tab === 'inbox' && <Inbox />}
-            {tab === 'overview' && (
-              <Overview
-                onNavigate={(t, driver, extra) => {
-                  if (driver) setActiveDriver(driver);
-                  // When navigating to insights with a section, set the section too
-                  if (t === 'insights' && extra?.section) {
-                    setActiveSection(extra.section as InsightSection);
-                  }
-                  setTab(t as Tab, { ...(driver ? { driver } : {}), ...(extra ?? {}) });
-                }}
-              />
-            )}
-            {tab === 'insights' && (
-              <Insights
-                defaultSection={activeSection}
+            {tab === 'triage' && <Inbox />}
+            {tab === 'content' && <ContentBrowserTab />}
+            {tab === 'watch' && (
+              <Watch
+                activeSection={activeSection}
                 onSectionChange={setInsightsSection}
-                DriversContent={() => <Drivers initialDriver={activeDriver} />}
-                SentimentContent={() => <SentimentTab />}
-                ThemesContent={() => <Themes />}
-                customPipelines={customPipelines}
+                activeDriver={activeDriver ?? undefined}
+                onSetDriver={setActiveDriver}
                 onOpenNewPipeline={() => {
+                  navigateToConfigure('pipelines');
                   setPipelinesAutoOpen(true);
-                  setTab('pipelines');
                 }}
               />
             )}
-            {tab === 'incidents' && <Incidents />}
-            {tab === 'pipelines' && (
-              <Pipelines
-                onOpenSettings={() => setTab('settings')}
-                autoOpen={pipelinesAutoOpen}
-                key={pipelinesAutoOpen ? 'auto-open' : 'normal'}
+            {tab === 'respond' && <Respond />}
+            {tab === 'configure' && (
+              <Configure
+                section={configSection}
+                onSection={navigateToConfigure}
+                pipelinesAutoOpen={pipelinesAutoOpen}
               />
             )}
-            {tab === 'rules' && <RulesLazy />}
-            {tab === 'team' && <Agents />}
-            {tab === 'export' && <ExportTab />}
-            {tab === 'audit' && <Audit />}
-            {tab === 'lab' && <LabLazy />}
-            {tab === 'settings' && <Settings />}
           </Suspense>
         </ErrorBoundary>
       </main>
@@ -440,34 +442,66 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
   );
 }
 
-// Primary tabs — always visible in the nav bar
+// Primary tabs — 4 tabs always visible
 const PRIMARY_TABS: { id: Tab; label: string }[] = [
-  { id: 'inbox', label: 'Inbox' },
-  { id: 'overview', label: 'Pulse' },
-  { id: 'insights', label: 'Insights' },
-  { id: 'incidents', label: 'Incidents' },
-  { id: 'pipelines', label: 'Pipelines' },
-  { id: 'rules', label: 'Rules' },
+  { id: 'triage', label: 'Triage' },
+  { id: 'content', label: 'Content' },
+  { id: 'watch', label: 'Watch' },
+  { id: 'respond', label: 'Respond' },
 ];
 
-function Nav({ tab, setTab, badges }: { tab: Tab; setTab: (t: Tab) => void; badges: NavBadges }) {
+const CONFIGURE_SECTIONS: { id: ConfigureSection; label: string }[] = [
+  { id: 'pipelines', label: 'Pipelines' },
+  { id: 'rules', label: 'Rules' },
+  { id: 'webhooks', label: 'Webhooks' },
+  { id: 'brand', label: 'Brand' },
+  { id: 'team-roster', label: 'Team roster' },
+  { id: 'thresholds', label: 'Thresholds' },
+  { id: 'ai', label: 'AI' },
+  { id: 'audit', label: 'Audit log' },
+  { id: 'export', label: 'Export' },
+  { id: 'lab', label: 'Lab' },
+];
+
+function Nav({
+  tab,
+  setTab,
+  configSection,
+  onConfigSection,
+  badges,
+}: {
+  tab: Tab;
+  setTab: (t: Tab) => void;
+  configSection: ConfigureSection;
+  onConfigSection: (s: ConfigureSection) => void;
+  badges: NavBadges;
+}) {
+  const [configOpen, setConfigOpen] = useState(false);
+  const configRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    if (!configOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (configRef.current && !configRef.current.contains(e.target as Node)) {
+        setConfigOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [configOpen]);
+
   return (
     <nav className="relative border-b border-[var(--border)] bg-[var(--bg)]">
       <div className="mx-auto flex max-w-6xl items-stretch px-6">
         <div
           role="tablist"
           aria-label="Dashboard tabs"
-          className="flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto"
-          style={{ scrollbarWidth: 'none' }}
+          className="flex min-w-0 flex-1 items-stretch gap-1"
         >
           {PRIMARY_TABS.map((t) => {
             const isActive = tab === t.id;
-            const badge =
-              t.id === 'inbox' && badges.inbox > 0
-                ? badges.inbox
-                : t.id === 'incidents' && badges.incidents > 0
-                  ? badges.incidents
-                  : null;
+            const badge = t.id === 'triage' && badges.inbox > 0 ? badges.inbox : null;
 
             return (
               <button
@@ -492,13 +526,358 @@ function Nav({ tab, setTab, badges }: { tab: Tab; setTab: (t: Tab) => void; badg
             );
           })}
         </div>
-        {/* Overflow "More ▾" dropdown — lives OUTSIDE the horizontally-scrolling
-            tablist so its popover isn't clipped by overflow-x-auto. */}
-        <div className="flex flex-shrink-0 items-stretch border-l border-[var(--border)] pl-1">
-          <NavOverflow activeTab={tab} onSelect={(t) => setTab(t)} />
+        {/* Configure dropdown */}
+        <div
+          ref={configRef}
+          className="relative flex flex-shrink-0 items-stretch border-l border-[var(--border)] pl-2"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-haspopup="true"
+            aria-expanded={configOpen}
+            aria-label="Configure"
+            onClick={() => {
+              if (tab !== 'configure') {
+                setTab('configure');
+                setConfigOpen(true);
+              } else {
+                setConfigOpen((o) => !o);
+              }
+            }}
+            className={`-mb-px flex items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-medium transition ${
+              tab === 'configure'
+                ? 'border-orange-500 text-[var(--text)]'
+                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+            }`}
+          >
+            Configure
+            <svg
+              className={`h-3 w-3 transition-transform ${configOpen ? 'rotate-180' : ''}`}
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={2}
+              aria-hidden="true"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
+            </svg>
+          </button>
+          {configOpen && (
+            <div
+              role="menu"
+              className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-xl"
+            >
+              {CONFIGURE_SECTIONS.map((s) => (
+                <button
+                  key={s.id}
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    onConfigSection(s.id);
+                    setConfigOpen(false);
+                  }}
+                  className={`flex w-full items-center px-4 py-2 text-sm transition hover:bg-[var(--bg)] ${
+                    tab === 'configure' && configSection === s.id
+                      ? 'text-orange-400'
+                      : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </nav>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// ContentBrowserTab — wraps ContentBrowser lazy component
+// ---------------------------------------------------------------------------
+
+function ContentBrowserTab() {
+  return (
+    <Suspense fallback={<SkeletonGrid />}>
+      <ContentBrowserLazy />
+    </Suspense>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Watch — combined analytics surface: Pulse KPIs + Incidents + Themes
+// ---------------------------------------------------------------------------
+
+function Watch({
+  activeSection,
+  onSectionChange,
+  activeDriver,
+  onSetDriver: _onSetDriver,
+  onOpenNewPipeline,
+}: {
+  activeSection: InsightSection;
+  onSectionChange: (s: InsightSection) => void;
+  activeDriver: string | undefined;
+  onSetDriver: (d: string) => void;
+  onOpenNewPipeline: () => void;
+}) {
+  const customPipelines: Array<{ id: string; name: string; kind: string }> = [];
+  return (
+    <div className="space-y-10">
+      {/* KPI + sparklines strip — the "Pulse" content */}
+      <Overview onNavigate={() => {}} />
+
+      {/* Incidents */}
+      <section>
+        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Incidents</h2>
+        <Incidents />
+      </section>
+
+      {/* Insights (Drivers / Sentiment / Themes) */}
+      <section>
+        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Insights</h2>
+        <Insights
+          defaultSection={activeSection}
+          onSectionChange={onSectionChange}
+          DriversContent={() => <Drivers initialDriver={activeDriver} />}
+          SentimentContent={() => <SentimentTab />}
+          ThemesContent={() => <Themes />}
+          customPipelines={customPipelines}
+          onOpenNewPipeline={onOpenNewPipeline}
+        />
+      </section>
+
+      {/* Recent rule firings stub */}
+      <section>
+        <h2 className="mb-2 text-sm uppercase tracking-wide text-[var(--text-muted)]">
+          Recent rule firings
+        </h2>
+        <RecentRuleFiringsStub />
+      </section>
+    </div>
+  );
+}
+
+function RecentRuleFiringsStub() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['rules'],
+    queryFn: async () => {
+      const res = await fetch('/api/rules');
+      if (!res.ok)
+        return {
+          rules: [] as Array<{ id: string; name: string; fireCount: number; lastFiredAt?: number }>,
+        };
+      return res.json() as Promise<{
+        rules: Array<{ id: string; name: string; fireCount: number; lastFiredAt?: number }>;
+      }>;
+    },
+    staleTime: 60_000,
+  });
+  const recent = (data?.rules ?? [])
+    .filter((r) => r.lastFiredAt)
+    .sort((a, b) => (b.lastFiredAt ?? 0) - (a.lastFiredAt ?? 0))
+    .slice(0, 5);
+
+  if (isLoading) return <SkeletonList />;
+  if (recent.length === 0) {
+    return (
+      <EmptyHint>
+        No rules have fired yet. Create rules under Configure › Rules to automate actions.
+      </EmptyHint>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {recent.map((r) => (
+        <li
+          key={r.id}
+          className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm"
+        >
+          <span className="text-[var(--text)]">{r.name}</span>
+          <span className="text-xs text-[var(--text-muted)]">
+            {r.fireCount} fires · {r.lastFiredAt ? relativeTime(r.lastFiredAt) : '—'}
+          </span>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Respond — AI draft library + Team leaderboard / rep roster
+// ---------------------------------------------------------------------------
+
+function Respond() {
+  return (
+    <div className="space-y-10">
+      <section>
+        <h2 className="mb-2 text-sm uppercase tracking-wide text-[var(--text-muted)]">Drafts</h2>
+        <p className="mb-4 text-xs text-[var(--text-muted)]">
+          AI-generated draft replies saved from the triage queue. Select a thread in Triage to
+          generate and save drafts here.
+        </p>
+        <DraftLibrary />
+      </section>
+
+      <section>
+        <h2 className="mb-2 text-sm uppercase tracking-wide text-[var(--text-muted)]">Team</h2>
+        <Agents />
+      </section>
+    </div>
+  );
+}
+
+function DraftLibrary() {
+  const { data, isLoading } = useQuery({
+    queryKey: ['draft-library'],
+    queryFn: async () => {
+      try {
+        const res = await fetch('/api/drafts');
+        if (!res.ok)
+          return {
+            drafts: [] as Array<{ id: string; postId: string; body: string; createdAt: number }>,
+          };
+        return res.json() as Promise<{
+          drafts: Array<{ id: string; postId: string; body: string; createdAt: number }>;
+        }>;
+      } catch {
+        return {
+          drafts: [] as Array<{ id: string; postId: string; body: string; createdAt: number }>,
+        };
+      }
+    },
+    staleTime: 30_000,
+  });
+
+  if (isLoading) return <SkeletonList />;
+  const drafts = data?.drafts ?? [];
+  if (drafts.length === 0) {
+    return (
+      <EmptyHint>
+        No drafts saved yet. Open a thread in Triage and generate a draft reply to see it here.
+      </EmptyHint>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {drafts.map((d) => (
+        <li key={d.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+          <div className="mb-1 flex items-center justify-between text-xs text-[var(--text-muted)]">
+            <span>Post {d.postId}</span>
+            <time>{relativeTime(d.createdAt)}</time>
+          </div>
+          <p className="line-clamp-3 text-sm text-[var(--text)]">{d.body}</p>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Configure — sub-page router for the 10 configure sections
+// ---------------------------------------------------------------------------
+
+function Configure({
+  section,
+  onSection,
+  pipelinesAutoOpen,
+}: {
+  section: ConfigureSection;
+  onSection: (s: ConfigureSection) => void;
+  pipelinesAutoOpen: boolean;
+}) {
+  return (
+    <div className="flex gap-6">
+      {/* Sidebar nav */}
+      <aside className="w-44 flex-shrink-0">
+        <nav aria-label="Configure sections">
+          <ul className="space-y-0.5">
+            {CONFIGURE_SECTIONS.map((s) => (
+              <li key={s.id}>
+                <button
+                  type="button"
+                  onClick={() => onSection(s.id)}
+                  className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                    section === s.id
+                      ? 'bg-orange-500/10 font-medium text-orange-400'
+                      : 'text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]'
+                  }`}
+                >
+                  {s.label}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </nav>
+      </aside>
+
+      {/* Main content */}
+      <div className="min-w-0 flex-1">
+        <Suspense fallback={<SkeletonGrid />}>
+          {section === 'pipelines' && (
+            <Pipelines
+              onOpenSettings={() => onSection('brand')}
+              autoOpen={pipelinesAutoOpen}
+              key={pipelinesAutoOpen ? 'auto-open' : 'normal'}
+            />
+          )}
+          {section === 'rules' && <RulesLazy />}
+          {section === 'webhooks' && <ConfigureWebhooks />}
+          {section === 'brand' && <ConfigureBrand />}
+          {section === 'team-roster' && <ConfigureTeamRoster />}
+          {section === 'thresholds' && <ConfigureThresholds />}
+          {section === 'ai' && <ConfigureAI />}
+          {section === 'audit' && <Audit />}
+          {section === 'export' && <ExportTab />}
+          {section === 'lab' && <LabLazy />}
+        </Suspense>
+      </div>
+    </div>
+  );
+}
+
+// Thin wrapper sub-pages that extract the right section from Settings
+// We import Settings lazily and call the individual section components directly.
+
+function ConfigureWebhooks() {
+  return (
+    <Suspense fallback={<SkeletonGrid />}>
+      <Settings initialSection="webhooks" />
+    </Suspense>
+  );
+}
+
+function ConfigureBrand() {
+  return (
+    <Suspense fallback={<SkeletonGrid />}>
+      <Settings initialSection="brand" />
+    </Suspense>
+  );
+}
+
+function ConfigureTeamRoster() {
+  return (
+    <Suspense fallback={<SkeletonGrid />}>
+      <Settings initialSection="team-roster" />
+    </Suspense>
+  );
+}
+
+function ConfigureThresholds() {
+  return (
+    <Suspense fallback={<SkeletonGrid />}>
+      <Settings initialSection="thresholds" />
+    </Suspense>
+  );
+}
+
+function ConfigureAI() {
+  return (
+    <Suspense fallback={<SkeletonGrid />}>
+      <Settings initialSection="ai" />
+    </Suspense>
   );
 }
 
@@ -1342,10 +1721,10 @@ function HeatmapCell({ count, max, label }: { count: number; max: number; label:
 function Overview({
   onNavigate,
 }: {
-  onNavigate?: (tab: Tab, driver?: string, extra?: Record<string, string>) => void;
+  onNavigate?: (tab: string, driver?: string, extra?: Record<string, string>) => void;
 }) {
   const navigateTo = useCallback(
-    (tab: Tab, extra?: Record<string, string>) => {
+    (tab: string, extra?: Record<string, string>) => {
       if (onNavigate) {
         onNavigate(tab, extra?.driver, extra);
       }
@@ -3508,84 +3887,9 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
   );
 }
 
-/** Studio waitlist modal */
-function StudioModal({ onClose }: { onClose: () => void }) {
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-
-  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    // Wire to Studio waitlist webhook later
-    console.log('[RedLattice Studio] Waitlist signup:', email);
-    setSubmitted(true);
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label="RedLattice Studio waitlist"
-    >
-      <div className="w-96 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-7 shadow-2xl">
-        <div className="mb-5 flex items-start justify-between">
-          <div>
-            <h3 className="text-base font-semibold text-[var(--text)]">RedLattice Studio</h3>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">Coming soon</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            className="text-[var(--text-muted)] hover:text-[var(--text)]"
-          >
-            ×
-          </button>
-        </div>
-        <p className="mb-5 text-sm text-[var(--text)]">
-          RedLattice Studio lets you build custom classification pipelines visually — no code
-          required. Chain classifiers, set conditions, and route signals to any destination.
-        </p>
-        {submitted ? (
-          <div className="rounded-lg border border-emerald-800 bg-emerald-950/40 px-4 py-3 text-sm text-emerald-200">
-            You're on the list! We'll reach out when Studio launches.
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit} className="flex gap-2">
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="your@email.com"
-              aria-label="Email address for Studio waitlist"
-              className="flex-1 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500"
-              data-testid="studio-email-input"
-            />
-            <button
-              type="submit"
-              className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-sm font-medium text-orange-200 hover:bg-orange-600/40"
-              data-testid="studio-waitlist-submit"
-            >
-              Join waitlist →
-            </button>
-          </form>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ---------------------------------------------------------------------------
 // New pipeline builder modal
 // ---------------------------------------------------------------------------
-
-const STUDIO_ADVANCED_OPTIONS = [
-  'Multiple steps / branching',
-  'Scheduled (cron)',
-  'Call external APIs',
-  'Combine multiple AI calls',
-];
 
 const BUILDER_VARIABLES = [
   'post.title',

@@ -12,8 +12,8 @@ test.describe('Overview (Pulse) tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    // Navigate to the Pulse tab via nav
-    await page.getByRole('tab', { name: 'Pulse' }).click();
+    // Navigate to the Watch tab via nav
+    await page.getByRole('tab', { name: 'Watch' }).click();
     // Wait for KPI strip to appear (using a label unique to the KPI strip)
     await expect(page.getByText('Posts today')).toBeVisible({ timeout: 10000 });
   });

@@ -12,7 +12,7 @@ test.describe('Themes tab', () => {
   test('themes/latest data renders in the Themes tab', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Themes' }).click();
     // The fixture has a theme named "Checkout crash wave"
     await expect(page.getByText('Checkout crash wave')).toBeVisible({ timeout: 8000 });
@@ -21,7 +21,7 @@ test.describe('Themes tab', () => {
   test('Regenerate button is visible on the Themes tab', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Themes' }).click();
     await expect(page.getByRole('button', { name: /regenerate/i })).toBeVisible({ timeout: 8000 });
   });
@@ -31,7 +31,7 @@ test.describe('Incidents tab', () => {
   test('incidents UI section renders with filter chips', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Incidents' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     // Filter chips should be visible
     await expect(page.getByRole('button', { name: 'active' })).toBeVisible({ timeout: 8000 });
     await expect(page.getByRole('button', { name: 'resolved' })).toBeVisible();
@@ -41,7 +41,7 @@ test.describe('Incidents tab', () => {
   test('filter chips have aria-pressed attribute', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Incidents' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.waitForTimeout(500);
     // 'active' chip should be pressed by default
     const activeChip = page.getByRole('button', { name: 'active' });

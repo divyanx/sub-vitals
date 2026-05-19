@@ -15,7 +15,7 @@ test.describe('Drivers tab', () => {
 
   test('bar list renders all 6 drivers from taxonomy fixture', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
 
     // Wait for data — use role button to avoid strict mode when breadcrumb has same text
@@ -37,7 +37,7 @@ test.describe('Drivers tab', () => {
 
   test('clicking "praise" bar expands post list with correct posts', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
 
     await expect(page.getByText('Praise / positive feedback')).toBeVisible({ timeout: 10000 });
@@ -54,7 +54,7 @@ test.describe('Drivers tab', () => {
 
   test('status filter chips appear in driver post panel', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
 
     await expect(page.getByText('Praise / positive feedback')).toBeVisible({ timeout: 10000 });
@@ -69,7 +69,7 @@ test.describe('Drivers tab', () => {
 
   test('"Show thread" in driver post list expands ThreadPanel', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
 
     await expect(
@@ -101,7 +101,7 @@ test.describe('Drivers tab', () => {
     });
 
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
     await expect(
       page.getByRole('button', { name: /Bug \/ broken experience/i }).first(),
@@ -124,7 +124,7 @@ test.describe('Drivers tab', () => {
 
   test('drivers are sorted by count (bug first with highest volume)', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
 
     await expect(
@@ -146,7 +146,7 @@ test.describe('Drivers tab — taxonomy config panel', () => {
 
   test('config toggle opens the taxonomy editor panel', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
     await page.getByTestId('drivers-config-toggle').click();
     await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
@@ -155,7 +155,7 @@ test.describe('Drivers tab — taxonomy config panel', () => {
 
   test('child driver row is indented relative to parent', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
     await page.getByTestId('drivers-config-toggle').click();
     await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
@@ -167,7 +167,7 @@ test.describe('Drivers tab — taxonomy config panel', () => {
 
   test('+ Add sub-driver button creates a new child row', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
     await page.getByTestId('drivers-config-toggle').click();
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 6000 });
@@ -183,7 +183,7 @@ test.describe('Drivers tab — taxonomy config panel', () => {
 
   test('Move to... dropdown appears and lists possible targets', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
     await page.getByTestId('drivers-config-toggle').click();
     await expect(page.getByTestId('taxonomy-driver-list')).toBeVisible({ timeout: 6000 });
@@ -196,7 +196,7 @@ test.describe('Drivers tab — taxonomy config panel', () => {
 
   test('"Include sub-drivers" toggle appears for driver with children', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
 
     // Open the Bug driver (which has bug.crash as child in the fixture)
@@ -220,7 +220,7 @@ test.describe('Drivers tab — breadcrumb labels', () => {
 
   test('child driver label shows as breadcrumb in bar list', async ({ page }) => {
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
 
     // The taxonomy fixture now has bug.crash — its bar entry should show breadcrumb
@@ -240,7 +240,7 @@ test.describe('Drivers taxonomy config — Sprint 13 polish', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Drivers' }).click();
     await page.getByTestId('drivers-config-toggle').click();
     await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });

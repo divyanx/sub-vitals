@@ -24,7 +24,7 @@ test.describe('Sentiment tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Insights' }).click();
+    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.getByRole('tab', { name: 'Sentiment' }).click();
     // Wait for data — cards should appear
     await expect(page.getByText('Positive')).toBeVisible({ timeout: 10000 });

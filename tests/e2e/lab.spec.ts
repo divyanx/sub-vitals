@@ -15,8 +15,8 @@ import { setupMocks } from './mock-api.ts';
 async function openLabTab(page: import('@playwright/test').Page) {
   await setupMocks(page);
   await page.goto('/');
-  // Lab is in the overflow "More" dropdown
-  await page.getByRole('button', { name: /more/i }).click();
+  // Lab is now under Configure > Lab
+  await page.getByRole('tab', { name: 'Configure' }).click();
   await page.getByRole('menuitem', { name: 'Lab' }).click();
   await expect(page.getByTestId('lab-tab')).toBeVisible({ timeout: 8000 });
 }

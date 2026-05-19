@@ -14,14 +14,16 @@ test.describe('Pipelines tab', () => {
   test('Pipelines tab renders and shows the pipeline grid', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await expect(page.getByTestId('pipelines-grid')).toBeVisible({ timeout: 8000 });
   });
 
   test('all 6 pipeline instance names render', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await expect(page.getByTestId('pipelines-grid')).toBeVisible({ timeout: 8000 });
 
     // Check each named instance card is visible (names from mock-api fixture)
@@ -41,7 +43,8 @@ test.describe('Pipelines tab', () => {
   test('each instance card shows Active status', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await expect(page.getByTestId('pipelines-grid')).toBeVisible({ timeout: 8000 });
 
     const activeBadges = page.getByText('Active');
@@ -53,7 +56,8 @@ test.describe('Pipelines tab', () => {
   test('stub Studio card is visible and clickable', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await expect(page.getByTestId('pipeline-card-studio-stub')).toBeVisible({ timeout: 8000 });
     await page.getByTestId('pipeline-card-studio-stub').click();
     // Modal should open
@@ -63,7 +67,8 @@ test.describe('Pipelines tab', () => {
   test('Studio modal contains email input and waitlist CTA', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('pipeline-card-studio-stub').click();
     await expect(page.getByTestId('studio-email-input')).toBeVisible();
     await expect(page.getByTestId('studio-waitlist-submit')).toBeVisible();
@@ -72,7 +77,8 @@ test.describe('Pipelines tab', () => {
   test('Studio modal closes on × button', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('pipeline-card-studio-stub').click();
     await expect(page.getByRole('dialog', { name: /RedLattice Studio/i })).toBeVisible();
     await page.getByRole('button', { name: /close/i }).click();
@@ -82,7 +88,8 @@ test.describe('Pipelines tab', () => {
   test('Contact Drivers instance card is visible', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await expect(page.getByTestId('pipelines-grid')).toBeVisible({ timeout: 8000 });
     // Instance card for contact-drivers pre-installed instance
     await expect(page.getByTestId('instance-card-pi_intent-classifier')).toBeVisible({
@@ -93,7 +100,8 @@ test.describe('Pipelines tab', () => {
   test('Edit button on a pipeline instance opens the drawer', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await expect(page.getByTestId('pipelines-grid')).toBeVisible({ timeout: 8000 });
     // Click the Edit button on the Sentiment instance card
     await page.getByTestId('instance-tune-pi_sentiment-scorer').click();
@@ -103,7 +111,8 @@ test.describe('Pipelines tab', () => {
   test('Drawer shows Prompts tab by default', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('instance-tune-pi_sentiment-scorer').click();
     await expect(page.getByTestId('pipeline-drawer')).toBeVisible({ timeout: 6000 });
     await expect(page.getByLabel('System prompt')).toBeVisible();
@@ -112,7 +121,8 @@ test.describe('Pipelines tab', () => {
   test('Drawer closes on Escape key', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('instance-tune-pi_sentiment-scorer').click();
     await expect(page.getByTestId('pipeline-drawer')).toBeVisible({ timeout: 6000 });
     await page.keyboard.press('Escape');
@@ -122,7 +132,8 @@ test.describe('Pipelines tab', () => {
   test('+ New pipeline button opens the modal', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('new-pipeline-button').click();
     await expect(page.getByTestId('new-pipeline-modal')).toBeVisible({ timeout: 6000 });
   });
@@ -130,7 +141,8 @@ test.describe('Pipelines tab', () => {
   test('Custom pipeline can be created from the modal', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('new-pipeline-button').click();
     await expect(page.getByTestId('new-pipeline-modal')).toBeVisible({ timeout: 6000 });
     // Fill form
@@ -146,7 +158,8 @@ test.describe('Pipelines tab', () => {
   test('Advanced option in new pipeline modal triggers Studio promotion', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('new-pipeline-button').click();
     await expect(page.getByTestId('new-pipeline-modal')).toBeVisible({ timeout: 6000 });
     // Click "Multiple steps / branching"
@@ -159,7 +172,8 @@ test.describe('Pipelines tab', () => {
   test('Catalogue tab shows template cards', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     // Switch to Catalogue tab
     await page.getByTestId('pipelines-tab-catalogue').click();
     await expect(page.getByTestId('pipelines-catalogue-grid')).toBeVisible({ timeout: 8000 });
@@ -170,7 +184,8 @@ test.describe('Pipelines tab', () => {
   test('Catalogue Install button opens install dialog', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('pipelines-tab-catalogue').click();
     await expect(page.getByTestId('template-card-intent-classifier')).toBeVisible({
       timeout: 8000,
@@ -182,7 +197,8 @@ test.describe('Pipelines tab', () => {
   test('Install dialog can be confirmed', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Pipelines' }).click();
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Pipelines' }).click();
     await page.getByTestId('pipelines-tab-catalogue').click();
     await page.getByTestId('template-install-intent-classifier').click();
     await expect(page.getByTestId('install-instance-dialog')).toBeVisible({ timeout: 4000 });

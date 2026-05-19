@@ -16,9 +16,9 @@ test.describe('Settings tab', () => {
   test('settings sections load', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
-    // The Settings H2 heading should be visible
-    await expect(page.getByRole('heading', { name: /settings/i })).toBeVisible({ timeout: 8000 });
+    // Settings/Brand is now under Configure > Brand
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Brand' }).click();
     // Brand identity section should render
     await expect(page.getByText(/brand identity/i)).toBeVisible({ timeout: 8000 });
   });
@@ -31,7 +31,9 @@ test.describe('Settings tab', () => {
     });
 
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Settings' }).click();
+    // Settings/Brand is now under Configure > Brand
+    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('menuitem', { name: 'Brand' }).click();
     // Click the first Save button (Brand identity section)
     await page
       .getByRole('button', { name: /^save$/i })
@@ -42,9 +44,9 @@ test.describe('Settings tab', () => {
   });
 });
 
-// Helper: navigate to Insights › Drivers and open the config panel
+// Helper: navigate to Watch › Drivers and open the config panel
 async function openDriversConfigPanel(page: import('@playwright/test').Page) {
-  await page.getByRole('tab', { name: 'Insights' }).click();
+  await page.getByRole('tab', { name: 'Watch' }).click();
   await page.getByRole('tab', { name: 'Drivers' }).click();
   await page.getByTestId('drivers-config-toggle').click();
   await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });

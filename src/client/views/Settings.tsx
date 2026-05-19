@@ -160,7 +160,9 @@ function Input({
 // Settings view — root
 // ---------------------------------------------------------------------------
 
-export function Settings() {
+type SettingsSection = 'brand' | 'team-roster' | 'thresholds' | 'ai' | 'webhooks' | 'all';
+
+export function Settings({ initialSection = 'all' }: { initialSection?: SettingsSection }) {
   const { toasts, toast } = useToast();
   const qc = useQueryClient();
 
@@ -199,29 +201,34 @@ export function Settings() {
   }
 
   const data = settingsQ.data;
+  const show = (s: SettingsSection) => initialSection === 'all' || initialSection === s;
 
   return (
     <div className="space-y-6">
       <ToastContainer toasts={toasts} />
-      <header>
-        <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Settings</h2>
-        <p className="mt-1 max-w-2xl text-xs text-[var(--text-muted)]">
-          Changes take effect immediately. All values are stored in Redis and override Devvit
-          settings defaults. The OpenRouter API key must be set via{' '}
-          <code className="rounded bg-[var(--input-bg)] px-1">
-            npx devvit settings set openrouter-api-key
-          </code>
-          .
-        </p>
-      </header>
+      {initialSection === 'all' && (
+        <header>
+          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Settings</h2>
+          <p className="mt-1 max-w-2xl text-xs text-[var(--text-muted)]">
+            Changes take effect immediately. All values are stored in Redis and override Devvit
+            settings defaults. The OpenRouter API key must be set via{' '}
+            <code className="rounded bg-[var(--input-bg)] px-1">
+              npx devvit settings set openrouter-api-key
+            </code>
+            .
+          </p>
+        </header>
+      )}
 
-      <BrandIdentitySection data={data} toast={toast} onSaved={invalidate} />
-      <IdentityTrustSection data={data} toast={toast} onSaved={invalidate} />
-      <ThresholdsSection data={data} toast={toast} onSaved={invalidate} />
-      <AISection data={data} toast={toast} onSaved={invalidate} />
-      <WebhooksSection toast={toast} />
-      <StudioSection data={data} toast={toast} onSaved={invalidate} />
-      <OnboardingSettingsSection />
+      {show('brand') && <BrandIdentitySection data={data} toast={toast} onSaved={invalidate} />}
+      {show('team-roster') && (
+        <IdentityTrustSection data={data} toast={toast} onSaved={invalidate} />
+      )}
+      {show('thresholds') && <ThresholdsSection data={data} toast={toast} onSaved={invalidate} />}
+      {show('ai') && <AISection data={data} toast={toast} onSaved={invalidate} />}
+      {show('webhooks') && <WebhooksSection toast={toast} />}
+      {initialSection === 'all' && <StudioSection data={data} toast={toast} onSaved={invalidate} />}
+      {initialSection === 'all' && <OnboardingSettingsSection />}
     </div>
   );
 }

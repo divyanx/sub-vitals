@@ -36,7 +36,7 @@ test('Insights "+ New" button navigates to Pipelines and opens new pipeline moda
   page,
 }) => {
   await setupMocks(page);
-  await page.goto('/?tab=insights');
+  await page.goto('/?tab=watch');
   await page.waitForLoadState('networkidle');
 
   // Wait for the sub-tab strip to appear (pipelines-enabled loads)
@@ -53,7 +53,7 @@ test('Insights "+ New" button navigates to Pipelines and opens new pipeline moda
 
 test('Insights "+ New" button is visible in the sub-tab strip', async ({ page }) => {
   await setupMocks(page);
-  await page.goto('/?tab=insights');
+  await page.goto('/?tab=watch');
   await page.waitForLoadState('networkidle');
 
   const btn = page.getByTestId('insights-new-pipeline-btn');

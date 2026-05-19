@@ -39,8 +39,8 @@ import {
 import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/index.js';
 import { dataLabModule } from '@modules/data-lab/index.js';
 import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
-import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { rulesModule } from '@modules/rules/index.js';
+import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
 import { studioBridgeModule } from '@modules/studio-bridge/index.js';
 import { regenerateThemes, themeClusteringModule } from '@modules/theme-clustering/index.js';
 import * as Sentry from '@sentry/core';
@@ -64,6 +64,17 @@ import {
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
 import {
+  createScratchInstance,
+  deleteInstance,
+  duplicateInstance,
+  getInstance,
+  installFromTemplate,
+  listInstances,
+  patchInstance,
+  reorderInstances,
+  seedInstancesIfNeeded,
+} from '@shared/pipeline-instances.js';
+import {
   type CustomPipeline,
   deleteCustomPipeline,
   getCustomPipeline,
@@ -76,17 +87,6 @@ import {
   saveOverrides,
   setPipelineOrder,
 } from '@shared/pipeline-overrides.js';
-import {
-  createScratchInstance,
-  deleteInstance,
-  duplicateInstance,
-  getInstance,
-  installFromTemplate,
-  listInstances,
-  patchInstance,
-  reorderInstances,
-  seedInstancesIfNeeded,
-} from '@shared/pipeline-instances.js';
 import { PIPELINE_TEMPLATES } from '@shared/pipeline-templates.js';
 import {
   readAllEffectiveSettings,
@@ -116,17 +116,6 @@ import {
 } from '@shared/storage.js';
 import { forwardToStudio } from '@shared/studio-bridge.js';
 import { getTagDistribution, getTargetsByTagValue } from '@shared/tags.js';
-import {
-  deleteWebhook,
-  deliverWebhook,
-  detectFormat,
-  getDeliveries,
-  getWebhook,
-  listWebhooks,
-  saveWebhook,
-  type Webhook,
-  type WebhookFormat,
-} from '@shared/webhook-delivery.js';
 import ecommerceTemplate from '@shared/taxonomy-templates/ecommerce.json';
 import financeTemplate from '@shared/taxonomy-templates/finance.json';
 import gamingTemplate from '@shared/taxonomy-templates/gaming.json';
@@ -138,6 +127,17 @@ import {
   settingsUpdateSchema,
   taxonomyArraySchema,
 } from '@shared/validation.js';
+import {
+  deleteWebhook,
+  deliverWebhook,
+  detectFormat,
+  getDeliveries,
+  getWebhook,
+  listWebhooks,
+  saveWebhook,
+  type Webhook,
+  type WebhookFormat,
+} from '@shared/webhook-delivery.js';
 import { Hono } from 'hono';
 import { logger } from 'hono/logger';
 import { z } from 'zod';
@@ -1203,10 +1203,15 @@ app.post('/api/pipelines/instances', async (c) => {
       >[0];
       if (parsed.data.name !== undefined) tfOpts.name = parsed.data.name;
       if (parsed.data.showIn !== undefined) tfOpts.showIn = parsed.data.showIn;
-      // configOverrides is Partial so spread is safe at runtime; cast to satisfy strict check
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (parsed.data.configOverrides !== undefined)
-        tfOpts.configOverrides = parsed.data.configOverrides as any;
+      // configOverrides Zod-parsed shape includes optional `T | undefined`; strip undefined entries
+      const co = parsed.data.configOverrides;
+      if (co !== undefined) {
+        const stripped: Partial<typeof co> = {};
+        for (const [k, v] of Object.entries(co)) {
+          if (v !== undefined) (stripped as Record<string, unknown>)[k] = v;
+        }
+        tfOpts.configOverrides = stripped as NonNullable<typeof tfOpts.configOverrides>;
+      }
       const instance = await installFromTemplate(tfOpts);
       return c.json({ instance }, 201);
     } catch (err) {

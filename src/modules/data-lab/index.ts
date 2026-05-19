@@ -309,7 +309,7 @@ export const dataLabModule: RedLatticeModule = {
         return c.json({ error: 'not_found', available: SCENARIOS.map((s) => s.name) }, 404);
       }
 
-      const status = scenarioStatus.get(name)!;
+      const status = scenarioStatus.get(name) ?? { state: 'idle' as const, lastRunAt: 0 };
       if (status.state === 'running') {
         return c.json({ status: 'running', lastRunAt: status.lastRunAt });
       }
@@ -321,13 +321,13 @@ export const dataLabModule: RedLatticeModule = {
       void scenario
         .run()
         .then(() => {
-          const s = scenarioStatus.get(name)!;
+          const s = scenarioStatus.get(name) ?? { state: 'idle' as const, lastRunAt: 0 };
           s.state = 'done';
           s.lastRunAt = Date.now();
           log.info('lab: scenario complete', { name });
         })
         .catch((err: unknown) => {
-          const s = scenarioStatus.get(name)!;
+          const s = scenarioStatus.get(name) ?? { state: 'idle' as const, lastRunAt: 0 };
           s.state = 'error';
           s.error = err instanceof Error ? err.message : String(err);
           log.error('lab: scenario error', { name, err: s.error });

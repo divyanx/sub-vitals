@@ -15,7 +15,9 @@ async function goToAuditTab(page: Page): Promise<void> {
   await expect(page.getByText('App crashes every time I try to checkout')).toBeVisible({
     timeout: 10000,
   });
-  await page.getByRole('tab', { name: 'Audit' }).click();
+  // Audit is now under Configure > Audit log
+  await page.getByRole('tab', { name: 'Configure' }).click();
+  await page.getByRole('menuitem', { name: 'Audit log' }).click();
 }
 
 test.describe('Audit tab', () => {

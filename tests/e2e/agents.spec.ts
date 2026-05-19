@@ -11,9 +11,8 @@ test.describe('Team tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    // Team is in the "More ▾" overflow dropdown
-    await page.getByRole('button', { name: /More/i }).click();
-    await page.getByRole('menuitem', { name: 'Team' }).click();
+    // Team is now under the Respond tab
+    await page.getByRole('tab', { name: 'Respond' }).click();
     // Wait for agent list
     await expect(page.getByText('u/brand_agent_alice')).toBeVisible({ timeout: 10000 });
   });
