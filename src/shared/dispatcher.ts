@@ -54,6 +54,17 @@ export async function dispatch<E extends keyof EventMap>(
   await Promise.allSettled(handlers);
 }
 
+// ---------------------------------------------------------------------------
+// Webhook fan-out — re-exported from webhook-delivery so callers import from
+// dispatcher as a single integration point.
+// ---------------------------------------------------------------------------
+
+export { notifyWebhooks } from './webhook-delivery.js';
+
+// ---------------------------------------------------------------------------
+// Internal helpers
+// ---------------------------------------------------------------------------
+
 async function runOne<E extends keyof EventMap>(
   mod: RedLatticeModule,
   event: E,

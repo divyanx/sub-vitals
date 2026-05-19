@@ -17,13 +17,7 @@ import { nanoid } from '../modules/crisis-detection/nanoid.js';
 import { K } from './keys.js';
 import { log } from './log.js';
 import { PIPELINE_TEMPLATES, PREINSTALLED_TEMPLATE_IDS } from './pipeline-templates.js';
-import type {
-  PipelineInstance,
-  PipelineInstanceConfig,
-  PipelineInstanceSource,
-  PipelineShowIn,
-  PipelineTemplate,
-} from './types.js';
+import type { PipelineInstance, PipelineInstanceConfig, PipelineShowIn } from './types.js';
 
 // ---------------------------------------------------------------------------
 // Showln defaults — where each pre-installed instance's output appears

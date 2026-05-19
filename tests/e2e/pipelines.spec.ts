@@ -85,9 +85,9 @@ test.describe('Pipelines tab', () => {
     await page.getByRole('tab', { name: 'Pipelines' }).click();
     await expect(page.getByTestId('pipelines-grid')).toBeVisible({ timeout: 8000 });
     // Instance card for contact-drivers pre-installed instance
-    await expect(
-      page.getByTestId('instance-card-pi_intent-classifier'),
-    ).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId('instance-card-pi_intent-classifier')).toBeVisible({
+      timeout: 8000,
+    });
   });
 
   test('Edit button on a pipeline instance opens the drawer', async ({ page }) => {
@@ -172,7 +172,9 @@ test.describe('Pipelines tab', () => {
     await page.goto('/');
     await page.getByRole('tab', { name: 'Pipelines' }).click();
     await page.getByTestId('pipelines-tab-catalogue').click();
-    await expect(page.getByTestId('template-card-intent-classifier')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByTestId('template-card-intent-classifier')).toBeVisible({
+      timeout: 8000,
+    });
     await page.getByTestId('template-install-intent-classifier').click();
     await expect(page.getByTestId('install-instance-dialog')).toBeVisible({ timeout: 4000 });
   });

@@ -51,7 +51,9 @@ export type AuditAction =
   | 'mod-spam'
   | 'mod-lock'
   | 'mod-distinguish'
-  | 'mod-reply';
+  | 'mod-reply'
+  | 'rule-fired'
+  | 'rule-audit';
 
 export interface AuditEntry {
   ts: number;

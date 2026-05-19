@@ -1157,7 +1157,9 @@ const instanceFromTemplateSchema = z.object({
       trigger: z.enum(['post-create', 'comment-create', 'status-change', 'scheduled']).optional(),
       systemPrompt: z.string().max(4000).optional(),
       userPrompt: z.string().max(4000).optional(),
-      outputSchema: z.enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster']).optional(),
+      outputSchema: z
+        .enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster'])
+        .optional(),
       labels: z.array(z.string().min(1).max(100)).max(50).optional(),
       threshold: z.number().min(0).max(1).optional(),
     })
@@ -1196,12 +1198,15 @@ app.post('/api/pipelines/instances', async (c) => {
     if (!parsed.success)
       return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
     try {
-      const tfOpts = { templateId: parsed.data.templateId } as Parameters<typeof installFromTemplate>[0];
+      const tfOpts = { templateId: parsed.data.templateId } as Parameters<
+        typeof installFromTemplate
+      >[0];
       if (parsed.data.name !== undefined) tfOpts.name = parsed.data.name;
       if (parsed.data.showIn !== undefined) tfOpts.showIn = parsed.data.showIn;
       // configOverrides is Partial so spread is safe at runtime; cast to satisfy strict check
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      if (parsed.data.configOverrides !== undefined) tfOpts.configOverrides = parsed.data.configOverrides as any;
+      if (parsed.data.configOverrides !== undefined)
+        tfOpts.configOverrides = parsed.data.configOverrides as any;
       const instance = await installFromTemplate(tfOpts);
       return c.json({ instance }, 201);
     } catch (err) {
@@ -1231,7 +1236,9 @@ const instancePatchSchema = z.object({
       trigger: z.enum(['post-create', 'comment-create', 'status-change', 'scheduled']).optional(),
       systemPrompt: z.string().max(4000).optional(),
       userPrompt: z.string().max(4000).optional(),
-      outputSchema: z.enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster']).optional(),
+      outputSchema: z
+        .enum(['single-label', 'label-confidence', 'boolean', 'scalar', 'cluster'])
+        .optional(),
       labels: z.array(z.string().min(1).max(100)).max(50).optional(),
       threshold: z.number().min(0).max(1).optional(),
     })

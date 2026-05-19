@@ -307,15 +307,18 @@ export function getTemplatesByCategory(category: PipelineTemplate['category']): 
 }
 
 /**
- * The 7 templates that ship as pre-installed instances on AppInstall.
- * Order matches the original BUILTIN_PIPELINES order intentionally.
+ * Templates pre-installed as running instances on AppInstall.
+ *
+ * Only the three obviously-useful pipelines start enabled out of the box.
+ * The rest (impostor / crisis / team-performance / root-cause / spam / pii /
+ * brand-mention) sit in the catalogue waiting — mods opt in via "+ Install".
+ *
+ * Decision recorded 2026-05-19: aggressive pre-install was clutter; let mods
+ * choose what's relevant to their subreddit instead of disabling things they
+ * didn't ask for.
  */
 export const PREINSTALLED_TEMPLATE_IDS: string[] = [
   'intent-classifier',
   'sentiment-scorer',
   'topic-clusterer',
-  'impostor-flagger',
-  'volume-spike-detector',
-  'team-response-tracker',
-  'root-cause-summariser',
 ];

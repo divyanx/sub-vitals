@@ -16,7 +16,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { useId, useState } from 'react';
-import { api } from '../lib/api.ts';
+import { api, type Webhook, type WebhookDelivery, type WebhookFormat } from '../lib/api.ts';
 import { OnboardingSettingsSection } from './Onboarding.tsx';
 
 // ---------------------------------------------------------------------------
@@ -219,6 +219,7 @@ export function Settings() {
       <IdentityTrustSection data={data} toast={toast} onSaved={invalidate} />
       <ThresholdsSection data={data} toast={toast} onSaved={invalidate} />
       <AISection data={data} toast={toast} onSaved={invalidate} />
+      <WebhooksSection toast={toast} />
       <StudioSection data={data} toast={toast} onSaved={invalidate} />
       <OnboardingSettingsSection />
     </div>
@@ -1154,6 +1155,491 @@ function StudioSection({
         ) : null}
       </div>
       <SaveButton onClick={() => saveMut.mutate()} loading={saveMut.isPending} />
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Webhooks
+// ---------------------------------------------------------------------------
+
+const ALL_EVENT_KINDS: Array<{ value: string; label: string }> = [
+  { value: 'post-tag', label: 'Post tagged' },
+  { value: 'sentiment-spike', label: 'Sentiment spike' },
+  { value: 'incident-open', label: 'Incident opened' },
+  { value: 'incident-resolve', label: 'Incident resolved' },
+  { value: 'theme-regenerate', label: 'Themes regenerated' },
+  { value: 'custom-rule-fire', label: 'Custom rule fired' },
+  { value: '*', label: 'All events' },
+];
+
+const FORMAT_LABELS: Record<string, string> = {
+  slack: 'Slack',
+  discord: 'Discord',
+  pagerduty: 'PagerDuty',
+  generic: 'Generic JSON',
+};
+
+function FormatChip({ format }: { format: WebhookFormat }) {
+  const colors: Record<string, string> = {
+    slack: 'border-emerald-700 bg-emerald-900/30 text-emerald-200',
+    discord: 'border-indigo-700 bg-indigo-900/30 text-indigo-200',
+    pagerduty: 'border-green-700 bg-green-900/30 text-green-200',
+    generic: 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]',
+  };
+  return (
+    <span
+      className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium ${colors[format] ?? colors.generic}`}
+    >
+      {FORMAT_LABELS[format] ?? format}
+    </span>
+  );
+}
+
+function DeliveryRow({ d }: { d: WebhookDelivery }) {
+  const ts = new Date(d.attemptedAt).toLocaleString();
+  return (
+    <tr className="border-t border-[var(--border)] text-xs">
+      <td className="py-1 pr-3 text-[var(--text-muted)]">{ts}</td>
+      <td className="py-1 pr-3 font-mono text-[var(--text)]">{d.eventKind}</td>
+      <td className="py-1 pr-3">
+        {d.success ? (
+          <span className="text-emerald-400">&#x2713; {d.statusCode}</span>
+        ) : (
+          <span className="text-rose-400">&#x2717; {d.statusCode ?? 'err'}</span>
+        )}
+      </td>
+      <td className="max-w-[180px] truncate py-1 text-[var(--text-muted)]">{d.responseExcerpt}</td>
+    </tr>
+  );
+}
+
+function WebhookRow({
+  hook,
+  onToggle,
+  onDelete,
+  onTest,
+  onEdit,
+}: {
+  hook: Webhook;
+  onToggle: (id: string, enabled: boolean) => void;
+  onDelete: (id: string) => void;
+  onTest: (id: string) => void;
+  onEdit: (hook: Webhook) => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const deliveriesQ = useQuery({
+    queryKey: ['webhook-deliveries', hook.id],
+    queryFn: () => api.webhooks.deliveries(hook.id),
+    enabled: expanded,
+  });
+
+  const lastDelivery = deliveriesQ.data?.deliveries[0] ?? null;
+
+  return (
+    <>
+      <tr className="border-t border-[var(--border)] text-xs">
+        <td className="py-2 pr-3 font-medium text-[var(--text)]">{hook.name}</td>
+        <td className="py-2 pr-3">
+          <FormatChip format={hook.format} />
+        </td>
+        <td className="py-2 pr-3">
+          {lastDelivery == null ? (
+            <span className="text-[var(--text-muted)]">—</span>
+          ) : lastDelivery.success ? (
+            <span className="text-emerald-400">&#x2713;</span>
+          ) : (
+            <span className="text-rose-400">&#x2717;</span>
+          )}
+        </td>
+        <td className="py-2 pr-3">
+          <button
+            type="button"
+            onClick={() => onToggle(hook.id, !hook.enabled)}
+            className={`relative inline-flex h-4 w-8 items-center rounded-full transition ${
+              hook.enabled ? 'bg-orange-500' : 'bg-neutral-600'
+            }`}
+            aria-label={hook.enabled ? 'Disable' : 'Enable'}
+          >
+            <span
+              className={`inline-block h-3 w-3 rounded-full bg-white shadow transition-transform ${
+                hook.enabled ? 'translate-x-4' : 'translate-x-0.5'
+              }`}
+            />
+          </button>
+        </td>
+        <td className="py-2">
+          <div className="flex gap-1">
+            <button
+              type="button"
+              onClick={() => setExpanded((e) => !e)}
+              className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[10px] text-[var(--text)] hover:bg-neutral-700"
+            >
+              {expanded ? 'Hide' : 'Logs'}
+            </button>
+            <button
+              type="button"
+              onClick={() => onTest(hook.id)}
+              className="rounded border border-blue-700 bg-blue-900/20 px-2 py-0.5 text-[10px] text-blue-200 hover:bg-blue-900/40"
+            >
+              Test
+            </button>
+            <button
+              type="button"
+              onClick={() => onEdit(hook)}
+              className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[10px] text-[var(--text)] hover:bg-neutral-700"
+            >
+              Edit
+            </button>
+            <button
+              type="button"
+              onClick={() => onDelete(hook.id)}
+              className="rounded border border-rose-800 bg-rose-950/20 px-2 py-0.5 text-[10px] text-rose-300 hover:bg-rose-900/40"
+            >
+              Del
+            </button>
+          </div>
+        </td>
+      </tr>
+      {expanded ? (
+        <tr>
+          <td colSpan={5} className="pb-3 pt-1">
+            {deliveriesQ.isPending ? (
+              <p className="text-xs text-[var(--text-muted)]">Loading…</p>
+            ) : deliveriesQ.data && deliveriesQ.data.deliveries.length > 0 ? (
+              <table className="w-full">
+                <tbody>
+                  {deliveriesQ.data.deliveries.slice(0, 5).map((d, i) => (
+                    <DeliveryRow key={i} d={d} />
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-xs text-[var(--text-muted)]">No deliveries yet.</p>
+            )}
+          </td>
+        </tr>
+      ) : null}
+    </>
+  );
+}
+
+interface WebhookFormState {
+  name: string;
+  targetUrl: string;
+  events: string[];
+  format: 'auto' | WebhookFormat;
+}
+
+const BLANK_FORM: WebhookFormState = {
+  name: '',
+  targetUrl: '',
+  events: [],
+  format: 'auto',
+};
+
+function WebhooksSection({ toast }: { toast: (type: 'success' | 'error', msg: string) => void }) {
+  const qc = useQueryClient();
+  const [showForm, setShowForm] = useState(false);
+  const [editHook, setEditHook] = useState<Webhook | null>(null);
+  const [form, setForm] = useState<WebhookFormState>(BLANK_FORM);
+  const [testResult, setTestResult] = useState<{ id: string; ok: boolean; msg: string } | null>(
+    null,
+  );
+
+  const hooksQ = useQuery({
+    queryKey: ['webhooks'],
+    queryFn: api.webhooks.list,
+  });
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ['webhooks'] });
+
+  const createMut = useMutation({
+    mutationFn: () =>
+      api.webhooks.create({
+        name: form.name,
+        targetUrl: form.targetUrl,
+        events: form.events,
+        format: form.format,
+      }),
+    onSuccess: () => {
+      toast('success', 'Webhook created.');
+      setShowForm(false);
+      setForm(BLANK_FORM);
+      void invalidate();
+    },
+    onError: (e: Error) => toast('error', e.message),
+  });
+
+  const updateMut = useMutation({
+    mutationFn: (vars: { id: string; patch: Parameters<typeof api.webhooks.update>[1] }) =>
+      api.webhooks.update(vars.id, vars.patch),
+    onSuccess: () => {
+      toast('success', 'Webhook updated.');
+      setEditHook(null);
+      setShowForm(false);
+      setForm(BLANK_FORM);
+      void invalidate();
+    },
+    onError: (e: Error) => toast('error', e.message),
+  });
+
+  const deleteMut = useMutation({
+    mutationFn: (id: string) => api.webhooks.delete(id),
+    onSuccess: () => {
+      toast('success', 'Webhook deleted.');
+      void invalidate();
+    },
+    onError: (e: Error) => toast('error', e.message),
+  });
+
+  const handleToggle = (id: string, enabled: boolean) => {
+    updateMut.mutate({ id, patch: { enabled } });
+  };
+
+  const handleDelete = (id: string) => {
+    if (!confirm('Delete this webhook?')) return;
+    deleteMut.mutate(id);
+  };
+
+  const handleTest = async (id: string) => {
+    setTestResult(null);
+    try {
+      const r = await api.webhooks.test(id);
+      setTestResult({
+        id,
+        ok: r.ok,
+        msg: r.ok
+          ? `Test passed (HTTP ${r.statusCode ?? 200}).`
+          : `Test failed: ${r.error ?? `HTTP ${r.statusCode}`}`,
+      });
+    } catch (e) {
+      setTestResult({
+        id,
+        ok: false,
+        msg: `Test error: ${e instanceof Error ? e.message : String(e)}`,
+      });
+    }
+  };
+
+  const handleEdit = (hook: Webhook) => {
+    setEditHook(hook);
+    setForm({
+      name: hook.name,
+      targetUrl: hook.targetUrl,
+      events: hook.events,
+      format: hook.format,
+    });
+    setShowForm(true);
+  };
+
+  const handleEventToggle = (value: string) => {
+    setForm((prev) => ({
+      ...prev,
+      events:
+        value === '*'
+          ? prev.events.includes('*')
+            ? []
+            : ['*']
+          : prev.events.includes(value)
+            ? prev.events.filter((e) => e !== value && e !== '*')
+            : [...prev.events.filter((e) => e !== '*'), value],
+    }));
+  };
+
+  const handleSubmit = () => {
+    if (!form.name.trim()) {
+      toast('error', 'Name is required.');
+      return;
+    }
+    if (!form.targetUrl.trim()) {
+      toast('error', 'Target URL is required.');
+      return;
+    }
+    if (form.events.length === 0) {
+      toast('error', 'Select at least one event type.');
+      return;
+    }
+    if (editHook) {
+      const patch: { name: string; events: string[]; format?: WebhookFormat } = {
+        name: form.name,
+        events: form.events,
+      };
+      if (form.format !== 'auto') patch.format = form.format;
+      updateMut.mutate({ id: editHook.id, patch });
+    } else {
+      createMut.mutate();
+    }
+  };
+
+  const hooks = hooksQ.data?.webhooks ?? [];
+
+  return (
+    <Section
+      title="Webhooks"
+      description="Send event notifications to Slack, Discord, PagerDuty, or any HTTP endpoint."
+    >
+      {hooksQ.isPending ? (
+        <div className="h-12 animate-pulse rounded bg-[var(--input-bg)]" />
+      ) : hooks.length > 0 ? (
+        <table className="w-full table-auto">
+          <thead>
+            <tr className="text-left text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+              <th className="pb-1 pr-3">Name</th>
+              <th className="pb-1 pr-3">Format</th>
+              <th className="pb-1 pr-3">Last</th>
+              <th className="pb-1 pr-3">Enabled</th>
+              <th className="pb-1">Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            {hooks.map((h) => (
+              <WebhookRow
+                key={h.id}
+                hook={h}
+                onToggle={handleToggle}
+                onDelete={handleDelete}
+                onTest={handleTest}
+                onEdit={handleEdit}
+              />
+            ))}
+          </tbody>
+        </table>
+      ) : (
+        <p className="text-xs text-[var(--text-muted)]">No webhooks configured yet.</p>
+      )}
+
+      {testResult ? (
+        <div
+          className={`mt-3 rounded border px-3 py-2 text-xs ${
+            testResult.ok
+              ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200'
+              : 'border-rose-700 bg-rose-950/40 text-rose-200'
+          }`}
+        >
+          {testResult.msg}
+        </div>
+      ) : null}
+
+      {showForm ? (
+        <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] p-4">
+          <h4 className="mb-3 text-xs font-semibold text-[var(--text)]">
+            {editHook ? 'Edit webhook' : 'Add webhook'}
+          </h4>
+          <div className="space-y-3">
+            <div>
+              <label
+                htmlFor="wh-name"
+                className="mb-1 block text-xs font-medium text-[var(--text)]"
+              >
+                Name
+              </label>
+              <input
+                id="wh-name"
+                type="text"
+                value={form.name}
+                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
+                placeholder="My Slack Alert"
+                className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-orange-500"
+              />
+            </div>
+            {!editHook ? (
+              <div>
+                <label
+                  htmlFor="wh-url"
+                  className="mb-1 block text-xs font-medium text-[var(--text)]"
+                >
+                  Target URL
+                </label>
+                <input
+                  id="wh-url"
+                  type="url"
+                  value={form.targetUrl}
+                  onChange={(e) => setForm((p) => ({ ...p, targetUrl: e.target.value }))}
+                  placeholder="https://hooks.slack.com/…"
+                  className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-orange-500"
+                />
+              </div>
+            ) : null}
+            <div>
+              <p className="mb-1 block text-xs font-medium text-[var(--text)]">Events</p>
+              <div className="flex flex-wrap gap-2">
+                {ALL_EVENT_KINDS.map((ek) => (
+                  <label
+                    key={ek.value}
+                    className="flex cursor-pointer items-center gap-1 text-xs text-[var(--text)]"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={form.events.includes(ek.value)}
+                      onChange={() => handleEventToggle(ek.value)}
+                      className="accent-orange-500"
+                    />
+                    {ek.label}
+                  </label>
+                ))}
+              </div>
+            </div>
+            <div>
+              <label
+                htmlFor="wh-format"
+                className="mb-1 block text-xs font-medium text-[var(--text)]"
+              >
+                Format
+              </label>
+              <select
+                id="wh-format"
+                value={form.format}
+                onChange={(e) =>
+                  setForm((p) => ({ ...p, format: e.target.value as 'auto' | WebhookFormat }))
+                }
+                className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-orange-500"
+              >
+                <option value="auto">Auto-detect</option>
+                <option value="slack">Slack</option>
+                <option value="discord">Discord</option>
+                <option value="pagerduty">PagerDuty</option>
+                <option value="generic">Generic JSON</option>
+              </select>
+            </div>
+          </div>
+          <div className="mt-4 flex gap-2">
+            <button
+              type="button"
+              onClick={handleSubmit}
+              disabled={createMut.isPending || updateMut.isPending}
+              className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
+            >
+              {createMut.isPending || updateMut.isPending ? 'Saving…' : editHook ? 'Update' : 'Add'}
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowForm(false);
+                setEditHook(null);
+                setForm(BLANK_FORM);
+              }}
+              className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-4 py-1.5 text-sm font-medium text-[var(--text)] hover:bg-neutral-700"
+            >
+              Cancel
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div className="mt-4">
+          <button
+            type="button"
+            onClick={() => {
+              setEditHook(null);
+              setForm(BLANK_FORM);
+              setShowForm(true);
+            }}
+            className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:bg-neutral-700"
+          >
+            + Add webhook
+          </button>
+        </div>
+      )}
     </Section>
   );
 }

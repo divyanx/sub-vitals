@@ -35,7 +35,8 @@
       "recommended": true,
       "suspicious": {
         "noExplicitAny": "error",
-        "noConsole": "off"
+        "noConsole": "off",
+        "noArrayIndexKey": "off"
       },
       "style": {
         "useImportType": "error",

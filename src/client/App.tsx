@@ -13,6 +13,7 @@ const VALID_TABS: Tab[] = [
   'insights',
   'incidents',
   'pipelines',
+  'rules',
   'team',
   'export',
   'audit',

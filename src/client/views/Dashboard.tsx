@@ -12,7 +12,7 @@ import type React from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 // @ts-expect-error — tinykeys exports map lacks a "types" field; types live at dist/tinykeys.d.ts
 import { tinykeys } from 'tinykeys';
-import { BUILTIN_PIPELINES } from '../../shared/builtin-pipelines.js';
+// BUILTIN_PIPELINES removed — Pipelines tab now driven by pipeline-instances API
 import type { Pipeline } from '../../shared/types.js';
 import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
@@ -2804,14 +2804,15 @@ function Themes() {
 
 // Map from pipeline id to the dedicated tab it routes output to (for the
 // "View in <tab>" chip shown on cards that are NOT in the Insights sub-tabs).
-const PIPELINE_DEDICATED_TAB: Record<string, string> = {
+// Preserved for future "View in <tab>" chips — not yet wired into InstanceCard
+const _PIPELINE_DEDICATED_TAB: Record<string, string> = {
   crisis: 'Incidents',
   impostor: 'Audit log',
   'agent-metrics': 'Team',
 };
 
-// Pipelines that have a "Settings →" shortcut (Drivers → taxonomy config).
-const PIPELINE_SETTINGS_LINK = new Set(['intent']);
+// Preserved for future "Settings →" shortcut on pipeline cards
+const _PIPELINE_SETTINGS_LINK = new Set(['intent']);
 
 interface DebugStats {
   events_received?: number;
@@ -2968,7 +2969,8 @@ export function PipelineCard({
   );
 }
 
-/** Card for a user-created custom pipeline */
+/** Card for a user-created custom pipeline — kept for future Catalogue reuse */
+// biome-ignore lint/correctness/noUnusedVariables: preserved for future use when custom pipelines get a dedicated card UI
 function CustomPipelineCard({
   pipeline,
   onDelete,
@@ -3595,13 +3597,7 @@ const BUILDER_VARIABLES = [
   'current_sentiment',
 ];
 
-function NewPipelineModal({
-  onClose,
-  onStudioPromotion,
-}: {
-  onClose: () => void;
-  onStudioPromotion: () => void;
-}) {
+function NewPipelineModal({ onClose }: { onClose: () => void }) {
   const qc = useQueryClient();
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -3884,27 +3880,6 @@ function NewPipelineModal({
                   />
                   {opt.label}
                 </label>
-              ))}
-            </div>
-          </div>
-
-          {/* Advanced options → Studio promotion */}
-          <div>
-            <p className="mb-2 text-xs font-medium text-[var(--text)]">
-              Advanced options (require Studio)
-            </p>
-            <div className="space-y-1">
-              {STUDIO_ADVANCED_OPTIONS.map((opt) => (
-                <button
-                  key={opt}
-                  type="button"
-                  onClick={onStudioPromotion}
-                  className="flex w-full items-center justify-between rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-left text-xs text-[var(--text-muted)] hover:border-orange-500/50 hover:text-orange-300"
-                  data-testid={`studio-advanced-${opt.replace(/\s+/g, '-').toLowerCase()}`}
-                >
-                  <span>{opt}</span>
-                  <span className="text-orange-400">Studio →</span>
-                </button>
               ))}
             </div>
           </div>
@@ -4287,14 +4262,13 @@ function InstanceCard({
 // ---------------------------------------------------------------------------
 
 function Pipelines({
-  onOpenSettings,
+  onOpenSettings: _onOpenSettings,
   autoOpen = false,
 }: {
   onOpenSettings: () => void;
   autoOpen?: boolean;
 }) {
   const qc = useQueryClient();
-  const [studioOpen, setStudioOpen] = useState(false);
   const [drawerPipeline, setDrawerPipeline] = useState<Pipeline | null>(null);
   const [newPipelineOpen, setNewPipelineOpen] = useState(autoOpen);
   const [innerTab, setInnerTab] = useState<PipelinesInnerTab>('installed');
@@ -4324,7 +4298,7 @@ function Pipelines({
   });
 
   // Legacy query (still needed by PipelineDrawer which uses /api/pipelines/builtin/:id)
-  const allPipelinesQ = useQuery({
+  const _allPipelinesQ = useQuery({
     queryKey: ['pipelines-all'],
     queryFn: () => api.pipelines.all(),
     staleTime: 60 * 1000,
@@ -4390,19 +4364,10 @@ function Pipelines({
 
   return (
     <div className="space-y-6">
-      {studioOpen ? <StudioModal onClose={() => setStudioOpen(false)} /> : null}
       {drawerPipeline ? (
         <PipelineDrawer pipeline={drawerPipeline} onClose={() => setDrawerPipeline(null)} />
       ) : null}
-      {newPipelineOpen ? (
-        <NewPipelineModal
-          onClose={() => setNewPipelineOpen(false)}
-          onStudioPromotion={() => {
-            setNewPipelineOpen(false);
-            setStudioOpen(true);
-          }}
-        />
-      ) : null}
+      {newPipelineOpen ? <NewPipelineModal onClose={() => setNewPipelineOpen(false)} /> : null}
       {installTemplate ? (
         <InstallDialog
           template={installTemplate}
@@ -4515,7 +4480,6 @@ function Pipelines({
                   />
                 );
               })}
-              <StubPipelineCard onOpen={() => setStudioOpen(true)} />
             </div>
           )}
 

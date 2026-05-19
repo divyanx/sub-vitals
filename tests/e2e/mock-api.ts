@@ -776,7 +776,12 @@ export async function setupMocks(page: Page): Promise<void> {
             templateId: 'intent-classifier',
             name: 'Intent classifier (copy)',
             enabled: true,
-            config: { trigger: 'post-create', systemPrompt: '', userPrompt: '', outputSchema: 'single-label' },
+            config: {
+              trigger: 'post-create',
+              systemPrompt: '',
+              userPrompt: '',
+              outputSchema: 'single-label',
+            },
             source: 'installed',
             createdAt: Date.now(),
             updatedAt: Date.now(),

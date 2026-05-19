@@ -12,6 +12,31 @@ import { K } from './keys.js';
 import { log } from './log.js';
 import type { Tag, TagDistributionEntry } from './types.js';
 
+// Lazy import to avoid circular deps — rules-engine imports tags.ts
+async function fireRulesOnTag(tag: Tag): Promise<void> {
+  try {
+    const { onTagWrite } = await import('./rules-engine.js');
+    const payload: {
+      pipelineId: string;
+      value: string | number | boolean;
+      confidence?: number;
+      targetId: string;
+      targetType: 'post' | 'comment';
+    } = {
+      pipelineId: tag.pipelineId,
+      value: tag.value,
+      targetId: tag.targetId,
+      targetType: tag.targetType,
+    };
+    if (tag.confidence !== undefined) {
+      payload.confidence = tag.confidence;
+    }
+    await onTagWrite(payload);
+  } catch (err) {
+    log.warn('tags: rules engine hook failed (non-fatal)', { err: String(err) });
+  }
+}
+
 const TAG_INDEX_CAP = 1000;
 
 /**
@@ -28,6 +53,8 @@ export async function recordTag(tag: Tag): Promise<void> {
     if (count > TAG_INDEX_CAP) {
       await redis.zRemRangeByRank(idxKey, 0, count - TAG_INDEX_CAP - 1);
     }
+    // Fire rules engine hook — non-blocking, failure-isolated
+    void fireRulesOnTag(tag);
   } catch (err) {
     // Non-fatal: existing modules keep working even if tag write fails.
     log.warn('tags: recordTag failed (non-fatal)', {
