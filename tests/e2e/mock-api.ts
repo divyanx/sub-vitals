@@ -540,6 +540,267 @@ export async function setupMocks(page: Page): Promise<void> {
       });
     }
 
+    // Pipeline templates catalogue
+    if (pathname === '/api/templates' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          count: 10,
+          templates: [
+            {
+              id: 'intent-classifier',
+              name: 'Intent classifier',
+              shortDescription: 'Classifies each post into a contact-driver category.',
+              description: 'Uses your contact-driver taxonomy to tag every incoming post.',
+              category: 'tagging',
+              kind: 'categorical',
+              iconEmoji: '🎯',
+              defaultConfig: {
+                trigger: 'post-create',
+                systemPrompt: 'Classify the post.',
+                userPrompt: '{{post.body}}',
+                outputSchema: 'single-label',
+              },
+              configurable: ['systemPrompt', 'userPrompt', 'labels'],
+              example: { input: 'App keeps crashing', output: 'bug' },
+              moduleKey: 'contact-drivers',
+              logic: 'Lexicon → LLM',
+            },
+            {
+              id: 'sentiment-scorer',
+              name: 'Sentiment scorer',
+              shortDescription: 'Scores each post as positive, neutral, or negative.',
+              description: 'AFINN lexicon + LLM judge.',
+              category: 'scoring',
+              kind: 'ordinal',
+              iconEmoji: '💭',
+              defaultConfig: {
+                trigger: 'post-create',
+                systemPrompt: 'Score sentiment.',
+                userPrompt: '{{post.body}}',
+                outputSchema: 'label-confidence',
+                labels: ['positive', 'neutral', 'negative'],
+              },
+              configurable: ['systemPrompt', 'userPrompt', 'threshold'],
+              example: { input: 'This is terrible', output: 'negative (0.92)' },
+              moduleKey: 'sentiment',
+            },
+            {
+              id: 'spam-detector',
+              name: 'Spam detector',
+              shortDescription: 'Flags posts and comments that look like spam.',
+              description: 'Regex pre-filter + LLM judge.',
+              category: 'flagging',
+              kind: 'boolean',
+              iconEmoji: '🛡️',
+              defaultConfig: {
+                trigger: 'post-create',
+                systemPrompt: 'Detect spam.',
+                userPrompt: '{{post.body}}',
+                outputSchema: 'boolean',
+              },
+              configurable: ['systemPrompt', 'userPrompt', 'threshold'],
+              example: { input: 'Use code PROMO20!', output: 'true' },
+              moduleKey: 'spam-detector',
+            },
+          ],
+        },
+      });
+    }
+
+    // Pipeline instances — new model
+    if (pathname === '/api/pipelines/instances' && method === 'GET') {
+      return route.fulfill({
+        json: {
+          count: 7,
+          instances: [
+            {
+              id: 'pi_intent-classifier',
+              templateId: 'intent-classifier',
+              name: 'Contact Drivers',
+              description: 'Classifies each post into a contact-driver category.',
+              enabled: true,
+              config: {
+                trigger: 'post-create',
+                systemPrompt: 'Classify the post.',
+                userPrompt: '{{post.body}}',
+                outputSchema: 'single-label',
+              },
+              source: 'preinstalled',
+              createdAt: 1747400000000,
+              updatedAt: 1747400000000,
+              showIn: ['insights'],
+              order: 0,
+            },
+            {
+              id: 'pi_sentiment-scorer',
+              templateId: 'sentiment-scorer',
+              name: 'Sentiment scoring',
+              description: 'Scores each post as positive, neutral, or negative.',
+              enabled: true,
+              config: {
+                trigger: 'post-create',
+                systemPrompt: 'Score sentiment.',
+                userPrompt: '{{post.body}}',
+                outputSchema: 'label-confidence',
+                labels: ['positive', 'neutral', 'negative'],
+              },
+              source: 'preinstalled',
+              createdAt: 1747400000000,
+              updatedAt: 1747400000000,
+              showIn: ['insights'],
+              order: 1,
+            },
+            {
+              id: 'pi_topic-clusterer',
+              templateId: 'topic-clusterer',
+              name: 'Theme clustering',
+              description: 'Groups recent posts into recurring topic clusters.',
+              enabled: true,
+              config: {
+                trigger: 'scheduled',
+                systemPrompt: 'Cluster themes.',
+                userPrompt: '{{posts_json}}',
+                outputSchema: 'cluster',
+              },
+              source: 'preinstalled',
+              createdAt: 1747400000000,
+              updatedAt: 1747400000000,
+              showIn: ['insights'],
+              order: 2,
+            },
+            {
+              id: 'pi_impostor-flagger',
+              templateId: 'impostor-flagger',
+              name: 'Impostor detection',
+              description: 'Flags comments that impersonate brand agents.',
+              enabled: true,
+              config: {
+                trigger: 'comment-create',
+                systemPrompt: 'Detect impostors.',
+                userPrompt: '{{body}}',
+                outputSchema: 'boolean',
+              },
+              source: 'preinstalled',
+              createdAt: 1747400000000,
+              updatedAt: 1747400000000,
+              showIn: ['audit'],
+              order: 3,
+            },
+            {
+              id: 'pi_volume-spike-detector',
+              templateId: 'volume-spike-detector',
+              name: 'Crisis detection',
+              description: 'Detects unusual spikes in post/comment volume.',
+              enabled: true,
+              config: {
+                trigger: 'comment-create',
+                systemPrompt: '',
+                userPrompt: '',
+                outputSchema: 'boolean',
+                threshold: 0.4,
+              },
+              source: 'preinstalled',
+              createdAt: 1747400000000,
+              updatedAt: 1747400000000,
+              showIn: ['incidents'],
+              order: 4,
+            },
+            {
+              id: 'pi_team-response-tracker',
+              templateId: 'team-response-tracker',
+              name: 'Agent metrics',
+              description: 'Tracks first-response latency for verified agents.',
+              enabled: true,
+              config: {
+                trigger: 'comment-create',
+                systemPrompt: '',
+                userPrompt: '',
+                outputSchema: 'scalar',
+              },
+              source: 'preinstalled',
+              createdAt: 1747400000000,
+              updatedAt: 1747400000000,
+              showIn: ['team'],
+              order: 5,
+            },
+            {
+              id: 'pi_root-cause-summariser',
+              templateId: 'root-cause-summariser',
+              name: 'Root cause',
+              description: 'AI summarises a resolved post into a root-cause string.',
+              enabled: true,
+              config: {
+                trigger: 'status-change',
+                systemPrompt: 'Extract root cause.',
+                userPrompt: '{{post.body}}',
+                outputSchema: 'single-label',
+              },
+              source: 'preinstalled',
+              createdAt: 1747400000000,
+              updatedAt: 1747400000000,
+              showIn: ['insights'],
+              order: 6,
+            },
+          ],
+        },
+      });
+    }
+
+    if (pathname === '/api/pipelines/instances' && method === 'POST') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>;
+      return route.fulfill({
+        status: 201,
+        json: {
+          instance: {
+            id: `pi_${Math.random().toString(36).slice(2, 10)}`,
+            templateId: (body as { templateId?: string }).templateId ?? 'scratch',
+            name: (body as { name?: string }).name ?? 'New pipeline',
+            enabled: true,
+            config: (body as { config?: object }).config ?? {},
+            source: 'installed',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            showIn: ['insights'],
+            order: 10,
+          },
+        },
+      });
+    }
+
+    if (pathname.match(/^\/api\/pipelines\/instances\/[^/]+\/duplicate$/) && method === 'POST') {
+      return route.fulfill({
+        status: 201,
+        json: {
+          instance: {
+            id: `pi_copy_${Math.random().toString(36).slice(2, 8)}`,
+            templateId: 'intent-classifier',
+            name: 'Intent classifier (copy)',
+            enabled: true,
+            config: { trigger: 'post-create', systemPrompt: '', userPrompt: '', outputSchema: 'single-label' },
+            source: 'installed',
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            showIn: ['insights'],
+            order: 99,
+          },
+        },
+      });
+    }
+
+    if (pathname === '/api/pipelines/instances/order' && method === 'PATCH') {
+      return route.fulfill({ json: { ok: true } });
+    }
+
+    const instancePatchMatch = pathname.match(/^\/api\/pipelines\/instances\/([^/]+)$/);
+    if (instancePatchMatch && method === 'PATCH') {
+      const id = instancePatchMatch[1];
+      const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>;
+      return route.fulfill({ json: { instance: { id, ...body } } });
+    }
+    if (instancePatchMatch && method === 'DELETE') {
+      return route.fulfill({ json: { ok: true, deleted: true } });
+    }
+
     // Custom pipelines list
     if (pathname === '/api/pipelines/custom' && method === 'GET') {
       return route.fulfill({ json: fixture('pipeline-custom-list') });
@@ -826,6 +1087,48 @@ export async function setupMocks(page: Page): Promise<void> {
     }
 
     // Content browser (bulk-tag already handled above via /api/posts/bulk-tag)
+
+    // Rules engine
+    if (pathname === '/api/rules' && method === 'GET') {
+      return route.fulfill({ json: { count: 0, rules: [] } });
+    }
+    if (pathname === '/api/rules' && method === 'POST') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as Record<string, unknown>;
+      return route.fulfill({
+        status: 201,
+        json: {
+          rule: {
+            id: 'rule_mock001',
+            ...body,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            fireCount: 0,
+          },
+        },
+      });
+    }
+    if (pathname === '/api/rules/order' && method === 'PATCH') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname.match(/^\/api\/rules\/[^/]+\/toggle$/) && method === 'POST') {
+      return route.fulfill({ json: { rule: { id: 'rule_mock001', enabled: true } } });
+    }
+    if (pathname.match(/^\/api\/rules\/[^/]+\/test$/) && method === 'POST') {
+      return route.fulfill({
+        json: {
+          ruleId: 'rule_mock001',
+          conditionsMatched: false,
+          conditionTrace: { op: 'and', matched: false, children: [] },
+          actions: [],
+        },
+      });
+    }
+    if (pathname.match(/^\/api\/rules\/[^/]+$/) && method === 'DELETE') {
+      return route.fulfill({ json: { ok: true } });
+    }
+    if (pathname.match(/^\/api\/rules\/[^/]+$/) && method === 'PATCH') {
+      return route.fulfill({ json: { rule: { id: pathname.split('/').pop() } } });
+    }
 
     // Fallback: abort unknown API paths so tests get a clear failure signal
     console.warn(`[mock-api] Unhandled request: ${method} ${pathname}`);
