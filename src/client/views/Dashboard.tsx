@@ -3656,10 +3656,10 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                 role="switch"
                 aria-checked={enabled}
                 onClick={() => setEnabled((e) => !e)}
-                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors ${enabled ? 'bg-emerald-600' : 'bg-neutral-700'}`}
+                className={`relative inline-flex h-5 w-10 items-center rounded-full transition-colors ${enabled ? 'bg-emerald-600' : 'bg-neutral-700'}`}
               >
                 <span
-                  className={`inline-block h-3.5 w-3.5 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-4' : 'translate-x-1'}`}
+                  className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
                 />
               </button>
             </label>
@@ -4494,15 +4494,15 @@ function InstanceCard({
           role="switch"
           aria-checked={instance.enabled}
           onClick={() => onToggle(!instance.enabled)}
-          className={`relative mt-0.5 h-5 w-9 shrink-0 rounded-full transition ${
+          className={`relative mt-0.5 inline-flex h-5 w-10 shrink-0 items-center rounded-full transition ${
             instance.enabled ? 'bg-emerald-600' : 'bg-neutral-700'
           }`}
           aria-label={instance.enabled ? 'Disable pipeline' : 'Enable pipeline'}
           data-testid={`instance-toggle-${instance.id}`}
         >
           <span
-            className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${
-              instance.enabled ? 'translate-x-4' : 'translate-x-0.5'
+            className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
+              instance.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
             }`}
           />
         </button>
