@@ -1572,6 +1572,7 @@ const BULK_STATUS_OPTIONS: { value: PostStatus; label: string }[] = [
   { value: 'open', label: 'Re-open' },
 ];
 
+// biome-ignore lint/correctness/noUnusedVariables: kept for future drawer integration
 function Inbox() {
   const qc = useQueryClient();
   const [statusFilter, setStatusFilter] = useState<'open' | 'in-progress' | 'all'>('open');
@@ -2433,7 +2434,7 @@ function Overview({
     queryFn: () => api.agentLeaderboard(7),
     staleTime: 120_000,
   });
-  const themesQ = useQuery({ queryKey: ['themes'], queryFn: api.themes, staleTime: 300_000 });
+  // themesQ removed — themes moved to Pipelines tab (cluster pipeline) in the new IA
 
   // --- KPI computations ---
   const kpis = useMemo(() => {

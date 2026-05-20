@@ -16,7 +16,7 @@ export function ClusterSummary({ distribution }: ClusterSummaryProps) {
   const top3 = distribution.slice(0, 3);
 
   return (
-    <ul className="space-y-2" role="list">
+    <ul className="space-y-2">
       {top3.map((entry, i) => (
         <li key={entry.value} className="flex items-center gap-2 text-xs">
           <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500/20 text-[10px] font-bold text-orange-400">
