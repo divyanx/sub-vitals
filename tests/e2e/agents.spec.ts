@@ -1,7 +1,8 @@
 /**
  * agents.spec.ts
  *
- * Tests the Team tab — verified rep list renders with username, role, date.
+ * Tests the Team roster — verified rep list renders with username, role, date.
+ * In IA reset v2 the team roster lives under Settings ▾ → Team.
  */
 
 import { expect, test } from '@playwright/test';
@@ -11,8 +12,9 @@ test.describe('Team tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    // Team is now under the Respond tab
-    await page.getByRole('tab', { name: 'Respond' }).click();
+    // Team is now under Settings ▾ → Team roster
+    await page.getByRole('tab', { name: 'Settings' }).click();
+    await page.getByRole('menuitem', { name: 'Team roster' }).click();
     // Wait for agent list
     await expect(page.getByText('u/brand_agent_alice')).toBeVisible({ timeout: 10000 });
   });

@@ -12,8 +12,8 @@ test.describe('Export tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    // Export is now under Configure > Export
-    await page.getByRole('tab', { name: 'Configure' }).click();
+    // Export is now under Settings ▾ → Export
+    await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('menuitem', { name: 'Export' }).click();
     // Wait for section heading
     await expect(page.getByText('Data export')).toBeVisible({ timeout: 8000 });

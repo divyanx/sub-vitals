@@ -1,28 +1,27 @@
 /**
  * theme-and-incidents.spec.ts
  *
- * End-to-end tests for the Themes and Incidents tabs.
- * Both features are implemented in Dashboard.tsx and served via mock-api.ts.
+ * End-to-end tests for the Themes and Incidents sections.
+ * Both features are inline sections within the Posts tab in IA reset v2.
+ * The Watch tab no longer exists as a primary tab.
  */
 
 import { expect, test } from '@playwright/test';
 import { setupMocks } from './mock-api.ts';
 
 test.describe('Themes tab', () => {
-  test('themes/latest data renders in the Themes tab', async ({ page }) => {
+  test('themes/latest data renders in the Themes section', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Watch' }).click();
-    await page.getByRole('tab', { name: 'Themes' }).click();
+    // Themes is an inline section within Posts tab
+    await expect(page.getByRole('tab', { name: 'Posts' })).toBeVisible({ timeout: 5000 });
     // The fixture has a theme named "Checkout crash wave"
     await expect(page.getByText('Checkout crash wave')).toBeVisible({ timeout: 8000 });
   });
 
-  test('Regenerate button is visible on the Themes tab', async ({ page }) => {
+  test('Regenerate button is visible in the Themes section', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Watch' }).click();
-    await page.getByRole('tab', { name: 'Themes' }).click();
     await expect(page.getByRole('button', { name: /regenerate/i })).toBeVisible({ timeout: 8000 });
   });
 });
@@ -31,7 +30,7 @@ test.describe('Incidents tab', () => {
   test('incidents UI section renders with filter chips', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Watch' }).click();
+    // Incidents section renders inside Posts tab
     // Filter chips should be visible
     await expect(page.getByRole('button', { name: 'active' })).toBeVisible({ timeout: 8000 });
     await expect(page.getByRole('button', { name: 'resolved' })).toBeVisible();
@@ -41,7 +40,6 @@ test.describe('Incidents tab', () => {
   test('filter chips have aria-pressed attribute', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Watch' }).click();
     await page.waitForTimeout(500);
     // 'active' chip should be pressed by default
     const activeChip = page.getByRole('button', { name: 'active' });

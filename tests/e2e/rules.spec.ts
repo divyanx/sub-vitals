@@ -1,6 +1,8 @@
 /**
  * E2E tests for the Rules tab.
  *
+ * In IA reset v2 Rules is a primary tab (previously Configure → Rules).
+ *
  * Covers:
  *  - Tab navigation and list rendering
  *  - Create rule flow: open builder → fill steps → save → verify in list
@@ -128,8 +130,8 @@ test.describe('Rules tab', () => {
   test('Rules tab is visible in nav and renders rule list', async ({ page }) => {
     await setupRulesMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
-    await page.getByRole('menuitem', { name: 'Rules' }).click();
+    // Rules is now a primary tab
+    await page.getByRole('tab', { name: 'Rules' }).click();
     await expect(page.getByTestId('rules-tab')).toBeVisible({ timeout: 8000 });
     await expect(page.getByText('Auto-escalate critical bugs')).toBeVisible();
   });
@@ -137,8 +139,7 @@ test.describe('Rules tab', () => {
   test('shows fire count and trigger badge', async ({ page }) => {
     await setupRulesMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
-    await page.getByRole('menuitem', { name: 'Rules' }).click();
+    await page.getByRole('tab', { name: 'Rules' }).click();
     await expect(page.getByTestId('rules-tab')).toBeVisible({ timeout: 8000 });
     await expect(page.getByText('3 fires')).toBeVisible();
     await expect(page.getByText('Tag write')).toBeVisible();
@@ -172,8 +173,7 @@ test.describe('Rules tab', () => {
     await setupMocks(page);
 
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
-    await page.getByRole('menuitem', { name: 'Rules' }).click();
+    await page.getByRole('tab', { name: 'Rules' }).click();
     await expect(page.getByTestId('rules-tab')).toBeVisible({ timeout: 8000 });
 
     // Open builder
@@ -203,8 +203,7 @@ test.describe('Rules tab', () => {
   test('toggle rule enable/disable', async ({ page }) => {
     await setupRulesMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
-    await page.getByRole('menuitem', { name: 'Rules' }).click();
+    await page.getByRole('tab', { name: 'Rules' }).click();
     await expect(page.getByTestId('rules-tab')).toBeVisible({ timeout: 8000 });
 
     const toggleBtn = page.getByRole('button', { name: /enable rule|disable rule/i }).first();
@@ -215,8 +214,7 @@ test.describe('Rules tab', () => {
   test('test modal opens and runs dry-run', async ({ page }) => {
     await setupRulesMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
-    await page.getByRole('menuitem', { name: 'Rules' }).click();
+    await page.getByRole('tab', { name: 'Rules' }).click();
     await expect(page.getByTestId('rules-tab')).toBeVisible({ timeout: 8000 });
 
     // Click Test button on the rule row
@@ -231,8 +229,7 @@ test.describe('Rules tab', () => {
   test('delete rule with confirmation', async ({ page }) => {
     await setupRulesMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
-    await page.getByRole('menuitem', { name: 'Rules' }).click();
+    await page.getByRole('tab', { name: 'Rules' }).click();
     await expect(page.getByTestId('rules-tab')).toBeVisible({ timeout: 8000 });
 
     // Accept the confirm dialog

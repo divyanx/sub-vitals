@@ -43,8 +43,8 @@ test.describe('Pulse view', () => {
     await expect(cta).toBeVisible({ timeout: 8000 });
     await cta.click();
 
-    // After clicking, the dashboard nav should appear (Triage tab is default)
-    await expect(page.getByRole('tab', { name: 'Triage' })).toBeVisible({ timeout: 5000 });
+    // After clicking, the dashboard nav should appear — Posts is the default tab
+    await expect(page.getByRole('tab', { name: 'Posts' })).toBeVisible({ timeout: 5000 });
   });
 
   test('header shows RedLattice brand name', async ({ page }) => {

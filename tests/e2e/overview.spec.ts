@@ -3,6 +3,9 @@
  *
  * Tests the redesigned "Pulse" (Overview) tab — 6 KPI tiles, per-driver
  * sparklines, hour-of-day heatmap, top themes section, and activity ticker.
+ *
+ * In IA reset v2 these KPIs live inside the Posts tab (default view).
+ * The ?tab=overview URL redirects to posts via LEGACY_TAB_MAP.
  */
 
 import { expect, test } from '@playwright/test';
@@ -12,9 +15,7 @@ test.describe('Overview (Pulse) tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    // Navigate to the Watch tab via nav
-    await page.getByRole('tab', { name: 'Watch' }).click();
-    // Wait for KPI strip to appear (using a label unique to the KPI strip)
+    // Posts tab is the default — KPI strip should render immediately
     await expect(page.getByText('Posts today')).toBeVisible({ timeout: 10000 });
   });
 
@@ -30,7 +31,7 @@ test.describe('Overview (Pulse) tab', () => {
     await expect(page.getByText('Top driver')).toBeVisible();
     await expect(page.getByText('Active incidents')).toBeVisible();
     await expect(page.getByText('Avg first-response')).toBeVisible();
-    await expect(page.getByText('LLM spend (MTD)')).toBeVisible();
+    await expect(page.getByText('AI spend (MTD)')).toBeVisible();
   });
 
   test('"Posts today" KPI shows fixture count (14)', async ({ page }) => {
@@ -45,7 +46,7 @@ test.describe('Overview (Pulse) tab', () => {
     await expect(page.getByText('Bug / broken experience').first()).toBeVisible();
   });
 
-  test('"LLM spend" KPI shows dollar value', async ({ page }) => {
+  test('"AI spend" KPI shows dollar value', async ({ page }) => {
     // Fixture: monthCents = 42 → $0.420
     await expect(page.getByText(/\$0\.4[0-9]+/)).toBeVisible();
   });
@@ -67,7 +68,6 @@ test.describe('Overview (Pulse) tab', () => {
 
   test('themes section renders', async ({ page }) => {
     await expect(page.getByText('Emerging themes')).toBeVisible({ timeout: 8000 });
-    // Mock returns themes fixture — show a theme name or the section heading
     await expect(page.getByText('Emerging themes')).toBeVisible();
   });
 

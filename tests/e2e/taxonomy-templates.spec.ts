@@ -2,20 +2,21 @@
  * taxonomy-templates.spec.ts
  *
  * E2E test for the taxonomy template marketplace:
- *   - Templates section renders inside the "Configure taxonomy" accordion on the Drivers tab
+ *   - Templates section renders inside the "Configure taxonomy" accordion on the Drivers section
  *   - Cards show name and Apply button
  *   - Clicking Apply on ecommerce opens the confirmation dialog
  *   - Confirming with "Replace" calls the server and shows a toast
+ *
+ * In IA reset v2, the Drivers config is an inline section within the Posts tab.
  */
 
 import { expect, test } from '@playwright/test';
 import { setupMocks } from './mock-api.ts';
 
-/** Navigate to the Drivers tab and open the Configure taxonomy accordion. */
+/** Navigate to the Drivers config panel within the Posts tab. */
 async function openTaxonomyConfig(page: Parameters<typeof setupMocks>[0]) {
   await page.goto('/');
-  await page.getByRole('tab', { name: 'Watch' }).click();
-  await page.getByRole('tab', { name: 'Drivers' }).click();
+  // Posts tab is default; drivers-config-toggle is in the inline Drivers section
 
   // Open the "Configure taxonomy" accordion
   const configToggle = page.getByTestId('drivers-config-toggle');

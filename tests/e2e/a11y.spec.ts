@@ -7,6 +7,9 @@
  *
  * Only serious + critical impact violations are asserted; moderate/minor
  * violations are logged for awareness but do not fail the suite.
+ *
+ * Updated for IA reset v2: primary tabs are Posts, Pipelines, Catalogue,
+ * Rules, Settings. Legacy URL params redirect automatically.
  */
 
 import AxeBuilder from '@axe-core/playwright';
@@ -58,74 +61,60 @@ async function assertNoSeriousViolations(page: import('@playwright/test').Page, 
 }
 
 // ---------------------------------------------------------------------------
-// Tab: Inbox (default)
+// Tab: Posts (default)
 // ---------------------------------------------------------------------------
 
-test.describe('a11y — Inbox tab', () => {
+test.describe('a11y — Posts tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
     // Wait for content to fully render before axe runs
     await page.waitForTimeout(1500);
-    await assertNoSeriousViolations(page, 'Inbox tab');
+    await assertNoSeriousViolations(page, 'Posts tab');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Tab: Overview / Pulse
+// Tab: Pipelines
 // ---------------------------------------------------------------------------
 
-test.describe('a11y — Overview tab', () => {
+test.describe('a11y — Pipelines tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
-    await page.goto('/?tab=overview');
+    await page.goto('/?tab=pipelines');
     await page.waitForTimeout(1500);
-    await assertNoSeriousViolations(page, 'Overview tab');
+    await assertNoSeriousViolations(page, 'Pipelines tab');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Tab: Contact Drivers
+// Tab: Catalogue
 // ---------------------------------------------------------------------------
 
-test.describe('a11y — Insights/Drivers tab', () => {
+test.describe('a11y — Catalogue tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
-    await page.goto('/?tab=insights&section=intent');
+    await page.goto('/?tab=catalogue');
     await page.waitForTimeout(1500);
-    await assertNoSeriousViolations(page, 'Drivers tab');
+    await assertNoSeriousViolations(page, 'Catalogue tab');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Tab: Sentiment
+// Tab: Rules
 // ---------------------------------------------------------------------------
 
-test.describe('a11y — Sentiment tab', () => {
+test.describe('a11y — Rules tab', () => {
   test('no serious/critical a11y violations', async ({ page }) => {
     await setupMocks(page);
-    await page.goto('/?tab=insights&section=sentiment');
-
+    await page.goto('/?tab=rules');
     await page.waitForTimeout(1500);
-    await assertNoSeriousViolations(page, 'Sentiment tab');
+    await assertNoSeriousViolations(page, 'Rules tab');
   });
 });
 
 // ---------------------------------------------------------------------------
-// Tab: Agents
-// ---------------------------------------------------------------------------
-
-test.describe('a11y — Team tab', () => {
-  test('no serious/critical a11y violations', async ({ page }) => {
-    await setupMocks(page);
-    await page.goto('/?tab=team');
-    await page.waitForTimeout(1500);
-    await assertNoSeriousViolations(page, 'Agents tab');
-  });
-});
-
-// ---------------------------------------------------------------------------
-// Tab: Settings
+// Tab: Settings (default section = brand)
 // ---------------------------------------------------------------------------
 
 test.describe('a11y — Settings tab', () => {
@@ -134,5 +123,19 @@ test.describe('a11y — Settings tab', () => {
     await page.goto('/?tab=settings');
     await page.waitForTimeout(1500);
     await assertNoSeriousViolations(page, 'Settings tab');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Settings — Team section (includes Agents)
+// ---------------------------------------------------------------------------
+
+test.describe('a11y — Settings Team section', () => {
+  test('no serious/critical a11y violations', async ({ page }) => {
+    await setupMocks(page);
+    // Legacy ?tab=team redirects to settings&section=team
+    await page.goto('/?tab=settings&section=team');
+    await page.waitForTimeout(1500);
+    await assertNoSeriousViolations(page, 'Settings Team section');
   });
 });

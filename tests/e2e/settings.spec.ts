@@ -2,11 +2,8 @@
  * settings.spec.ts
  *
  * End-to-end tests for the Settings tab.
- * Settings.tsx is implemented and renders under the Settings nav tab.
- *
- * Note (Sprint 11 IA refactor): Taxonomy editor tests now navigate to the
- * Contact drivers tab, where TaxonomyConfigSection and RoutingConfigSection
- * live after the IA refactor.
+ * In IA reset v2 Settings is a primary tab with a dropdown.
+ * Taxonomy editor tests navigate to the Posts tab where Drivers inline panel lives.
  */
 
 import { expect, test } from '@playwright/test';
@@ -16,8 +13,8 @@ test.describe('Settings tab', () => {
   test('settings sections load', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    // Settings/Brand is now under Configure > Brand
-    await page.getByRole('tab', { name: 'Configure' }).click();
+    // Settings/Brand is now under Settings ▾ → Brand
+    await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('menuitem', { name: 'Brand' }).click();
     // Brand identity section should render
     await expect(page.getByText(/brand identity/i)).toBeVisible({ timeout: 8000 });
@@ -31,8 +28,8 @@ test.describe('Settings tab', () => {
     });
 
     await page.goto('/');
-    // Settings/Brand is now under Configure > Brand
-    await page.getByRole('tab', { name: 'Configure' }).click();
+    // Settings/Brand is now under Settings ▾ → Brand
+    await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('menuitem', { name: 'Brand' }).click();
     // Click the first Save button (Brand identity section)
     await page
@@ -44,10 +41,9 @@ test.describe('Settings tab', () => {
   });
 });
 
-// Helper: navigate to Watch › Drivers and open the config panel
+// Helper: navigate to Posts tab and open the Drivers config panel
 async function openDriversConfigPanel(page: import('@playwright/test').Page) {
-  await page.getByRole('tab', { name: 'Watch' }).click();
-  await page.getByRole('tab', { name: 'Drivers' }).click();
+  await page.getByRole('tab', { name: 'Posts' }).click();
   await page.getByTestId('drivers-config-toggle').click();
   await expect(page.getByTestId('drivers-config-panel')).toBeVisible({ timeout: 6000 });
 }

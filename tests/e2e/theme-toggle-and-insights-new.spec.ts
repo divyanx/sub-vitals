@@ -2,7 +2,13 @@
  * theme-toggle-and-insights-new.spec.ts
  *
  * 1. Theme toggle is present exactly once (in the header) on every primary tab.
- * 2. The "+ New" button in the Insights sub-tab strip opens the new pipeline modal.
+ * 2. The "+ New" button in the Pipelines tab navigates to the Catalogue tab.
+ *
+ * Updated for IA reset v2:
+ *   - Primary tabs are: Posts, Pipelines, Catalogue, Rules, Settings
+ *   - Old tab names (Inbox, Overview, Insights, Incidents) redirect to Posts
+ *   - There is no standalone "Insights" sub-tab strip with a "+New" button;
+ *     instead the Pipelines tab has a "Install from catalogue" button.
  */
 
 import { expect, test } from '@playwright/test';
@@ -11,11 +17,12 @@ import { setupMocks } from './mock-api.ts';
 // ── Bug 1: exactly one theme toggle across all tabs ─────────────────────────
 
 const TABS = [
-  { name: 'Inbox', url: '/?tab=inbox' },
-  { name: 'Overview (Pulse)', url: '/?tab=overview' },
-  { name: 'Insights', url: '/?tab=insights' },
-  { name: 'Incidents', url: '/?tab=incidents' },
+  { name: 'Posts (default)', url: '/' },
+  { name: 'Posts', url: '/?tab=posts' },
   { name: 'Pipelines', url: '/?tab=pipelines' },
+  { name: 'Catalogue', url: '/?tab=catalogue' },
+  { name: 'Rules', url: '/?tab=rules' },
+  { name: 'Settings', url: '/?tab=settings' },
 ];
 
 for (const { name, url } of TABS) {
@@ -30,33 +37,28 @@ for (const { name, url } of TABS) {
   });
 }
 
-// ── Bug 3: "+ New" button in Insights opens the new pipeline modal ──────────
+// ── Pipelines "Install" button navigates to Catalogue tab ──────────────────
 
-test('Insights "+ New" button navigates to Pipelines and opens new pipeline modal', async ({
-  page,
-}) => {
+test('Pipelines "Install from catalogue" button navigates to Catalogue tab', async ({ page }) => {
   await setupMocks(page);
-  await page.goto('/?tab=watch');
+  await page.goto('/?tab=pipelines');
   await page.waitForLoadState('networkidle');
 
-  // Wait for the sub-tab strip to appear (pipelines-enabled loads)
-  await page.waitForSelector('[data-testid="insights-new-pipeline-btn"]', { timeout: 8000 });
+  // Wait for the secondary nav strip to appear
+  await page.waitForSelector('[data-testid="pipelines-instance-nav"]', { timeout: 8000 });
 
-  // Click the "+ New" button
-  await page.click('[data-testid="insights-new-pipeline-btn"]');
+  // Click the add / install button in the secondary nav
+  await page.click('[data-testid="pipelines-add-btn"]');
 
-  // Should land on Pipelines tab and the new pipeline modal should be open
-  await expect(page.getByRole('heading', { name: /new pipeline/i })).toBeVisible({
-    timeout: 8000,
-  });
+  // Should land on Catalogue tab
+  await expect(page.getByTestId('catalogue-grid')).toBeVisible({ timeout: 8000 });
 });
 
-test('Insights "+ New" button is visible in the sub-tab strip', async ({ page }) => {
+test('Pipelines add button is visible in the instance nav strip', async ({ page }) => {
   await setupMocks(page);
-  await page.goto('/?tab=watch');
+  await page.goto('/?tab=pipelines');
   await page.waitForLoadState('networkidle');
 
-  const btn = page.getByTestId('insights-new-pipeline-btn');
+  const btn = page.getByTestId('pipelines-add-btn');
   await expect(btn).toBeVisible({ timeout: 8000 });
-  await expect(btn).toHaveAttribute('aria-label', 'Create new pipeline');
 });

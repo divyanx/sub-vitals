@@ -1,6 +1,10 @@
 /**
  * E2e tests for the Content Browser tab.
  *
+ * In IA reset v2, the Content browser lives inside the Posts tab.
+ * ?tab=content redirects to ?tab=posts via LEGACY_TAB_MAP — the content
+ * browser is always rendered as a section within Posts.
+ *
  * Verifies: tab navigation, filter chip activation, sort, bulk selection,
  * mark-resolved bulk action, and that the POST to /api/posts/bulk-status
  * is correctly issued.
@@ -11,11 +15,12 @@ import { setupMocks } from './mock-api.ts';
 
 test.beforeEach(async ({ page }) => {
   await setupMocks(page);
-  await page.goto('/?tab=content');
+  // ?tab=content redirects to posts; the content browser renders within Posts
+  await page.goto('/?tab=posts');
 });
 
-test('Content tab renders the table', async ({ page }) => {
-  await expect(page.getByRole('tab', { name: 'Content' })).toBeVisible();
+test('Posts tab renders the content table', async ({ page }) => {
+  await expect(page.getByRole('tab', { name: 'Posts' })).toBeVisible();
   // Wait for data to load
   await expect(page.getByRole('table', { name: 'Content table' })).toBeVisible({ timeout: 5000 });
   // Should show at least one row

@@ -1,8 +1,8 @@
 /**
  * sentiment.spec.ts
  *
- * Tests the Sentiment tab — 3 total cards and the recharts area chart.
- * Verifies totals computed from the 31-day rollup fixture are correct.
+ * Tests the Sentiment section — 3 total cards and the recharts area chart.
+ * In IA reset v2 sentiment is a section within the Posts tab (not a separate sub-tab).
  */
 
 import { expect, test } from '@playwright/test';
@@ -20,13 +20,13 @@ const TOTALS = sentimentFixture.series.reduce(
   { positive: 0, neutral: 0, negative: 0 },
 );
 
-test.describe('Sentiment tab', () => {
+test.describe('Sentiment section', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Watch' }).click();
-    await page.getByRole('tab', { name: 'Sentiment' }).click();
-    // Wait for data — cards should appear
+    // Sentiment is now a section inside the Posts tab — scroll down to it
+    await expect(page.getByRole('tab', { name: 'Posts' })).toBeVisible({ timeout: 5000 });
+    // Wait for data — cards should appear (Posts tab is default)
     await expect(page.getByText('Positive')).toBeVisible({ timeout: 10000 });
   });
 

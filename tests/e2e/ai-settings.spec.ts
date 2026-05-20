@@ -11,7 +11,7 @@ import { setupMocks } from './mock-api.ts';
 async function openAISection(page: import('@playwright/test').Page) {
   await setupMocks(page);
   await page.goto('/');
-  await page.getByRole('tab', { name: 'Configure' }).click();
+  await page.getByRole('tab', { name: 'Settings' }).click();
   await page.getByRole('menuitem', { name: 'AI' }).click();
   // Wait for the AI section to render.
   await expect(page.getByText(/openrouter model/i).or(page.getByText(/ai model/i))).toBeVisible({
@@ -34,7 +34,7 @@ test.describe('Settings → AI section', () => {
   test('switching model in dropdown triggers validation indicator', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('menuitem', { name: 'AI' }).click();
 
     const dropdown = page.getByTestId('model-dropdown');
@@ -50,7 +50,7 @@ test.describe('Settings → AI section', () => {
   test('validation result shows green checkmark on success', async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('menuitem', { name: 'AI' }).click();
 
     const dropdown = page.getByTestId('model-dropdown');
@@ -87,7 +87,7 @@ test.describe('Settings → AI section', () => {
     });
     await setupMocks(page);
     await page.goto('/');
-    await page.getByRole('tab', { name: 'Configure' }).click();
+    await page.getByRole('tab', { name: 'Settings' }).click();
     await page.getByRole('menuitem', { name: 'AI' }).click();
 
     await expect(page.getByTestId('fallback-alert')).toBeVisible({ timeout: 8000 });
