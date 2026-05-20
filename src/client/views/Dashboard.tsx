@@ -17,6 +17,9 @@ import type { Pipeline } from '../../shared/types.js';
 import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { InfoTooltip } from '../components/InfoTooltip.tsx';
+import { PipelineSummaryCard } from '../components/PipelineSummaryCard.tsx';
+import { PriorityQueuePanel } from '../components/PriorityQueuePanel.tsx';
+import { RuleFiringsPanel } from '../components/RuleFiringsPanel.tsx';
 import { ShortcutsModal } from '../components/ShortcutsModal.tsx';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import { type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
@@ -670,33 +673,10 @@ function Posts({
         </Suspense>
       )}
 
-      {/* Drivers inline below the queue */}
-      <section className="mt-8">
-        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">
-          Contact drivers
-        </h2>
-        <Drivers initialDriver={activeDriver} onSetDriver={onSetDriver} />
-      </section>
-
-      {/* Sentiment summary */}
-      <section>
-        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Sentiment</h2>
-        <SentimentTab />
-      </section>
-
-      {/* Active incidents */}
-      <section>
-        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Incidents</h2>
-        <Incidents />
-      </section>
-
-      {/* Emerging themes */}
-      <section>
-        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">
-          Emerging themes
-        </h2>
-        <Themes />
-      </section>
+      {/* NOTE: Hardcoded Drivers/Sentiment/Incidents/Themes sections removed.
+          The Posts-as-dashboard agent (task #69) is replacing this with
+          dynamic per-installed-pipeline summary widgets. Until that lands,
+          Posts shows just the priority queue + content browser. */}
     </div>
   );
 }
@@ -2670,59 +2650,6 @@ function Overview({
             ) : null}
           </section>
 
-          {/* ── Top themes ──────────────────────────────────────────────── */}
-          <section aria-label="Emerging themes">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
-              Emerging themes
-            </h2>
-            {themesQ.isPending ? (
-              <SkeletonList />
-            ) : themesQ.isError ? (
-              <ErrorMsg msg="Couldn't load themes." retry={() => themesQ.refetch()} />
-            ) : themesQ.data.themes.length === 0 ? (
-              <div className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-sm text-[var(--text-muted)]">
-                <span>No themes generated yet.</span>
-                <button
-                  type="button"
-                  onClick={() => navigateTo('insights', { section: 'themes' })}
-                  className="text-xs text-orange-400 hover:underline"
-                >
-                  Generate in Themes tab →
-                </button>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {themesQ.data.themes.slice(0, 5).map((t) => (
-                  <div
-                    key={t.name}
-                    className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
-                  >
-                    <div className="flex items-baseline justify-between gap-2">
-                      <h3 className="truncate text-sm font-medium text-[var(--text)]">{t.name}</h3>
-                      <span
-                        className={`shrink-0 rounded-full border px-1.5 py-0.5 text-[10px] tabular-nums ${
-                          t.avgSentiment < -0.2
-                            ? 'border-rose-700 bg-rose-900/40 text-rose-200'
-                            : t.avgSentiment > 0.2
-                              ? 'border-emerald-700 bg-emerald-900/40 text-emerald-200'
-                              : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-muted)]'
-                        }`}
-                      >
-                        {t.avgSentiment > 0 ? '+' : ''}
-                        {t.avgSentiment.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="mt-1 text-[10px] text-[var(--text-muted)]">
-                      {t.postCount} post{t.postCount === 1 ? '' : 's'}
-                    </div>
-                    <p className="mt-1.5 line-clamp-2 text-xs text-[var(--text-muted)]">
-                      {t.summary}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </section>
         </div>
 
         {/* ── Activity ticker (sidebar on lg+) ─────────────────────────── */}
