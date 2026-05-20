@@ -15,11 +15,11 @@ export const TOOLTIPS = {
   avgFirstResponse:
     'Mean time from post submission to first verified rep comment, averaged across all reps over the last 7 days.',
   aiSpendMtd:
-    'Month-to-date LLM cost in USD, accumulated across contact-driver classification, sentiment judging, theme clustering, and AI draft replies.',
+    'Month-to-date AI cost in USD, accumulated across contact-driver classification, sentiment judging, theme clustering, and AI draft replies.',
 
   // Sentiment cards
   sentimentPositive:
-    'Posts scored positive by AFINN lexicon (or LLM judge when the lexicon result is ambiguous). Last 30 days.',
+    'Posts scored positive by AFINN lexicon (or AI judge when the lexicon result is ambiguous). Last 30 days.',
   sentimentNeutral:
     'Posts with a sentiment score near zero (−0.1 to +0.1). Often factual questions or announcements.',
   sentimentNegative: 'Posts scored negative. These drive incident detection and theme clustering.',
@@ -35,15 +35,15 @@ export const TOOLTIPS = {
 
   // Pipeline logic
   pipelineContactDrivers:
-    'Keyword match → LLM classification. Posts matching a driver keyword skip the LLM call to save cost.',
+    'Keyword match → AI classification. Posts matching a driver keyword skip the AI call to save cost.',
   pipelineSentiment:
-    'AFINN lexicon for clear signals; LLM judge only for ambiguous cases (score between −0.1 and +0.1).',
+    'AFINN lexicon for clear signals; AI judge only for ambiguous cases (score between −0.1 and +0.1).',
   pipelineImpostor:
-    'Regex pre-filter removes obvious non-matches, then LLM judges whether the comment is an impersonation attempt.',
+    'Regex pre-filter removes obvious non-matches, then AI judges whether the comment is an impersonation attempt.',
   pipelineCrisis:
-    'Hourly scheduler compares volume and negative-share against a 14-day rolling baseline. No LLM call.',
+    'Hourly scheduler compares volume and negative-share against a 14-day rolling baseline. No AI call.',
   pipelineThemes:
-    'Daily scheduler clusters the last 7 days of negative posts using an LLM and stores named theme groups.',
+    'Daily scheduler clusters the last 7 days of negative posts using an AI and stores named theme groups.',
   pipelineAgentMetrics:
     'Fires on every comment to record first-response timestamps and update per-rep latency counters.',
 

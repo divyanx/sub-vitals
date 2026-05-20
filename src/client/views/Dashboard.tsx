@@ -1443,105 +1443,8 @@ function SettingsPane({
   );
 }
 
-function RecentRuleFiringsStub() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['rules'],
-    queryFn: async () => {
-      const res = await fetch('/api/rules');
-      if (!res.ok)
-        return {
-          rules: [] as Array<{ id: string; name: string; fireCount: number; lastFiredAt?: number }>,
-        };
-      return res.json() as Promise<{
-        rules: Array<{ id: string; name: string; fireCount: number; lastFiredAt?: number }>;
-      }>;
-    },
-    staleTime: 60_000,
-  });
-  const recent = (data?.rules ?? [])
-    .filter((r) => r.lastFiredAt)
-    .sort((a, b) => (b.lastFiredAt ?? 0) - (a.lastFiredAt ?? 0))
-    .slice(0, 5);
-
-  if (isLoading) return <SkeletonList />;
-  if (recent.length === 0) {
-    return (
-      <EmptyHint>
-        No rules have fired yet. Create rules under Configure › Rules to automate actions.
-      </EmptyHint>
-    );
-  }
-  return (
-    <ul className="space-y-2">
-      {recent.map((r) => (
-        <li
-          key={r.id}
-          className="flex items-center justify-between rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm"
-        >
-          <span className="text-[var(--text)]">{r.name}</span>
-          <span className="text-xs text-[var(--text-muted)]">
-            {r.fireCount} fires · {r.lastFiredAt ? relativeTime(r.lastFiredAt) : '—'}
-          </span>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Respond — kept for internal usage (AI drafts in post drawer; Team in Settings)
-// This component is no longer a primary tab but DraftLibrary / Agents are
-// still used internally. Keep both functions to avoid breaking references.
-// ---------------------------------------------------------------------------
-
-function DraftLibrary() {
-  const { data, isLoading } = useQuery({
-    queryKey: ['draft-library'],
-    queryFn: async () => {
-      try {
-        const res = await fetch('/api/drafts');
-        if (!res.ok)
-          return {
-            drafts: [] as Array<{ id: string; postId: string; body: string; createdAt: number }>,
-          };
-        return res.json() as Promise<{
-          drafts: Array<{ id: string; postId: string; body: string; createdAt: number }>;
-        }>;
-      } catch {
-        return {
-          drafts: [] as Array<{ id: string; postId: string; body: string; createdAt: number }>,
-        };
-      }
-    },
-    staleTime: 30_000,
-  });
-
-  if (isLoading) return <SkeletonList />;
-  const drafts = data?.drafts ?? [];
-  if (drafts.length === 0) {
-    return (
-      <EmptyHint>
-        No drafts saved yet. Open a thread in Triage and generate a draft reply to see it here.
-      </EmptyHint>
-    );
-  }
-  return (
-    <ul className="space-y-2">
-      {drafts.map((d) => (
-        <li key={d.id} className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-          <div className="mb-1 flex items-center justify-between text-xs text-[var(--text-muted)]">
-            <span>Post {d.postId}</span>
-            <time>{relativeTime(d.createdAt)}</time>
-          </div>
-          <p className="line-clamp-3 text-sm text-[var(--text)]">{d.body}</p>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-// Old Configure + helper functions removed in IA reset v2.
-// Replaced by SettingsPane (primary Settings tab) defined above.
+// RecentRuleFiringsStub and DraftLibrary removed in IA reset v2 (no longer primary tab surfaces).
+// Old Configure helpers also removed — replaced by SettingsPane above.
 
 // ---------------------------------------------------------------------------
 // Inbox — the Triage cockpit (the "what needs ME?" view for support agents)
@@ -2600,7 +2503,7 @@ function Overview({
               tooltip={TOOLTIPS.avgFirstResponse}
             />
             <KpiTile
-              label="LLM spend (MTD)"
+              label="AI spend (MTD)"
               value={`$${(kpis.llmSpend / 100).toFixed(3)}`}
               sub={
                 summaryQ.data
@@ -3756,7 +3659,7 @@ function Themes() {
             Emerging themes
           </h2>
           <p className="mt-1 max-w-xl text-xs text-[var(--text-muted)]">
-            LLM-clustered themes from the most recent negative posts. Regenerated daily; click below
+            AI-clustered themes from the most recent negative posts. Regenerated daily; click below
             to refresh on-demand.
           </p>
         </div>
@@ -4159,7 +4062,7 @@ const PIPELINE_DEFAULTS: Record<string, { systemPrompt: string; userPrompt: stri
     userPrompt: 'Posts:\n{{post.body}}',
   },
   'agent-metrics': {
-    systemPrompt: 'Tracks agent response metrics. No LLM prompt required.',
+    systemPrompt: 'Tracks agent response metrics. No AI prompt required.',
     userPrompt: '',
   },
 };
@@ -5229,20 +5132,20 @@ function InstanceCard({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Main Pipelines component — Installed | Catalogue tabs
-// ---------------------------------------------------------------------------
+// Old Pipelines component (Configure sub-tab) — deprecated in IA reset v2.
+// PipelinesTab (primary tab) replaces it. Kept because TemplateCard / InstanceCard /
+// PipelineDrawer / NewPipelineModal / InstallDialog below still live in this file.
 
-function Pipelines({
+function LegacyPipelinesView({
   onOpenSettings: _onOpenSettings,
-  autoOpen = false,
+  autoOpen: _autoOpen = false,
 }: {
   onOpenSettings: () => void;
   autoOpen?: boolean;
 }) {
   const qc = useQueryClient();
   const [drawerPipeline, setDrawerPipeline] = useState<Pipeline | null>(null);
-  const [newPipelineOpen, setNewPipelineOpen] = useState(autoOpen);
+  const [newPipelineOpen, setNewPipelineOpen] = useState(_autoOpen);
   const [innerTab, setInnerTab] = useState<PipelinesInnerTab>('installed');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [installTemplate, setInstallTemplate] = useState<PipelineTemplateRecord | null>(null);
