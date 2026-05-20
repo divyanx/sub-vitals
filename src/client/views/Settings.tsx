@@ -221,6 +221,7 @@ export function Settings({ initialSection = 'all' }: { initialSection?: Settings
       )}
 
       {show('brand') && <BrandIdentitySection data={data} toast={toast} onSaved={invalidate} />}
+      {show('brand') && <BrandAccentSection data={data} toast={toast} onSaved={invalidate} />}
       {show('team-roster') && (
         <IdentityTrustSection data={data} toast={toast} onSaved={invalidate} />
       )}
@@ -382,6 +383,86 @@ function BrandIdentitySection({
         </div>
       ) : null}
       <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
+    </Section>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Brand accent color
+// ---------------------------------------------------------------------------
+
+function BrandAccentSection({
+  data,
+  toast,
+  onSaved,
+}: {
+  data: Record<string, unknown> & { openrouterKeyConfigured: boolean };
+  toast: (type: 'success' | 'error', msg: string) => void;
+  onSaved: () => void;
+}) {
+  const qc = useQueryClient();
+  const [hex, setHex] = useState<string>(
+    typeof data['brand-accent'] === 'string' ? data['brand-accent'] : '#FF4500',
+  );
+
+  const mut = useMutation({
+    mutationFn: (updates: Record<string, unknown>) => api.settings.put(updates),
+    onSuccess: () => {
+      toast('success', 'Accent color saved.');
+      void qc.invalidateQueries({ queryKey: ['settings'] });
+      onSaved();
+    },
+    onError: (e: Error) => toast('error', e.message),
+  });
+
+  return (
+    <Section
+      title="Brand accent color"
+      description="Overrides the Reddit orange accent across the dashboard. The color is derived into 4 tonal stops automatically."
+    >
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
+        <div className="flex flex-col gap-1">
+          <label htmlFor="accent-picker" className="text-xs font-medium text-[var(--n-11)]">
+            Accent hex
+          </label>
+          <div className="flex items-center gap-3">
+            <input
+              id="accent-picker"
+              type="color"
+              value={hex}
+              onChange={(e) => setHex(e.target.value)}
+              className="h-10 w-16 cursor-pointer rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] p-1"
+              aria-label="Pick brand accent color"
+            />
+            <input
+              type="text"
+              value={hex}
+              onChange={(e) => {
+                const v = e.target.value;
+                if (/^#[0-9a-fA-F]{0,6}$/.test(v)) setHex(v);
+              }}
+              maxLength={7}
+              className="w-28 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-2 text-sm font-mono text-[var(--n-11)] uppercase outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
+              aria-label="Accent color hex value"
+            />
+            <span
+              aria-hidden="true"
+              style={{ background: /^#[0-9a-fA-F]{6}$/.test(hex) ? hex : undefined }}
+              className="h-8 w-8 rounded-full border border-[var(--n-4)]"
+            />
+          </div>
+        </div>
+      </div>
+      <div className="mt-6 flex justify-end border-t border-[var(--border)] pt-4">
+        <button
+          type="button"
+          onClick={() => mut.mutate({ 'brand-accent': hex })}
+          disabled={mut.isPending || !/^#[0-9a-fA-F]{6}$/.test(hex)}
+          className="rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] px-4 py-1.5 text-sm font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-9)] hover:text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
+        >
+          {mut.isPending ? 'Saving…' : 'Save accent'}
+        </button>
+      </div>
     </Section>
   );
 }
