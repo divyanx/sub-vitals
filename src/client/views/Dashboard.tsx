@@ -611,11 +611,11 @@ function ContentBrowserTab() {
 // ---------------------------------------------------------------------------
 
 function Watch({
-  activeSection,
-  onSectionChange,
+  activeSection: _activeSection,
+  onSectionChange: _onSectionChange,
   activeDriver,
   onSetDriver: _onSetDriver,
-  onOpenNewPipeline,
+  onOpenNewPipeline: _onOpenNewPipeline,
 }: {
   activeSection: InsightSection;
   onSectionChange: (s: InsightSection) => void;
@@ -623,33 +623,40 @@ function Watch({
   onSetDriver: (d: string) => void;
   onOpenNewPipeline: () => void;
 }) {
-  const customPipelines: Array<{ id: string; name: string; kind: string }> = [];
+  // Watch is a single flat scrollable surface — no sub-tabs.
+  // Pipeline outputs render inline as stacked sections in priority order.
   return (
     <div className="space-y-10">
-      {/* KPI + sparklines strip — the "Pulse" content */}
+      {/* KPI + driver sparklines + heatmap (current Pulse content) */}
       <Overview onNavigate={() => {}} />
 
-      {/* Incidents */}
+      {/* Sentiment — 30d trend + drill-through cards */}
+      <section>
+        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Sentiment</h2>
+        <SentimentTab />
+      </section>
+
+      {/* Active incidents — auto-grouped negative-spike clusters */}
       <section>
         <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Incidents</h2>
         <Incidents />
       </section>
 
-      {/* Insights (Drivers / Sentiment / Themes) */}
+      {/* Drivers — per-driver post counts + drill-through (taxonomy editing lives in Configure → Pipelines) */}
       <section>
-        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Insights</h2>
-        <Insights
-          defaultSection={activeSection}
-          onSectionChange={onSectionChange}
-          DriversContent={() => <Drivers initialDriver={activeDriver} />}
-          SentimentContent={() => <SentimentTab />}
-          ThemesContent={() => <Themes />}
-          customPipelines={customPipelines}
-          onOpenNewPipeline={onOpenNewPipeline}
-        />
+        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">Drivers</h2>
+        <Drivers initialDriver={activeDriver} />
       </section>
 
-      {/* Recent rule firings stub */}
+      {/* Themes — AI-clustered emerging issues */}
+      <section>
+        <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">
+          Emerging themes
+        </h2>
+        <Themes />
+      </section>
+
+      {/* Rule firings */}
       <section>
         <h2 className="mb-2 text-sm uppercase tracking-wide text-[var(--text-muted)]">
           Recent rule firings
