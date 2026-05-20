@@ -58,165 +58,171 @@ const ContentBrowserLazy = lazy(() =>
   import('./ContentBrowser.tsx').then((m) => ({ default: m.ContentBrowser })),
 );
 
-type Tab = 'triage' | 'content' | 'watch' | 'respond' | 'configure';
+type Tab = 'posts' | 'pipelines' | 'catalogue' | 'rules' | 'settings';
 
-/** Sections under the Configure dropdown */
-type ConfigureSection =
-  | 'pipelines'
-  | 'rules'
-  | 'webhooks'
+/** Sections under the Settings ▾ dropdown */
+type SettingsSection =
   | 'brand'
-  | 'team-roster'
+  | 'team'
   | 'thresholds'
   | 'ai'
+  | 'webhooks'
   | 'audit'
   | 'export'
   | 'lab';
 
 export interface DashboardProps {
   initialTab?: Tab;
-  /** Initial sub-section when initialTab === 'configure' */
+  /** Initial sub-section when initialTab === 'settings' */
   initialSection?: string | undefined;
+  /** Initial pipeline instance id when initialTab === 'pipelines' */
+  initialInstance?: string | undefined;
   initialDriver?: string | undefined;
 }
 
-/** Map legacy section names to new pipeline IDs (for deep-link backward compat). */
-const SECTION_ALIAS: Record<string, string> = {
-  drivers: 'intent',
-  sentiment: 'sentiment',
-  themes: 'themes',
-  'root-causes': 'root-cause',
-  custom: 'intent',
-};
-
 export function Dashboard({
-  initialTab = 'triage',
+  initialTab = 'posts',
   initialSection,
+  initialInstance,
   initialDriver,
 }: DashboardProps) {
   const [tab, setTabState] = useState<Tab>(initialTab);
-  const [configSection, setConfigSection] = useState<ConfigureSection>(
-    (initialSection as ConfigureSection) ?? 'pipelines',
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>(
+    (initialSection as SettingsSection) ?? 'brand',
   );
-  const [activeSection, setActiveSection] = useState<InsightSection>(() => {
-    const params = new URLSearchParams(window.location.search);
-    const raw = params.get('section') ?? 'intent';
-    // Remap legacy section names on mount
-    const ALIAS: Record<string, string> = { drivers: 'intent', themes: 'themes' };
-    return ALIAS[raw] ?? raw;
-  });
+  const [activeInstance, setActiveInstance] = useState<string | undefined>(initialInstance);
   const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
-  const [pipelinesAutoOpen, setPipelinesAutoOpen] = useState(false);
   const badges = useNavBadges();
 
-  // URL helpers
-  const setTab = useCallback(
-    (t: Tab, extra?: Record<string, string>) => {
-      setTabState(t);
-      if (t !== 'configure') setPipelinesAutoOpen(false);
-      const cleanExtra: Record<string, string> = {};
-      if (extra) {
-        for (const [k, v] of Object.entries(extra)) {
-          if (typeof v === 'string' && v.length > 0) cleanExtra[k] = v;
-        }
+  // ── URL navigation helper ─────────────────────────────────────────────────
+  const setTab = useCallback((t: Tab, extra?: Record<string, string>) => {
+    setTabState(t);
+    const cleanExtra: Record<string, string> = {};
+    if (extra) {
+      for (const [k, v] of Object.entries(extra)) {
+        if (typeof v === 'string' && v.length > 0) cleanExtra[k] = v;
       }
-      const params = new URLSearchParams({ tab: t, ...cleanExtra });
-      history.pushState({ tab: t, ...cleanExtra }, '', `?${params.toString()}`);
+    }
+    const params = new URLSearchParams({ tab: t, ...cleanExtra });
+    history.pushState({ tab: t, ...cleanExtra }, '', `?${params.toString()}`);
+  }, []);
+
+  const navigateToSettings = useCallback(
+    (section: SettingsSection) => {
+      setTabState('settings');
+      setSettingsSection(section);
+      const params = new URLSearchParams({ tab: 'settings', section });
+      history.pushState({ tab: 'settings', section }, '', `?${params.toString()}`);
     },
-    // setPipelinesAutoOpen is a stable setState setter — omit from deps per React rules
-    // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
   );
 
-  const navigateToConfigure = useCallback((section: ConfigureSection) => {
-    setTabState('configure');
-    setConfigSection(section);
-    const params = new URLSearchParams({ tab: 'configure', section });
-    history.pushState({ tab: 'configure', section }, '', `?${params.toString()}`);
+  const navigateToPipelines = useCallback((instanceId?: string) => {
+    setTabState('pipelines');
+    if (instanceId) setActiveInstance(instanceId);
+    const params = new URLSearchParams(
+      instanceId ? { tab: 'pipelines', instance: instanceId } : { tab: 'pipelines' },
+    );
+    history.pushState({ tab: 'pipelines', instance: instanceId }, '', `?${params.toString()}`);
   }, []);
 
-  const setInsightsSection = useCallback((section: InsightSection) => {
-    setActiveSection(section);
-    const params = new URLSearchParams({ tab: 'watch', section });
-    history.pushState({ tab: 'watch', section }, '', `?${params.toString()}`);
-  }, []);
-
-  // Deep-link redirects: legacy tab names → new IA locations
+  // ── Legacy URL redirect (runs once on mount) ───────────────────────────────
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const rawTab = params.get('tab');
     const rawSection = params.get('section');
 
-    const CONFIGURE_SECTIONS: Record<string, ConfigureSection> = {
-      pipelines: 'pipelines',
-      rules: 'rules',
-      export: 'export',
-      audit: 'audit',
-      lab: 'lab',
-      settings: 'brand',
-      webhooks: 'webhooks',
-    };
-
     if (!rawTab) return;
 
-    if (
-      rawTab === 'triage' ||
-      rawTab === 'content' ||
-      rawTab === 'watch' ||
-      rawTab === 'respond' ||
-      rawTab === 'configure'
-    ) {
-      // Already canonical — just sync configure section if present
-      if (rawTab === 'configure' && rawSection) {
-        setConfigSection((rawSection as ConfigureSection) ?? 'pipelines');
+    // Already canonical — sync sub-state
+    if (rawTab === 'posts' || rawTab === 'pipelines' || rawTab === 'catalogue' ||
+        rawTab === 'rules' || rawTab === 'settings') {
+      if (rawTab === 'settings' && rawSection) {
+        setSettingsSection((rawSection as SettingsSection) ?? 'brand');
       }
-    } else if (rawTab === 'inbox') {
-      setTabState('triage');
-      history.replaceState({ tab: 'triage' }, '', '?tab=triage');
-    } else if (
-      rawTab === 'overview' ||
-      rawTab === 'pulse' ||
-      rawTab === 'insights' ||
-      rawTab === 'drivers' ||
-      rawTab === 'sentiment' ||
-      rawTab === 'themes' ||
-      rawTab === 'incidents'
+      if (rawTab === 'pipelines') {
+        const inst = params.get('instance');
+        if (inst) setActiveInstance(inst);
+      }
+      return;
+    }
+
+    // Legacy tabs → new tabs
+    if (
+      rawTab === 'inbox' || rawTab === 'triage' || rawTab === 'content' ||
+      rawTab === 'watch' || rawTab === 'overview' || rawTab === 'pulse' ||
+      rawTab === 'insights' || rawTab === 'drivers' || rawTab === 'sentiment' ||
+      rawTab === 'themes' || rawTab === 'incidents' || rawTab === 'respond' ||
+      rawTab === 'agents' || rawTab === 'team'
     ) {
-      setTabState('watch');
-      history.replaceState({ tab: 'watch' }, '', '?tab=watch');
-    } else if (rawTab === 'agents' || rawTab === 'team') {
-      setTabState('respond');
-      history.replaceState({ tab: 'respond' }, '', '?tab=respond');
-    } else if (rawTab in CONFIGURE_SECTIONS) {
-      const section = CONFIGURE_SECTIONS[rawTab] ?? 'pipelines';
-      setTabState('configure');
-      setConfigSection(section);
-      const p = new URLSearchParams({ tab: 'configure', section });
-      history.replaceState({ tab: 'configure', section }, '', `?${p.toString()}`);
-    } else if (rawSection && SECTION_ALIAS[rawSection]) {
-      // Old insights section aliases
-      const section = SECTION_ALIAS[rawSection] ?? rawSection;
-      setActiveSection(section);
+      setTabState('posts');
+      history.replaceState({ tab: 'posts' }, '', '?tab=posts');
+    } else if (rawTab === 'rules') {
+      setTabState('rules');
+      history.replaceState({ tab: 'rules' }, '', '?tab=rules');
+    } else if (
+      rawTab === 'configure' ||
+      rawTab === 'settings' ||
+      rawTab === 'audit' ||
+      rawTab === 'export' ||
+      rawTab === 'lab' ||
+      rawTab === 'webhooks'
+    ) {
+      // Map configure sections
+      const SECTION_MAP: Record<string, SettingsSection> = {
+        brand: 'brand',
+        'team-roster': 'team',
+        team: 'team',
+        thresholds: 'thresholds',
+        ai: 'ai',
+        webhooks: 'webhooks',
+        audit: 'audit',
+        export: 'export',
+        lab: 'lab',
+        pipelines: 'brand', // pipelines moved to primary tab
+        rules: 'brand', // rules moved to primary tab
+      };
+      const section =
+        (rawSection && SECTION_MAP[rawSection]) ||
+        (rawTab !== 'configure' ? (SECTION_MAP[rawTab] ?? 'brand') : 'brand');
+      setTabState('settings');
+      setSettingsSection(section);
+      const p = new URLSearchParams({ tab: 'settings', section });
+      history.replaceState({ tab: 'settings', section }, '', `?${p.toString()}`);
+    } else if (rawTab === 'pipelines') {
+      setTabState('pipelines');
+      const inst = params.get('instance');
+      if (inst) setActiveInstance(inst);
+      const p = new URLSearchParams(inst ? { tab: 'pipelines', instance: inst } : { tab: 'pipelines' });
+      history.replaceState({ tab: 'pipelines' }, '', `?${p.toString()}`);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // ── Popstate (back/forward) ────────────────────────────────────────────────
   useEffect(() => {
     const onPop = (e: PopStateEvent) => {
-      const state = e.state as { tab?: Tab; section?: string } | null;
+      const state = e.state as { tab?: Tab; section?: string; instance?: string } | null;
       if (state?.tab) {
         setTabState(state.tab);
-        if (state.tab === 'configure' && state.section) {
-          setConfigSection(state.section as ConfigureSection);
+        if (state.tab === 'settings' && state.section) {
+          setSettingsSection(state.section as SettingsSection);
+        }
+        if (state.tab === 'pipelines' && state.instance) {
+          setActiveInstance(state.instance);
         }
       } else {
         const params = new URLSearchParams(window.location.search);
         const t = params.get('tab') as Tab | null;
-        setTabState(t ?? 'triage');
-        if (t === 'configure') {
-          setConfigSection((params.get('section') as ConfigureSection | null) ?? 'pipelines');
+        setTabState(t ?? 'posts');
+        if (t === 'settings') {
+          setSettingsSection((params.get('section') as SettingsSection | null) ?? 'brand');
+        }
+        if (t === 'pipelines') {
+          const inst = params.get('instance');
+          if (inst) setActiveInstance(inst);
         }
       }
     };
@@ -224,7 +230,7 @@ export function Dashboard({
     return () => window.removeEventListener('popstate', onPop);
   }, []);
 
-  // ── Keyboard shortcuts via tinykeys ────────────────────────────────────────
+  // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
     const unsub = tinykeys(window, {
       '$mod+k': (e: KeyboardEvent) => {
@@ -245,102 +251,102 @@ export function Dashboard({
         setCmdOpen(false);
         setShortcutsOpen(false);
       },
-      'g t': (e: KeyboardEvent) => {
+      'g p': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('triage');
+        setTab('posts');
+      },
+      'g i': (e: KeyboardEvent) => {
+        e.preventDefault();
+        setTab('pipelines');
       },
       'g c': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('content');
-      },
-      'g w': (e: KeyboardEvent) => {
-        e.preventDefault();
-        setTab('watch');
+        setTab('catalogue');
       },
       'g r': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('respond');
+        setTab('rules');
       },
       'g ,': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('configure');
+        setTab('settings');
       },
     });
     return () => unsub();
   }, [setTab]);
 
-  // ── Command palette commands ────────────────────────────────────────────────
+  // ── Command palette commands ───────────────────────────────────────────────
   const commands: Command[] = useMemo(
     () => [
       {
-        id: 'tab-triage',
-        label: 'Triage',
+        id: 'tab-posts',
+        label: 'Posts',
         group: 'Navigation',
-        shortcut: ['g', 't'],
-        action: () => setTab('triage'),
+        shortcut: ['g', 'p'],
+        action: () => setTab('posts'),
       },
       {
-        id: 'tab-content',
-        label: 'Content',
+        id: 'tab-pipelines',
+        label: 'Pipelines',
+        group: 'Navigation',
+        shortcut: ['g', 'i'],
+        action: () => setTab('pipelines'),
+      },
+      {
+        id: 'tab-catalogue',
+        label: 'Catalogue',
         group: 'Navigation',
         shortcut: ['g', 'c'],
-        action: () => setTab('content'),
+        action: () => setTab('catalogue'),
       },
       {
-        id: 'tab-watch',
-        label: 'Watch',
-        group: 'Navigation',
-        shortcut: ['g', 'w'],
-        action: () => setTab('watch'),
-      },
-      {
-        id: 'tab-respond',
-        label: 'Respond',
+        id: 'tab-rules',
+        label: 'Rules',
         group: 'Navigation',
         shortcut: ['g', 'r'],
-        action: () => setTab('respond'),
+        action: () => setTab('rules'),
       },
       {
-        id: 'configure-pipelines',
-        label: 'Configure › Pipelines',
-        group: 'Configure',
-        action: () => navigateToConfigure('pipelines'),
+        id: 'settings-brand',
+        label: 'Settings › Brand',
+        group: 'Settings',
+        action: () => navigateToSettings('brand'),
       },
       {
-        id: 'configure-rules',
-        label: 'Configure › Rules',
-        group: 'Configure',
-        action: () => navigateToConfigure('rules'),
+        id: 'settings-team',
+        label: 'Settings › Team',
+        group: 'Settings',
+        action: () => navigateToSettings('team'),
       },
       {
-        id: 'configure-webhooks',
-        label: 'Configure › Webhooks',
-        group: 'Configure',
-        action: () => navigateToConfigure('webhooks'),
+        id: 'settings-ai',
+        label: 'Settings › AI',
+        group: 'Settings',
+        action: () => navigateToSettings('ai'),
       },
       {
-        id: 'configure-brand',
-        label: 'Configure › Brand',
-        group: 'Configure',
-        action: () => navigateToConfigure('brand'),
+        id: 'settings-webhooks',
+        label: 'Settings › Webhooks',
+        group: 'Settings',
+        action: () => navigateToSettings('webhooks'),
       },
       {
-        id: 'configure-audit',
-        label: 'Configure › Audit log',
-        group: 'Configure',
-        action: () => navigateToConfigure('audit'),
+        id: 'settings-audit',
+        label: 'Settings › Audit log',
+        group: 'Settings',
+        action: () => navigateToSettings('audit'),
       },
       {
-        id: 'configure-export',
-        label: 'Configure › Export',
-        group: 'Configure',
-        action: () => navigateToConfigure('export'),
+        id: 'settings-export',
+        label: 'Settings › Export',
+        group: 'Settings',
+        action: () => navigateToSettings('export'),
       },
       {
-        id: 'configure-lab',
-        label: 'Configure › Lab',
-        group: 'Configure',
-        action: () => navigateToConfigure('lab'),
+        id: 'settings-lab',
+        label: 'Settings › Lab',
+        group: 'Settings',
+        action: () => navigateToSettings('lab'),
       },
       {
         id: 'shortcuts',
@@ -350,7 +356,7 @@ export function Dashboard({
         action: () => setShortcutsOpen(true),
       },
     ],
-    [setTab, navigateToConfigure],
+    [setTab, navigateToSettings],
   );
 
   return (
@@ -360,33 +366,40 @@ export function Dashboard({
       <Nav
         tab={tab}
         setTab={setTab}
-        configSection={configSection}
-        onConfigSection={navigateToConfigure}
+        settingsSection={settingsSection}
+        onSettingsSection={navigateToSettings}
         badges={badges}
       />
       <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
           <Suspense fallback={<SkeletonGrid />}>
-            {tab === 'triage' && <Inbox />}
-            {tab === 'content' && <ContentBrowserTab />}
-            {tab === 'watch' && (
-              <Watch
-                activeSection={activeSection}
-                onSectionChange={setInsightsSection}
+            {tab === 'posts' && (
+              <Posts
                 activeDriver={activeDriver ?? undefined}
                 onSetDriver={setActiveDriver}
-                onOpenNewPipeline={() => {
-                  navigateToConfigure('pipelines');
-                  setPipelinesAutoOpen(true);
-                }}
+                onOpenPipelines={() => navigateToPipelines()}
               />
             )}
-            {tab === 'respond' && <Respond />}
-            {tab === 'configure' && (
-              <Configure
-                section={configSection}
-                onSection={navigateToConfigure}
-                pipelinesAutoOpen={pipelinesAutoOpen}
+            {tab === 'pipelines' && (
+              <PipelinesTab
+                activeInstance={activeInstance}
+                onSelectInstance={(id) => {
+                  setActiveInstance(id);
+                  navigateToPipelines(id);
+                }}
+                onOpenCatalogue={() => setTab('catalogue')}
+              />
+            )}
+            {tab === 'catalogue' && (
+              <CatalogueTab
+                onInstalled={(id) => navigateToPipelines(id)}
+              />
+            )}
+            {tab === 'rules' && <RulesLazy />}
+            {tab === 'settings' && (
+              <SettingsPane
+                section={settingsSection}
+                onSection={navigateToSettings}
               />
             )}
           </Suspense>
@@ -442,22 +455,20 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
   );
 }
 
-// Primary tabs — 4 tabs always visible
+// Primary tabs — 4 always-visible + Settings dropdown
 const PRIMARY_TABS: { id: Tab; label: string }[] = [
-  { id: 'triage', label: 'Triage' },
-  { id: 'content', label: 'Content' },
-  { id: 'watch', label: 'Watch' },
-  { id: 'respond', label: 'Respond' },
+  { id: 'posts', label: 'Posts' },
+  { id: 'pipelines', label: 'Pipelines' },
+  { id: 'catalogue', label: 'Catalogue' },
+  { id: 'rules', label: 'Rules' },
 ];
 
-const CONFIGURE_SECTIONS: { id: ConfigureSection; label: string }[] = [
-  { id: 'pipelines', label: 'Pipelines' },
-  { id: 'rules', label: 'Rules' },
-  { id: 'webhooks', label: 'Webhooks' },
+const SETTINGS_SECTIONS: { id: SettingsSection; label: string }[] = [
   { id: 'brand', label: 'Brand' },
-  { id: 'team-roster', label: 'Team roster' },
+  { id: 'team', label: 'Team roster' },
   { id: 'thresholds', label: 'Thresholds' },
   { id: 'ai', label: 'AI' },
+  { id: 'webhooks', label: 'Webhooks' },
   { id: 'audit', label: 'Audit log' },
   { id: 'export', label: 'Export' },
   { id: 'lab', label: 'Lab' },
@@ -466,30 +477,30 @@ const CONFIGURE_SECTIONS: { id: ConfigureSection; label: string }[] = [
 function Nav({
   tab,
   setTab,
-  configSection,
-  onConfigSection,
+  settingsSection,
+  onSettingsSection,
   badges,
 }: {
   tab: Tab;
   setTab: (t: Tab) => void;
-  configSection: ConfigureSection;
-  onConfigSection: (s: ConfigureSection) => void;
+  settingsSection: SettingsSection;
+  onSettingsSection: (s: SettingsSection) => void;
   badges: NavBadges;
 }) {
-  const [configOpen, setConfigOpen] = useState(false);
-  const configRef = useRef<HTMLDivElement>(null);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const settingsRef = useRef<HTMLDivElement>(null);
 
   // Close dropdown on outside click
   useEffect(() => {
-    if (!configOpen) return;
+    if (!settingsOpen) return;
     const handler = (e: MouseEvent) => {
-      if (configRef.current && !configRef.current.contains(e.target as Node)) {
-        setConfigOpen(false);
+      if (settingsRef.current && !settingsRef.current.contains(e.target as Node)) {
+        setSettingsOpen(false);
       }
     };
     document.addEventListener('mousedown', handler);
     return () => document.removeEventListener('mousedown', handler);
-  }, [configOpen]);
+  }, [settingsOpen]);
 
   return (
     <nav className="relative border-b border-[var(--border)] bg-[var(--bg)]">
@@ -501,7 +512,7 @@ function Nav({
         >
           {PRIMARY_TABS.map((t) => {
             const isActive = tab === t.id;
-            const badge = t.id === 'triage' && badges.inbox > 0 ? badges.inbox : null;
+            const badge = t.id === 'posts' && badges.inbox > 0 ? badges.inbox : null;
 
             return (
               <button
@@ -526,34 +537,34 @@ function Nav({
             );
           })}
         </div>
-        {/* Configure dropdown */}
+        {/* Settings ▾ dropdown */}
         <div
-          ref={configRef}
+          ref={settingsRef}
           className="relative flex flex-shrink-0 items-stretch border-l border-[var(--border)] pl-2"
         >
           <button
             type="button"
             role="tab"
             aria-haspopup="true"
-            aria-expanded={configOpen}
-            aria-label="Configure"
+            aria-expanded={settingsOpen}
+            aria-label="Settings"
             onClick={() => {
-              if (tab !== 'configure') {
-                setTab('configure');
-                setConfigOpen(true);
+              if (tab !== 'settings') {
+                setTab('settings');
+                setSettingsOpen(true);
               } else {
-                setConfigOpen((o) => !o);
+                setSettingsOpen((o) => !o);
               }
             }}
             className={`-mb-px flex items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-medium transition ${
-              tab === 'configure'
+              tab === 'settings'
                 ? 'border-orange-500 text-[var(--text)]'
                 : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
-            Configure
+            Settings
             <svg
-              className={`h-3 w-3 transition-transform ${configOpen ? 'rotate-180' : ''}`}
+              className={`h-3 w-3 transition-transform ${settingsOpen ? 'rotate-180' : ''}`}
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -563,22 +574,22 @@ function Nav({
               <path strokeLinecap="round" strokeLinejoin="round" d="M19 9l-7 7-7-7" />
             </svg>
           </button>
-          {configOpen && (
+          {settingsOpen && (
             <div
               role="menu"
               className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-xl"
             >
-              {CONFIGURE_SECTIONS.map((s) => (
+              {SETTINGS_SECTIONS.map((s) => (
                 <button
                   key={s.id}
                   type="button"
                   role="menuitem"
                   onClick={() => {
-                    onConfigSection(s.id);
-                    setConfigOpen(false);
+                    onSettingsSection(s.id);
+                    setSettingsOpen(false);
                   }}
                   className={`flex w-full items-center px-4 py-2 text-sm transition hover:bg-[var(--bg)] ${
-                    tab === 'configure' && configSection === s.id
+                    tab === 'settings' && settingsSection === s.id
                       ? 'text-orange-400'
                       : 'text-[var(--text-muted)] hover:text-[var(--text)]'
                   }`}
