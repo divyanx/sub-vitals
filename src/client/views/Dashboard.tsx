@@ -392,6 +392,9 @@ export function Dashboard({
                 activeDriver={activeDriver ?? undefined}
                 onSetDriver={setActiveDriver}
                 onOpenPipelines={() => navigateToPipelines()}
+                onNavigateToPipeline={(id) => navigateToPipelines(id)}
+                onOpenCatalogue={() => setTab('catalogue')}
+                onOpenRules={() => setTab('rules')}
               />
             )}
             {tab === 'pipelines' && (
@@ -614,69 +617,185 @@ function Nav({
 }
 
 // ---------------------------------------------------------------------------
-// Posts — universal content browser (replaces Triage + Content + Watch)
-// Default sort = priority (this is triage). All analytics KPIs live at top.
+// Posts — dynamic at-a-glance dashboard driven by installed pipelines + rules
 // ---------------------------------------------------------------------------
 
 function Posts({
-  activeDriver,
-  onSetDriver,
+  activeDriver: _activeDriver,
+  onSetDriver: _onSetDriver,
   onOpenPipelines,
+  onNavigateToPipeline,
+  onOpenCatalogue,
+  onOpenRules,
 }: {
   activeDriver: string | undefined;
   onSetDriver: (d: string) => void;
   onOpenPipelines: () => void;
+  onNavigateToPipeline: (id: string) => void;
+  onOpenCatalogue: () => void;
+  onOpenRules: () => void;
 }) {
-  const [view, setView] = useState<'triage' | 'content'>('triage');
+  const [contentBrowserOpen, setContentBrowserOpen] = useState(false);
+
+  const instancesQ = useQuery({
+    queryKey: ['pipelines-instances'],
+    queryFn: () => api.pipelines.listInstances(),
+    staleTime: 30_000,
+  });
+
+  const instances: PipelineInstance[] = (instancesQ.data?.instances ?? [])
+    .filter((i) => i.enabled)
+    .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
 
   return (
-    <div className="space-y-6">
-      {/* KPI strip from Overview */}
-      <Overview onNavigate={() => {}} />
-
-      {/* View toggle: Triage (priority sort) | Content (all posts) */}
-      <div className="flex items-center gap-2 border-b border-[var(--border)] pb-0">
-        <div role="tablist" aria-label="Posts view" className="flex gap-1">
-          {(['triage', 'content'] as const).map((v) => (
-            <button
-              key={v}
-              type="button"
-              role="tab"
-              aria-selected={view === v}
-              onClick={() => setView(v)}
-              className={`-mb-px border-b-2 px-4 py-2.5 text-sm font-medium capitalize transition ${
-                view === v
-                  ? 'border-orange-500 text-[var(--text)]'
-                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
-              }`}
-            >
-              {v === 'triage' ? 'Priority queue' : 'All posts'}
-            </button>
-          ))}
+    <div className="space-y-8">
+      {/* 1. Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-[var(--text)]">Today</h1>
+          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+            Last updated{'  '}
+            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </p>
         </div>
-        <div className="ml-auto">
-          <button
-            type="button"
-            onClick={onOpenPipelines}
-            className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-orange-500 hover:text-orange-300"
-          >
-            Manage pipelines
-          </button>
-        </div>
+        <button
+          type="button"
+          onClick={() => setContentBrowserOpen(true)}
+          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-orange-500 hover:text-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+          aria-label="Browse all posts"
+        >
+          Browse all posts
+        </button>
       </div>
 
-      {view === 'triage' ? (
-        <Inbox />
-      ) : (
-        <Suspense fallback={<SkeletonGrid />}>
-          <ContentBrowserLazy />
-        </Suspense>
-      )}
+      {/* 2. Cross-pipeline KPI strip */}
+      <Overview
+        onNavigate={(tab, _driver, extra) => {
+          if (tab === 'pipelines' && extra?.instance) {
+            onNavigateToPipeline(extra.instance);
+          } else if (tab === 'pipelines') {
+            onOpenPipelines();
+          }
+        }}
+      />
 
-      {/* NOTE: Hardcoded Drivers/Sentiment/Incidents/Themes sections removed.
-          The Posts-as-dashboard agent (task #69) is replacing this with
-          dynamic per-installed-pipeline summary widgets. Until that lands,
-          Posts shows just the priority queue + content browser. */}
+      {/* 3. Per-pipeline summary widgets */}
+      <section aria-label="Pipeline summaries">
+        <div className="mb-4 flex items-center justify-between">
+          <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--text-muted)]">
+            Installed pipelines
+          </h2>
+          {instances.length > 0 && (
+            <button
+              type="button"
+              onClick={onOpenPipelines}
+              className="text-xs text-orange-400 hover:text-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            >
+              Manage &rarr;
+            </button>
+          )}
+        </div>
+
+        {instancesQ.isPending && (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <div
+                key={i}
+                className="h-[200px] animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+              />
+            ))}
+          </div>
+        )}
+
+        {!instancesQ.isPending && instances.length === 0 && (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] py-12 text-center">
+            <svg
+              className="mb-3 h-8 w-8 text-[var(--text-muted)]"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              aria-hidden="true"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"
+              />
+            </svg>
+            <p className="text-sm font-medium text-[var(--text)]">No pipelines installed yet</p>
+            <p className="mt-1 text-xs text-[var(--text-muted)]">
+              Install a pipeline to start seeing insights here.
+            </p>
+            <button
+              type="button"
+              onClick={onOpenCatalogue}
+              className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-orange-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+            >
+              Browse catalogue
+            </button>
+          </div>
+        )}
+
+        {instances.length > 0 && (
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {instances.map((instance) => (
+              <PipelineSummaryCard key={instance.id} instance={instance} onOpen={onNavigateToPipeline} />
+            ))}
+          </div>
+        )}
+      </section>
+
+      {/* 4 & 5. Rule firings + Priority queue */}
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
+        <RuleFiringsPanel onOpenRules={onOpenRules} />
+        <PriorityQueuePanel
+          onOpenPost={(_postId, url) => {
+            window.open(url, '_blank', 'noopener,noreferrer');
+          }}
+        />
+      </div>
+
+      {/* Content browser drawer */}
+      {contentBrowserOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-start justify-end bg-black/50 backdrop-blur-sm"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Browse all posts"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setContentBrowserOpen(false);
+          }}
+        >
+          <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[var(--bg)]">
+            <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
+              <h2 className="font-semibold text-[var(--text)]">All posts</h2>
+              <button
+                type="button"
+                onClick={() => setContentBrowserOpen(false)}
+                aria-label="Close browse posts"
+                className="rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+              >
+                <svg
+                  className="h-5 w-5"
+                  fill="none"
+                  viewBox="0 0 24 24"
+                  stroke="currentColor"
+                  strokeWidth={2}
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-6">
+              <Suspense fallback={<SkeletonGrid />}>
+                <ContentBrowserLazy />
+              </Suspense>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
