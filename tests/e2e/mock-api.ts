@@ -142,6 +142,7 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({
         json: {
           openrouterKeyConfigured: true,
+          'brand-accent': '#FF4500',
           'taxonomy-json': JSON.stringify([
             { id: 'bug', label: 'Bug / broken experience', color: '#f43f5e' },
             { id: 'bug.crash', label: 'Crash', color: '#f43f5e', parentId: 'bug' },

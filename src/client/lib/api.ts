@@ -713,7 +713,9 @@ export const api = {
     }>('/api/admin/debug'),
   settings: {
     get: () =>
-      getJson<Record<string, unknown> & { openrouterKeyConfigured: boolean }>('/api/settings'),
+      getJson<
+        Record<string, unknown> & { openrouterKeyConfigured: boolean; 'brand-accent'?: string }
+      >('/api/settings'),
     put: async (body: Record<string, unknown>) => {
       const r = await fetch('/api/settings', {
         method: 'PUT',

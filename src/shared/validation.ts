@@ -227,6 +227,10 @@ export const settingsUpdateSchema = z
     'agent-whitelist': z.string().max(10000).optional(),
     'llm-model': z.string().max(120).optional(),
     'llm-monthly-cost-cap-cents': z.number().int().min(0).max(100000).optional(),
+    'brand-accent': z
+      .string()
+      .regex(/^#[0-9a-fA-F]{6}$/, 'Must be a hex color like #FF4500')
+      .optional(),
   })
   .strict();
 

@@ -29,6 +29,7 @@ export const OVERRIDABLE_KEYS = [
   'llm-monthly-cost-cap-cents',
   'studio-url',
   'studio-token',
+  'brand-accent',
 ] as const;
 
 export type OverridableKey = (typeof OVERRIDABLE_KEYS)[number];
