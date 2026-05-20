@@ -77,10 +77,11 @@ export function PriorityQueuePanel({ onOpenPost }: PriorityQueuePanelProps) {
         )}
 
         {items.length > 0 && (
-          <ul className="divide-y divide-[var(--border)]" role="list">
+          <ul className="divide-y divide-[var(--border)]">
             {items.map((item) => {
-              const sentColor =
-                item.sentimentLabel ? SENTIMENT_COLORS[item.sentimentLabel] : undefined;
+              const sentColor = item.sentimentLabel
+                ? SENTIMENT_COLORS[item.sentimentLabel]
+                : undefined;
               return (
                 <li key={item.postId}>
                   <button

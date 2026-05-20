@@ -15,6 +15,7 @@ import { tinykeys } from 'tinykeys';
 // BUILTIN_PIPELINES removed — Pipelines tab now driven by pipeline-instances API
 import type { Pipeline } from '../../shared/types.js';
 import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
+import { CopilotPanel } from '../components/CopilotPanel.tsx';
 import { EmptyState } from '../components/EmptyState.tsx';
 import { InfoTooltip } from '../components/InfoTooltip.tsx';
 import { PipelineSummaryCard } from '../components/PipelineSummaryCard.tsx';
@@ -418,6 +419,10 @@ export function Dashboard({
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} commands={commands} />
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <CopilotPanel
+        currentTab={tab}
+        {...(activeInstance ? { currentInstanceId: activeInstance } : {})}
+      />
     </div>
   );
 }
@@ -740,7 +745,11 @@ function Posts({
         {instances.length > 0 && (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {instances.map((instance) => (
-              <PipelineSummaryCard key={instance.id} instance={instance} onOpen={onNavigateToPipeline} />
+              <PipelineSummaryCard
+                key={instance.id}
+                instance={instance}
+                onOpen={onNavigateToPipeline}
+              />
             ))}
           </div>
         )}
@@ -765,6 +774,9 @@ function Posts({
           aria-label="Browse all posts"
           onClick={(e) => {
             if (e.target === e.currentTarget) setContentBrowserOpen(false);
+          }}
+          onKeyDown={(e) => {
+            if (e.key === 'Escape') setContentBrowserOpen(false);
           }}
         >
           <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[var(--bg)]">
@@ -2768,7 +2780,6 @@ function Overview({
               </div>
             ) : null}
           </section>
-
         </div>
 
         {/* ── Activity ticker (sidebar on lg+) ─────────────────────────── */}

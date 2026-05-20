@@ -10,9 +10,7 @@ interface ClusterSummaryProps {
 
 export function ClusterSummary({ distribution }: ClusterSummaryProps) {
   if (distribution.length === 0) {
-    return (
-      <p className="text-xs text-[var(--text-muted)]">No clusters yet — check back soon.</p>
-    );
+    return <p className="text-xs text-[var(--text-muted)]">No clusters yet — check back soon.</p>;
   }
 
   const top3 = distribution.slice(0, 3);

@@ -32,6 +32,7 @@ import {
   handleTagIssueFormSubmit,
   handleTagIssueMenu,
 } from '@modules/contact-drivers/index.js';
+import { copilotModule } from '@modules/copilot/index.js';
 import {
   autoResolveQuietIncidents,
   crisisDetectionModule,
@@ -157,6 +158,7 @@ registerModule(themeClusteringModule);
 registerModule(agentMetricsModule);
 registerModule(auditLogModule);
 registerModule(rulesModule);
+registerModule(copilotModule);
 registerModule(studioBridgeModule);
 
 // ---------------------------------------------------------------------------
@@ -1365,7 +1367,8 @@ app.post('/api/pipelines/instances/:id/test', async (c) => {
   const result = await llmObject({
     name: `instance-test-${id}`,
     schema: testSchema,
-    system: config.systemPrompt ?? `You are running the ${instance.name} pipeline. Respond concisely.`,
+    system:
+      config.systemPrompt ?? `You are running the ${instance.name} pipeline. Respond concisely.`,
     prompt: userPrompt,
     maxTokens: 400,
   });
@@ -1400,6 +1403,8 @@ for (const mod of [
   themeClusteringModule,
   agentMetricsModule,
   auditLogModule,
+  rulesModule,
+  copilotModule,
   studioBridgeModule,
 ]) {
   mod.apiRoutes?.(app);

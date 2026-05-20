@@ -40,9 +40,7 @@ export function CategoricalSummary({ distribution }: CategoricalSummaryProps) {
           </div>
         );
       })}
-      {rest > 0 && (
-        <p className="text-xs text-[var(--text-muted)]">+{rest} more</p>
-      )}
+      {rest > 0 && <p className="text-xs text-[var(--text-muted)]">+{rest} more</p>}
     </div>
   );
 }

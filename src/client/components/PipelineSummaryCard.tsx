@@ -29,8 +29,6 @@ function kindFromSchema(
       return 'scalar';
     case 'cluster':
       return 'cluster';
-    case 'label-confidence':
-    case 'single-label':
     default:
       return 'categorical';
   }
@@ -52,7 +50,6 @@ export function PipelineSummaryCard({ instance, onOpen }: PipelineSummaryCardPro
   return (
     <button
       type="button"
-      role="link"
       onClick={() => onOpen(instance.id)}
       aria-label={`Open ${instance.name} pipeline — ${distribution.length} categories. Click to see full details.`}
       className="group flex min-h-[200px] w-full cursor-pointer flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm transition hover:border-orange-500/60 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"

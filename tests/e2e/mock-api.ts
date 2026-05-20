@@ -1135,6 +1135,64 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({ json: { rule: { id: pathname.split('/').pop() } } });
     }
 
+    // ── Copilot ────────────────────────────────────────────────────────
+    if (pathname === '/api/copilot/catalogue') {
+      return route.fulfill({
+        json: {
+          tools: [
+            { name: 'searchPosts', description: 'Search posts', safety: 'read' },
+            { name: 'installPipeline', description: 'Install', safety: 'write' },
+          ],
+        },
+      });
+    }
+    if (pathname === '/api/copilot/chat' && method === 'POST') {
+      const body = JSON.parse(route.request().postData() ?? '{}') as {
+        message: string;
+        conversationId?: string;
+      };
+      const isInstall = /install/i.test(body.message);
+      return route.fulfill({
+        json: {
+          conversationId: body.conversationId ?? 'cv_mock1',
+          message: {
+            id: 'm_mock1',
+            role: 'assistant',
+            content: isInstall
+              ? 'I will install the spam detector — click Confirm to proceed.'
+              : 'Here are the 3 most recent bug-tagged posts.',
+            ts: Date.now(),
+            toolCalls: isInstall
+              ? [
+                  {
+                    id: 'tc_mock1',
+                    name: 'installPipeline',
+                    args: { templateId: 'spam-detector' },
+                    preview: { ok: true, summary: 'Install pipeline "Spam Detector".' },
+                  },
+                ]
+              : [
+                  {
+                    id: 'tc_mock2',
+                    name: 'searchPosts',
+                    args: { driverId: 'bug', days: 7 },
+                    result: { count: 3, posts: [] },
+                  },
+                ],
+          },
+        },
+      });
+    }
+    if (pathname === '/api/copilot/execute' && method === 'POST') {
+      return route.fulfill({ json: { ok: true, result: { instanceId: 'p2' } } });
+    }
+    if (pathname === '/api/copilot/history') {
+      return route.fulfill({ json: { conversations: [] } });
+    }
+    if (pathname === '/api/copilot/history/clear' && method === 'POST') {
+      return route.fulfill({ json: { ok: true, cleared: 0 } });
+    }
+
     // Fallback: abort unknown API paths so tests get a clear failure signal
     console.warn(`[mock-api] Unhandled request: ${method} ${pathname}`);
     return route.fulfill({ status: 404, json: { error: `mock: no handler for ${pathname}` } });

@@ -1,11 +1,10 @@
 /**
  * RuleFiringsPanel — collapsible panel showing last 10 rule firings.
  * Derives from the rules list (lastFiredAt + fireCount on each Rule).
- * Each row is clickable — opens the underlying post URL.
  */
 
-import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import type { Rule } from '../../shared/rules-types.ts';
 import { relativeTime } from '../lib/format-time.ts';
 
@@ -60,11 +59,7 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
             strokeWidth={2}
             aria-hidden="true"
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              d="M13 10V3L4 14h7v7l9-11h-7z"
-            />
+            <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
           <span className="text-sm font-semibold text-[var(--text)]">Recent rule firings</span>
           {recentFirings.length > 0 && (
@@ -116,7 +111,7 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
           )}
 
           {recentFirings.length > 0 && (
-            <ul className="divide-y divide-[var(--border)]" role="list">
+            <ul className="divide-y divide-[var(--border)]">
               {recentFirings.map((rule) => {
                 const action = rule.actions[0];
                 const actionLabel = action
@@ -130,10 +125,7 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
                   : '—';
 
                 return (
-                  <li
-                    key={rule.id}
-                    className="flex flex-col gap-0.5 py-2.5 text-xs"
-                  >
+                  <li key={rule.id} className="flex flex-col gap-0.5 py-2.5 text-xs">
                     <div className="flex items-center justify-between gap-2">
                       <span className="font-medium text-[var(--text)]">{rule.name}</span>
                       <span className="shrink-0 text-[var(--text-muted)]">
@@ -148,7 +140,7 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
                       <span>{actionLabel}</span>
                       {rule.fireCount > 0 && (
                         <span className="ml-auto text-[var(--text-muted)]">
-                          ×{rule.fireCount} total
+                          &times;{rule.fireCount} total
                         </span>
                       )}
                     </div>

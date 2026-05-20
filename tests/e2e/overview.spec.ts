@@ -1,8 +1,9 @@
 /**
  * overview.spec.ts
  *
- * Tests the redesigned "Pulse" (Overview) tab — 6 KPI tiles, per-driver
- * sparklines, hour-of-day heatmap, top themes section, and activity ticker.
+ * Tests the KPI strip on the Posts tab (default dashboard view).
+ * The Posts tab is the at-a-glance home: KPI strip, pipeline summary widgets,
+ * rule firings, and priority queue.
  *
  * In IA reset v2 these KPIs live inside the Posts tab (default view).
  * The ?tab=overview URL redirects to posts via LEGACY_TAB_MAP.
@@ -15,8 +16,9 @@ test.describe('Overview (Pulse) tab', () => {
   test.beforeEach(async ({ page }) => {
     await setupMocks(page);
     await page.goto('/');
-    // Posts tab is the default — KPI strip should render immediately
-    await expect(page.getByText('Posts today')).toBeVisible({ timeout: 10000 });
+    // Posts tab is the default — KPI strip should render immediately.
+    // Use .first() because "Posts today" also appears in tooltip content.
+    await expect(page.getByText('Posts today').first()).toBeVisible({ timeout: 10000 });
   });
 
   test('all 6 KPI tiles are present', async ({ page }) => {
@@ -26,12 +28,12 @@ test.describe('Overview (Pulse) tab', () => {
   });
 
   test('KPI labels are present', async ({ page }) => {
-    await expect(page.getByText('Posts today')).toBeVisible();
-    await expect(page.getByText('Negative share')).toBeVisible();
-    await expect(page.getByText('Top driver')).toBeVisible();
-    await expect(page.getByText('Active incidents')).toBeVisible();
-    await expect(page.getByText('Avg first-response')).toBeVisible();
-    await expect(page.getByText('AI spend (MTD)')).toBeVisible();
+    await expect(page.getByText('Posts today').first()).toBeVisible();
+    await expect(page.getByText('Negative share').first()).toBeVisible();
+    await expect(page.getByText('Top driver').first()).toBeVisible();
+    await expect(page.getByText('Active incidents').first()).toBeVisible();
+    await expect(page.getByText('Avg first-response').first()).toBeVisible();
+    await expect(page.getByText('AI spend (MTD)').first()).toBeVisible();
   });
 
   test('"Posts today" KPI shows fixture count (14)', async ({ page }) => {
@@ -48,11 +50,11 @@ test.describe('Overview (Pulse) tab', () => {
 
   test('"AI spend" KPI shows dollar value', async ({ page }) => {
     // Fixture: monthCents = 42 → $0.420
-    await expect(page.getByText(/\$0\.4[0-9]+/)).toBeVisible();
+    await expect(page.getByText(/\$0\.4[0-9]+/).first()).toBeVisible();
   });
 
   test('driver sparklines section renders', async ({ page }) => {
-    await expect(page.getByText('Drivers · 14-day trend')).toBeVisible({ timeout: 8000 });
+    await expect(page.getByText('Drivers · 14-day trend').first()).toBeVisible({ timeout: 8000 });
     // Fixture taxonomy has multiple drivers — at least 1 sparkline button rendered
     const sparklineButtons = page.getByRole('button', {
       name: /posts today\. Click to view driver/,
@@ -61,22 +63,24 @@ test.describe('Overview (Pulse) tab', () => {
   });
 
   test('heatmap section renders with day labels', async ({ page }) => {
-    await expect(page.getByText('Activity heatmap · day × hour')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Mon')).toBeVisible();
-    await expect(page.getByText('Sun')).toBeVisible();
+    await expect(page.getByText('Activity heatmap · day × hour').first()).toBeVisible({
+      timeout: 8000,
+    });
+    await expect(page.getByText('Mon').first()).toBeVisible();
+    await expect(page.getByText('Sun').first()).toBeVisible();
   });
 
-  test('themes section renders', async ({ page }) => {
-    await expect(page.getByText('Emerging themes')).toBeVisible({ timeout: 8000 });
-    await expect(page.getByText('Emerging themes')).toBeVisible();
+  test('pipeline summaries section renders', async ({ page }) => {
+    // The new Posts dashboard always renders the "Installed pipelines" section heading
+    await expect(page.getByText('Installed pipelines').first()).toBeVisible({ timeout: 8000 });
   });
 
   test('recent activity ticker renders with fixture posts', async ({ page }) => {
-    await expect(page.getByText('Recent activity')).toBeVisible();
-    await expect(page.getByText('App crashes every time I try to checkout')).toBeVisible({
+    await expect(page.getByText('Recent activity').first()).toBeVisible();
+    await expect(page.getByText('App crashes every time I try to checkout').first()).toBeVisible({
       timeout: 8000,
     });
-    await expect(page.getByText('Love the new redesign, UI feels so clean')).toBeVisible();
+    await expect(page.getByText('Love the new redesign, UI feels so clean').first()).toBeVisible();
   });
 
   test('sentiment and driver badges appear in the activity ticker', async ({ page }) => {

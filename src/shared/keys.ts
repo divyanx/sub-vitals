@@ -96,6 +96,11 @@ export const K = {
   // audit-log
   auditLog: () => 'rl:audit:log',
 
+  // copilot — per-user conversation history (ZSET: score = lastUpdatedMs, member = convoId)
+  copilotIndex: (userId: string) => `rl:copilot:idx:${userId}`,
+  /** STRING: JSON-encoded CopilotConversation */
+  copilotConvo: (userId: string, convoId: string) => `rl:copilot:c:${userId}:${convoId}`,
+
   // llm auto-fallback
   /** Per-model daily error counter (HASH, 48h TTL). Key = date string, field = slug. */
   llmErrorDay: (date: string) => `bp:llm:errors:${date}`,

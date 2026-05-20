@@ -1293,7 +1293,100 @@ export const api = {
       return (await r.json()) as { deleted: number };
     },
   },
+
+  // ─── Copilot ────────────────────────────────────────────────────────────
+  copilot: {
+    catalogue: () =>
+      getJson<{ tools: Array<{ name: string; description: string; safety: 'read' | 'write' }> }>(
+        '/api/copilot/catalogue',
+      ),
+    chat: async (body: {
+      message: string;
+      conversationId?: string;
+      context?: { currentTab?: string; currentInstanceId?: string; currentPostId?: string };
+    }): Promise<{ conversationId: string; message: CopilotMessageWire }> => {
+      const r = await fetch('/api/copilot/chat', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { conversationId: string; message: CopilotMessageWire };
+    },
+    execute: async (body: {
+      conversationId: string;
+      messageId: string;
+      toolCallId: string;
+    }): Promise<{ ok: boolean; result?: unknown; error?: string }> => {
+      const r = await fetch('/api/copilot/execute', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = (await r.json().catch(() => ({}))) as {
+        ok?: boolean;
+        result?: unknown;
+        error?: string;
+      };
+      return { ok: r.ok && json.ok !== false, ...json };
+    },
+    history: () =>
+      getJson<{
+        conversations: Array<{
+          id: string;
+          title: string;
+          createdAt: number;
+          updatedAt: number;
+          messageCount: number;
+        }>;
+      }>('/api/copilot/history'),
+    conversation: (id: string) =>
+      getJson<{
+        conversation: {
+          id: string;
+          title: string;
+          createdAt: number;
+          updatedAt: number;
+          messages: CopilotMessageWire[];
+        };
+      }>(`/api/copilot/history/${encodeURIComponent(id)}`),
+    clearHistory: async () => {
+      const r = await fetch('/api/copilot/history/clear', { method: 'POST' });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      return (await r.json()) as { ok: boolean; cleared: number };
+    },
+    deleteConversation: async (id: string) => {
+      const r = await fetch(`/api/copilot/history/${encodeURIComponent(id)}/delete`, {
+        method: 'POST',
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    },
+  },
 };
+
+// ---------------------------------------------------------------------------
+// Copilot wire types
+// ---------------------------------------------------------------------------
+
+export interface CopilotToolCallWire {
+  id: string;
+  name: string;
+  args: unknown;
+  result?: unknown;
+  preview?: { ok: boolean; summary?: string; error?: string; [k: string]: unknown };
+  committed?: { ok: boolean; result?: unknown; error?: string; at: number };
+}
+
+export interface CopilotMessageWire {
+  id: string;
+  role: 'user' | 'assistant' | 'tool';
+  content: string;
+  toolCalls?: CopilotToolCallWire[];
+  ts: number;
+}
 
 // ---------------------------------------------------------------------------
 // Content Browser types
