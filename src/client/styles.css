@@ -10,51 +10,223 @@
   --color-orange-300: #ff8a5c;
 }
 
-/* ─── CSS variable palette ─────────────────────────────────────────────────── */
-/* Dark values match the existing neutral-900/950 palette.                      */
-/* Light values map to neutral-50/100/200 (bg/surface/border) and 600/700       */
-/* (text/muted). Accent is orange-500 in both modes.                            */
+/* ─── Token system ──────────────────────────────────────────────────────────── */
 
 :root {
-  --bg: #0a0a0a; /* neutral-950 */
-  --surface: #171717; /* neutral-900 */
-  --border: #262626; /* neutral-800 */
-  --text: #f5f5f5; /* neutral-100 */
-  --text-muted: #a3a3a3; /* neutral-400 */
-  --accent: #ff4500; /* orange-500 */
-  --input-bg: #262626; /* neutral-800 — input/chip backgrounds */
+  /* Neutrals — 12-stop ramp, dark theme default */
+  --n-0: #0a0a0a;
+  --n-1: #111111;
+  --n-2: #171717;
+  --n-3: #1f1f1f;
+  --n-4: #262626;
+  --n-5: #333333;
+  --n-6: #404040;
+  --n-7: #525252;
+  --n-8: #737373;
+  --n-9: #a3a3a3;
+  --n-10: #d4d4d4;
+  --n-11: #f0f0f0;
+  --n-12: #fafafa;
+
+  /* Accent — Reddit orange, overridable at runtime */
+  --accent-3: #3d1500;
+  --accent-9: #ff4500;
+  --accent-10: #e03d00;
+  --accent-11: #ff7a54;
+
+  /* Semantic */
+  --success-3: #0d2e1a;
+  --success-9: #22c55e;
+  --success-11: #86efac;
+  --warn-3: #2e1d00;
+  --warn-9: #f59e0b;
+  --warn-11: #fcd34d;
+  --error-3: #2d0e0e;
+  --error-9: #ef4444;
+  --error-11: #fca5a5;
+
+  /* Spacing scale (4px base) */
+  --s-1: 4px;
+  --s-2: 8px;
+  --s-3: 12px;
+  --s-4: 16px;
+  --s-6: 24px;
+  --s-8: 32px;
+  --s-12: 48px;
+  --s-16: 64px;
+
+  /* Typography */
+  --t-xs: 11px;
+  --t-sm: 13px;
+  --t-base: 14px;
+  --t-md: 15px;
+  --t-lg: 18px;
+  --t-xl: 24px;
+  --t-2xl: 32px;
+
+  /* Radius */
+  --r-1: 4px;
+  --r-2: 6px;
+  --r-3: 8px;
+  --r-4: 12px;
+  --r-full: 9999px;
+
+  /* Shadows */
+  --shadow-1: 0 1px 3px rgb(0 0 0 / 40%), 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 50%), 0 2px 4px rgb(0 0 0 / 30%);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 60%), 0 4px 8px rgb(0 0 0 / 40%);
+
+  /* Motion */
+  --ease: cubic-bezier(0.2, 0, 0, 1);
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
+
+  /* Legacy aliases — kept so existing --bg/--surface/etc still resolve */
+  --bg: var(--n-0);
+  --surface: var(--n-2);
+  --border: var(--n-4);
+  --text: var(--n-11);
+  --text-muted: var(--n-9);
+  --accent: var(--accent-9);
+  --input-bg: var(--n-4);
 }
 
+/* Light theme overrides */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) {
-    --bg: #fafafa; /* neutral-50 */
-    --surface: #f5f5f5; /* neutral-100 */
-    --border: #e5e5e5; /* neutral-200 */
-    --text: #404040; /* neutral-700 */
-    --text-muted: #737373; /* neutral-500 */
-    --accent: #ff4500; /* orange-500 */
-    --input-bg: #f0f0f0; /* neutral-100 — slightly darker than surface for contrast */
+    --n-0: #ffffff;
+    --n-1: #fafafa;
+    --n-2: #f5f5f5;
+    --n-3: #efefef;
+    --n-4: #e5e5e5;
+    --n-5: #d4d4d4;
+    --n-6: #a3a3a3;
+    --n-7: #737373;
+    --n-8: #525252;
+    --n-9: #404040;
+    --n-10: #262626;
+    --n-11: #171717;
+    --n-12: #0a0a0a;
+
+    --accent-3: #ffe8e0;
+    --accent-9: #ff4500;
+    --accent-10: #e03d00;
+    --accent-11: #c23100;
+
+    --success-3: #dcfce7;
+    --success-9: #16a34a;
+    --success-11: #14532d;
+    --warn-3: #fef3c7;
+    --warn-9: #d97706;
+    --warn-11: #78350f;
+    --error-3: #fee2e2;
+    --error-9: #dc2626;
+    --error-11: #7f1d1d;
+
+    --shadow-1: 0 1px 3px rgb(0 0 0 / 10%), 0 1px 2px rgb(0 0 0 / 6%);
+    --shadow-2: 0 4px 12px rgb(0 0 0 / 12%), 0 2px 4px rgb(0 0 0 / 8%);
+    --shadow-3: 0 8px 24px rgb(0 0 0 / 15%), 0 4px 8px rgb(0 0 0 / 10%);
+
+    --bg: var(--n-0);
+    --surface: var(--n-2);
+    --border: var(--n-4);
+    --text: var(--n-11);
+    --text-muted: var(--n-8);
+    --accent: var(--accent-9);
+    --input-bg: var(--n-3);
   }
 }
 
 [data-theme="light"] {
-  --bg: #fafafa;
-  --surface: #f5f5f5;
-  --border: #e5e5e5;
-  --text: #404040;
-  --text-muted: #737373;
-  --accent: #ff4500;
-  --input-bg: #f0f0f0;
+  --n-0: #ffffff;
+  --n-1: #fafafa;
+  --n-2: #f5f5f5;
+  --n-3: #efefef;
+  --n-4: #e5e5e5;
+  --n-5: #d4d4d4;
+  --n-6: #a3a3a3;
+  --n-7: #737373;
+  --n-8: #525252;
+  --n-9: #404040;
+  --n-10: #262626;
+  --n-11: #171717;
+  --n-12: #0a0a0a;
+
+  --accent-3: #ffe8e0;
+  --accent-9: #ff4500;
+  --accent-10: #e03d00;
+  --accent-11: #c23100;
+
+  --success-3: #dcfce7;
+  --success-9: #16a34a;
+  --success-11: #14532d;
+  --warn-3: #fef3c7;
+  --warn-9: #d97706;
+  --warn-11: #78350f;
+  --error-3: #fee2e2;
+  --error-9: #dc2626;
+  --error-11: #7f1d1d;
+
+  --shadow-1: 0 1px 3px rgb(0 0 0 / 10%), 0 1px 2px rgb(0 0 0 / 6%);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 12%), 0 2px 4px rgb(0 0 0 / 8%);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 15%), 0 4px 8px rgb(0 0 0 / 10%);
+
+  --bg: var(--n-0);
+  --surface: var(--n-2);
+  --border: var(--n-4);
+  --text: var(--n-11);
+  --text-muted: var(--n-8);
+  --accent: var(--accent-9);
+  --input-bg: var(--n-3);
 }
 
 [data-theme="dark"] {
-  --bg: #0a0a0a;
-  --surface: #171717;
-  --border: #262626;
-  --text: #f5f5f5;
-  --text-muted: #a3a3a3;
-  --accent: #ff4500;
-  --input-bg: #262626;
+  --n-0: #0a0a0a;
+  --n-1: #111111;
+  --n-2: #171717;
+  --n-3: #1f1f1f;
+  --n-4: #262626;
+  --n-5: #333333;
+  --n-6: #404040;
+  --n-7: #525252;
+  --n-8: #737373;
+  --n-9: #a3a3a3;
+  --n-10: #d4d4d4;
+  --n-11: #f0f0f0;
+  --n-12: #fafafa;
+
+  --accent-3: #3d1500;
+  --accent-9: #ff4500;
+  --accent-10: #e03d00;
+  --accent-11: #ff7a54;
+
+  --success-3: #0d2e1a;
+  --success-9: #22c55e;
+  --success-11: #86efac;
+  --warn-3: #2e1d00;
+  --warn-9: #f59e0b;
+  --warn-11: #fcd34d;
+  --error-3: #2d0e0e;
+  --error-9: #ef4444;
+  --error-11: #fca5a5;
+
+  --shadow-1: 0 1px 3px rgb(0 0 0 / 40%), 0 1px 2px rgb(0 0 0 / 30%);
+  --shadow-2: 0 4px 12px rgb(0 0 0 / 50%), 0 2px 4px rgb(0 0 0 / 30%);
+  --shadow-3: 0 8px 24px rgb(0 0 0 / 60%), 0 4px 8px rgb(0 0 0 / 40%);
+
+  --bg: var(--n-0);
+  --surface: var(--n-2);
+  --border: var(--n-4);
+  --text: var(--n-11);
+  --text-muted: var(--n-9);
+  --accent: var(--accent-9);
+  --input-bg: var(--n-4);
+}
+
+/* Tabular nums on stat numbers */
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
 }
 
 /* ─── Base styles ──────────────────────────────────────────────────────────── */
@@ -90,9 +262,9 @@ body {
   bottom: calc(100% + 6px);
   left: 50%;
   transform: translateX(-50%);
-  background: #1c1c1c;
-  color: #e5e5e5;
-  border: 1px solid #404040;
+  background: var(--n-3);
+  color: var(--n-11);
+  border: 1px solid var(--n-5);
   border-radius: 6px;
   padding: 8px 12px;
   font-size: 12px;
@@ -121,17 +293,17 @@ body {
 
 /* Light mode tooltip */
 [data-theme="light"] .tooltip-wrapper .tooltip-content {
-  background: #fff;
-  color: #404040;
-  border-color: #e5e5e5;
+  background: var(--n-0);
+  color: var(--n-11);
+  border-color: var(--n-4);
   box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
 }
 
 @media (prefers-color-scheme: light) {
   :root:not([data-theme="dark"]) .tooltip-wrapper .tooltip-content {
-    background: #fff;
-    color: #404040;
-    border-color: #e5e5e5;
+    background: var(--n-0);
+    color: var(--n-11);
+    border-color: var(--n-4);
     box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
   }
 }
