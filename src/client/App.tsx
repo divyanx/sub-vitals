@@ -7,36 +7,58 @@ type View = 'pulse' | 'dashboard';
 
 type Tab = NonNullable<DashboardProps['initialTab']>;
 
-// Legacy tab aliases — redirect to new canonical tabs on load
+// ---------------------------------------------------------------------------
+// Legacy tab → new canonical tab mapping
+// ---------------------------------------------------------------------------
 const LEGACY_TAB_MAP: Record<string, Tab> = {
-  inbox: 'triage',
-  overview: 'watch',
-  pulse: 'watch',
-  insights: 'watch',
-  drivers: 'watch',
-  sentiment: 'watch',
-  themes: 'watch',
-  incidents: 'watch',
-  agents: 'respond',
-  team: 'respond',
-  pipelines: 'configure',
-  rules: 'configure',
-  export: 'configure',
-  audit: 'configure',
-  lab: 'configure',
-  settings: 'configure',
+  // Old primary tabs → Posts
+  inbox: 'posts',
+  triage: 'posts',
+  content: 'posts',
+  watch: 'posts',
+  respond: 'posts',
+  overview: 'posts',
+  pulse: 'posts',
+  insights: 'posts',
+  drivers: 'posts',
+  sentiment: 'posts',
+  themes: 'posts',
+  incidents: 'posts',
+  agents: 'posts',
+  team: 'posts',
+  // Old configure sub-sections that are now primary tabs
+  rules: 'rules',
+  pipelines: 'pipelines',
+  catalogue: 'catalogue',
+  // Old configure → Settings
+  configure: 'settings',
+  settings: 'settings',
+  audit: 'settings',
+  export: 'settings',
+  lab: 'settings',
+  webhooks: 'settings',
+};
+
+// Old configure section → new SettingsSection name mapping
+const SECTION_REMAP: Record<string, string> = {
+  'team-roster': 'team',
+  pipelines: 'brand', // pipelines moved to primary tab
+  rules: 'brand', // rules moved to primary tab
 };
 
 type InitialState =
   | { view: 'pulse' }
-  | { view: 'dashboard'; initialTab: Tab; initialSection: string; initialDriver: string }
-  | { view: 'dashboard'; initialTab: Tab; initialSection: string }
-  | { view: 'dashboard'; initialTab: Tab; initialDriver: string }
-  | { view: 'dashboard'; initialTab: Tab };
+  | {
+      view: 'dashboard';
+      initialTab: Tab;
+      initialSection?: string;
+      initialInstance?: string;
+      initialDriver?: string;
+    };
 
 function readInitialState(): InitialState {
   if (typeof window === 'undefined') {
-    return { view: 'dashboard', initialTab: 'triage' };
+    return { view: 'dashboard', initialTab: 'posts' };
   }
   const params = new URLSearchParams(window.location.search);
   const viewParam = params.get('view');
@@ -45,14 +67,14 @@ function readInitialState(): InitialState {
   const rawTab = params.get('tab');
 
   // Determine canonical tab
-  let resolvedTab: Tab = 'triage';
+  let resolvedTab: Tab = 'posts';
   if (rawTab) {
     if (
-      rawTab === 'triage' ||
-      rawTab === 'content' ||
-      rawTab === 'watch' ||
-      rawTab === 'respond' ||
-      rawTab === 'configure'
+      rawTab === 'posts' ||
+      rawTab === 'pipelines' ||
+      rawTab === 'catalogue' ||
+      rawTab === 'rules' ||
+      rawTab === 'settings'
     ) {
       resolvedTab = rawTab as Tab;
     } else if (rawTab in LEGACY_TAB_MAP) {
@@ -60,42 +82,42 @@ function readInitialState(): InitialState {
     }
   }
 
-  // Derive configure section from legacy tab names
+  // Derive settings section
   let initialSection: string | undefined;
-  if (resolvedTab === 'configure') {
+  if (resolvedTab === 'settings') {
     const rawSection = params.get('section');
     if (rawSection) {
-      initialSection = rawSection;
-    } else if (rawTab && rawTab in LEGACY_TAB_MAP && LEGACY_TAB_MAP[rawTab] === 'configure') {
-      // Map old tab names to configure sections
+      initialSection = SECTION_REMAP[rawSection] ?? rawSection;
+    } else if (rawTab && rawTab !== 'settings' && rawTab !== 'configure') {
+      // Legacy tab name maps to a settings section
       const TAB_TO_SECTION: Record<string, string> = {
-        pipelines: 'pipelines',
-        rules: 'rules',
-        export: 'export',
         audit: 'audit',
+        export: 'export',
         lab: 'lab',
+        webhooks: 'webhooks',
         settings: 'brand',
+        configure: 'brand',
       };
-      initialSection = TAB_TO_SECTION[rawTab] ?? 'pipelines';
+      initialSection = TAB_TO_SECTION[rawTab] ?? 'brand';
     }
   }
 
+  // Derive pipeline instance
+  let initialInstance: string | undefined;
+  if (resolvedTab === 'pipelines') {
+    const inst = params.get('instance');
+    if (inst) initialInstance = inst;
+  }
+
   const driverParam = params.get('driver');
-  if (driverParam && initialSection) {
-    return {
-      view: 'dashboard',
-      initialTab: resolvedTab,
-      initialSection,
-      initialDriver: driverParam,
-    };
-  }
-  if (driverParam) {
-    return { view: 'dashboard', initialTab: resolvedTab, initialDriver: driverParam };
-  }
-  if (initialSection) {
-    return { view: 'dashboard', initialTab: resolvedTab, initialSection };
-  }
-  return { view: 'dashboard', initialTab: resolvedTab };
+
+  return {
+    view: 'dashboard',
+    initialTab: resolvedTab,
+    ...(initialSection ? { initialSection } : {}),
+    ...(initialInstance ? { initialInstance } : {}),
+    ...(driverParam ? { initialDriver: driverParam } : {}),
+  };
 }
 
 export function App() {
@@ -105,19 +127,26 @@ export function App() {
   if (view === 'pulse') {
     return <Pulse onOpenDashboard={() => setView('dashboard')} />;
   }
-  const dashProps = initial.view === 'dashboard' ? initial : { initialTab: 'triage' as Tab };
-  const initialSection: string | undefined =
+
+  const dashProps = initial.view === 'dashboard' ? initial : { initialTab: 'posts' as Tab };
+  const initialSection =
     'initialSection' in dashProps && typeof dashProps.initialSection === 'string'
       ? dashProps.initialSection
       : undefined;
-  const initialDriver: string | undefined =
+  const initialInstance =
+    'initialInstance' in dashProps && typeof dashProps.initialInstance === 'string'
+      ? dashProps.initialInstance
+      : undefined;
+  const initialDriver =
     'initialDriver' in dashProps && typeof dashProps.initialDriver === 'string'
       ? dashProps.initialDriver
       : undefined;
+
   return (
     <Dashboard
       initialTab={dashProps.initialTab}
       initialSection={initialSection}
+      initialInstance={initialInstance}
       initialDriver={initialDriver}
     />
   );
