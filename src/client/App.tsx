@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { useBrandAccent } from './hooks/useBrandAccent.ts';
 import type { DashboardProps } from './views/Dashboard.tsx';
 import { Dashboard } from './views/Dashboard.tsx';
 import { Pulse } from './views/Pulse.tsx';
@@ -121,6 +122,7 @@ function readInitialState(): InitialState {
 }
 
 export function App() {
+  useBrandAccent();
   const initial = useMemo(readInitialState, []);
   const [view, setView] = useState<View>(initial.view);
 
