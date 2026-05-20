@@ -1318,6 +1318,72 @@ app.post('/api/pipelines/instances/:id/duplicate', async (c) => {
   return c.json({ instance: copy }, 201);
 });
 
+/**
+ * POST /api/pipelines/instances/:id/test — run an instance's prompts against a
+ * sample post (title + optional body) without persisting any tag. Returns the
+ * AI output plus token cost so mods can sanity-check their pipeline config.
+ */
+app.post('/api/pipelines/instances/:id/test', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const id = c.req.param('id');
+  const instance = await getInstance(id);
+  if (!instance) return c.json({ error: 'instance not found' }, 404);
+
+  let rawBody: unknown;
+  try {
+    rawBody = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+  const bodySchema = z.object({
+    title: z.string().min(1).max(300),
+    body: z.string().max(8000).optional(),
+    author: z.string().max(64).optional(),
+  });
+  const parsed = bodySchema.safeParse(rawBody);
+  if (!parsed.success) return c.json({ error: 'title required' }, 400);
+
+  const { config } = instance;
+  const sub = {
+    '{{post.title}}': parsed.data.title,
+    '{{post.body}}': parsed.data.body ?? '',
+    '{{post.author}}': parsed.data.author ?? 'sample_user',
+  };
+  let userPrompt = config.userPrompt ?? '{{post.title}}\n\n{{post.body}}';
+  for (const [k, v] of Object.entries(sub)) {
+    userPrompt = userPrompt.split(k).join(v);
+  }
+
+  // Generic free-form output schema — the test playground doesn't enforce the
+  // pipeline's structured schema; we want to surface whatever the AI returned.
+  const testSchema = z.object({
+    output: z.string().describe('Primary structured result for this pipeline.'),
+    confidence: z.number().min(0).max(1).optional(),
+    reasoning: z.string().optional(),
+  });
+
+  const result = await llmObject({
+    name: `instance-test-${id}`,
+    schema: testSchema,
+    system: config.systemPrompt ?? `You are running the ${instance.name} pipeline. Respond concisely.`,
+    prompt: userPrompt,
+    maxTokens: 400,
+  });
+
+  if (!result.ok) {
+    return c.json({ error: 'ai-unavailable', reason: result.reason }, 503);
+  }
+  return c.json({
+    instanceId: id,
+    instanceName: instance.name,
+    output: result.data,
+    cached: result.cached,
+    tokensIn: result.tokensIn,
+    tokensOut: result.tokensOut,
+    costCents: Number(result.costCents.toFixed(4)),
+  });
+});
+
 // ---------------------------------------------------------------------------
 // Mount module-owned /api routes
 // ---------------------------------------------------------------------------
