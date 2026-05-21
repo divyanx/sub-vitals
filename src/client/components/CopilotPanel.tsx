@@ -13,6 +13,8 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from 'react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { useCopilotChat } from '../hooks/useCopilotChat.ts';
 import type { CopilotMessageWire, CopilotToolCallWire } from '../lib/api.ts';
 
@@ -178,6 +180,91 @@ function EmptyState() {
   );
 }
 
+/**
+ * Render assistant markdown with tight, in-bubble styling. We avoid global
+ * prose classes (they assume a documentation page) and instead style each
+ * element directly so spacing stays compact inside the chat bubble.
+ */
+function MarkdownBody({ content }: { content: string }) {
+  return (
+    <div className="copilot-md space-y-2 break-words">
+      <ReactMarkdown
+        remarkPlugins={[remarkGfm]}
+        components={{
+          p: ({ children }) => <p className="leading-relaxed">{children}</p>,
+          h1: ({ children }) => (
+            <h3 className="mt-1 text-[length:var(--t-md)] font-semibold">{children}</h3>
+          ),
+          h2: ({ children }) => (
+            <h3 className="mt-1 text-[length:var(--t-md)] font-semibold">{children}</h3>
+          ),
+          h3: ({ children }) => (
+            <h4 className="mt-1 text-[length:var(--t-sm)] font-semibold">{children}</h4>
+          ),
+          ul: ({ children }) => <ul className="list-disc space-y-0.5 pl-5">{children}</ul>,
+          ol: ({ children }) => <ol className="list-decimal space-y-0.5 pl-5">{children}</ol>,
+          li: ({ children }) => <li className="leading-snug">{children}</li>,
+          strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+          em: ({ children }) => <em className="italic">{children}</em>,
+          a: ({ href, children }) => (
+            <a
+              href={href}
+              target="_blank"
+              rel="noreferrer noopener"
+              className="text-[var(--accent-9)] underline underline-offset-2 hover:text-[var(--accent-10)]"
+            >
+              {children}
+            </a>
+          ),
+          code: ({ className, children, ...rest }) => {
+            const isBlock = /language-/.test(className ?? '');
+            if (isBlock) {
+              return (
+                <code
+                  className={`block overflow-x-auto rounded-[var(--r-1)] bg-[var(--n-1)] px-2 py-1.5 font-mono text-[length:var(--t-xs)] ${className ?? ''}`}
+                  {...rest}
+                >
+                  {children}
+                </code>
+              );
+            }
+            return (
+              <code
+                className="rounded-[var(--r-1)] bg-[var(--n-2)] px-1 py-[1px] font-mono text-[0.85em]"
+                {...rest}
+              >
+                {children}
+              </code>
+            );
+          },
+          pre: ({ children }) => <pre className="overflow-x-auto">{children}</pre>,
+          blockquote: ({ children }) => (
+            <blockquote className="border-l-2 border-[var(--n-5)] pl-3 text-[var(--n-10)]">
+              {children}
+            </blockquote>
+          ),
+          hr: () => <hr className="border-[var(--n-4)]" />,
+          table: ({ children }) => (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse text-[length:var(--t-xs)]">{children}</table>
+            </div>
+          ),
+          th: ({ children }) => (
+            <th className="border-b border-[var(--n-4)] px-2 py-1 text-left font-semibold">
+              {children}
+            </th>
+          ),
+          td: ({ children }) => (
+            <td className="border-b border-[var(--n-3)] px-2 py-1 align-top">{children}</td>
+          ),
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    </div>
+  );
+}
+
 function MessageBubble(props: {
   message: CopilotMessageWire;
   onConfirm: (toolCallId: string) => Promise<void>;
@@ -190,11 +277,13 @@ function MessageBubble(props: {
       data-testid={`copilot-msg-${message.role}`}
     >
       <div
-        className={`max-w-[88%] rounded-[var(--r-2)] px-3 py-2 text-[length:var(--t-sm)] whitespace-pre-wrap ${
-          isUser ? 'bg-[var(--accent-3)] text-[var(--n-11)]' : 'bg-[var(--n-3)] text-[var(--n-11)]'
+        className={`max-w-[88%] rounded-[var(--r-2)] px-3 py-2 text-[length:var(--t-sm)] ${
+          isUser
+            ? 'whitespace-pre-wrap bg-[var(--accent-3)] text-[var(--n-11)]'
+            : 'bg-[var(--n-3)] text-[var(--n-11)]'
         }`}
       >
-        {message.content}
+        {isUser ? message.content : <MarkdownBody content={message.content} />}
         {message.toolCalls && message.toolCalls.length > 0 && (
           <div className="mt-2 space-y-1.5">
             {message.toolCalls.map((tc) => (
