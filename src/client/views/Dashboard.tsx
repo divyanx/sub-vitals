@@ -63,6 +63,7 @@ import { Onboarding } from './Onboarding.tsx';
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
 const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
 const LabLazy = lazy(() => import('./Lab.tsx').then((m) => ({ default: m.Lab })));
+const FlowGraphLazy = lazy(() => import('./FlowGraph.tsx').then((m) => ({ default: m.FlowGraph })));
 const SentimentChartLazy = lazy(() =>
   import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
 );
@@ -82,7 +83,8 @@ type SettingsSection =
   | 'webhooks'
   | 'audit'
   | 'export'
-  | 'lab';
+  | 'lab'
+  | 'flow';
 
 export interface DashboardProps {
   initialTab?: Tab;
@@ -495,6 +497,7 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string }[] = [
   { id: 'thresholds', label: 'Thresholds' },
   { id: 'ai', label: 'AI' },
   { id: 'webhooks', label: 'Webhooks' },
+  { id: 'flow', label: 'Flow graph' },
   { id: 'audit', label: 'Audit log' },
   { id: 'export', label: 'Export' },
   { id: 'lab', label: 'Lab' },
@@ -1456,6 +1459,7 @@ function SettingsPane({
           {section === 'audit' && <Audit />}
           {section === 'export' && <ExportTab />}
           {section === 'lab' && <LabLazy />}
+          {section === 'flow' && <FlowGraphLazy />}
         </Suspense>
       </div>
     </div>

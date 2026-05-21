@@ -32,7 +32,8 @@ import {
   patchInstance,
 } from '@shared/pipeline-instances.js';
 import { getPipelineTemplate, PIPELINE_TEMPLATES } from '@shared/pipeline-templates.js';
-import { listEnabledRules, listRules, saveRule } from '@shared/rules-storage.js';
+import { getRule, listEnabledRules, listRules, saveRule } from '@shared/rules-storage.js';
+import { getRuleTemplate, RULE_TEMPLATES } from '@shared/rules-templates.js';
 import type { Action, Rule } from '@shared/rules-types.js';
 import { z } from 'zod';
 
@@ -179,6 +180,19 @@ async function execGetAvailableTemplates() {
   };
 }
 
+const getAvailableRuleTemplatesSchema = z.object({}).strict();
+async function execGetAvailableRuleTemplates() {
+  return {
+    ...pageMeta(RULE_TEMPLATES),
+    templates: RULE_TEMPLATES.map((t) => ({
+      templateId: t.templateId,
+      name: t.name,
+      whatHappens: t.whatHappens,
+      category: t.category,
+    })),
+  };
+}
+
 const getRecentRulesSchema = z.object({}).strict();
 async function execGetRecentRules() {
   const rules = await listRules();
@@ -319,6 +333,83 @@ async function commitCreateRule(args: z.infer<typeof createRuleSchema>) {
   return { ruleId: id, name: rule.name };
 }
 
+// ── setRuleEnabled ───────────────────────────────────────────────────────
+const setRuleEnabledSchema = z
+  .object({ ruleId: z.string().min(1).max(80), enabled: z.boolean() })
+  .strict();
+async function previewSetRuleEnabled(args: z.infer<typeof setRuleEnabledSchema>) {
+  const rule = await getRule(args.ruleId);
+  if (!rule) return { ok: false as const, error: `Rule '${args.ruleId}' not found.` };
+  return {
+    ok: true as const,
+    summary: `${args.enabled ? 'Enable' : 'Disable'} rule "${rule.name}".`,
+    currentlyEnabled: rule.enabled,
+  };
+}
+async function commitSetRuleEnabled(args: z.infer<typeof setRuleEnabledSchema>) {
+  if (!(await requireMod())) throw new Error('mod-only');
+  const rule = await getRule(args.ruleId);
+  if (!rule) throw new Error(`Rule '${args.ruleId}' not found.`);
+  const updated: Rule = { ...rule, enabled: args.enabled, updatedAt: Date.now() };
+  await saveRule(updated);
+  await recordAudit('settings-update', args.ruleId, {
+    source: 'copilot',
+    kind: 'rule-toggle',
+    enabled: args.enabled,
+  });
+  return { ruleId: args.ruleId, enabled: args.enabled };
+}
+
+// ── installRuleTemplate ──────────────────────────────────────────────────
+const installRuleTemplateSchema = z
+  .object({
+    templateId: z.string().min(1).max(80),
+    enabled: z.boolean().optional(),
+    name: z.string().min(1).max(120).optional(),
+  })
+  .strict();
+async function previewInstallRuleTemplate(args: z.infer<typeof installRuleTemplateSchema>) {
+  const tpl = getRuleTemplate(args.templateId);
+  if (!tpl) {
+    const known = RULE_TEMPLATES.map((t) => t.templateId).join(', ');
+    return {
+      ok: false as const,
+      error: `Unknown rule template '${args.templateId}'. Available: ${known}`,
+    };
+  }
+  return {
+    ok: true as const,
+    summary: `Install rule template "${tpl.name}" (${args.enabled === false ? 'disabled' : 'enabled'}) — ${tpl.actions.length} action(s).`,
+    whatHappens: tpl.whatHappens,
+  };
+}
+async function commitInstallRuleTemplate(args: z.infer<typeof installRuleTemplateSchema>) {
+  if (!(await requireMod())) throw new Error('mod-only');
+  const tpl = getRuleTemplate(args.templateId);
+  if (!tpl) throw new Error(`Unknown rule template '${args.templateId}'`);
+  const now = Date.now();
+  const id = `rule_${now}_${Math.random().toString(36).slice(2, 8)}`;
+  const rule: Rule = {
+    id,
+    name: args.name?.trim() || tpl.name,
+    description: tpl.description,
+    enabled: args.enabled ?? false,
+    trigger: tpl.trigger,
+    conditions: tpl.conditions,
+    actions: tpl.actions as Action[],
+    createdAt: now,
+    updatedAt: now,
+    fireCount: 0,
+  };
+  await saveRule(rule);
+  await recordAudit('settings-update', id, {
+    source: 'copilot',
+    kind: 'rule-template-install',
+    templateId: args.templateId,
+  });
+  return { ruleId: id, name: rule.name, fromTemplate: args.templateId };
+}
+
 const setPostStatusToolSchema = z
   .object({
     postId: z.string().min(1).max(50),
@@ -452,6 +543,14 @@ export const TOOLS: AnyTool[] = [
     execute: execGetPipelineSummary,
   },
   {
+    name: 'getAvailableRuleTemplates',
+    description:
+      'List curated rule templates (id, name, what-happens, category). Use before installRuleTemplate.',
+    safety: 'read',
+    inputSchema: getAvailableRuleTemplatesSchema,
+    execute: execGetAvailableRuleTemplates,
+  },
+  {
     name: 'getAvailableTemplates',
     description: 'List catalogue pipeline templates the mod can install.',
     safety: 'read',
@@ -504,6 +603,23 @@ export const TOOLS: AnyTool[] = [
     inputSchema: createRuleSchema,
     preview: previewCreateRule,
     commit: commitCreateRule,
+  },
+  {
+    name: 'setRuleEnabled',
+    description: 'Enable or disable an existing rule by id. Requires confirmation.',
+    safety: 'write',
+    inputSchema: setRuleEnabledSchema,
+    preview: previewSetRuleEnabled,
+    commit: commitSetRuleEnabled,
+  },
+  {
+    name: 'installRuleTemplate',
+    description:
+      'Install a rule from the curated templates catalogue (e.g. "fraud-permaban", "bug-negative-escalate", "slack-on-fraud"). Use getAvailableRuleTemplates to discover ids. Requires confirmation.',
+    safety: 'write',
+    inputSchema: installRuleTemplateSchema,
+    preview: previewInstallRuleTemplate,
+    commit: commitInstallRuleTemplate,
   },
   {
     name: 'setPostStatus',
