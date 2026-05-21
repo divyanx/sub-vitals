@@ -37,6 +37,22 @@ async function fireRulesOnTag(tag: Tag): Promise<void> {
   }
 }
 
+/**
+ * After each tag-write on a post, re-derive flair + maybe-comment so the
+ * native Reddit mod queue shows current enrichment. Comment-only tags
+ * (Tag.targetType === 'comment') are skipped — flair only applies to
+ * posts. Lazy import + best-effort to avoid feedback loops.
+ */
+async function fireModSurfaceOnTag(tag: Tag): Promise<void> {
+  if (tag.targetType !== 'post') return;
+  try {
+    const { recomputeForPost } = await import('../modules/mod-surface/index.js');
+    await recomputeForPost(tag.targetId);
+  } catch (err) {
+    log.warn('tags: mod-surface hook failed (non-fatal)', { err: String(err) });
+  }
+}
+
 const TAG_INDEX_CAP = 1000;
 
 /**
@@ -55,6 +71,9 @@ export async function recordTag(tag: Tag): Promise<void> {
     }
     // Fire rules engine hook — non-blocking, failure-isolated
     void fireRulesOnTag(tag);
+    // Project enrichment into the native Reddit mod queue (flair + sticky
+    // analysis comment). Also non-blocking + failure-isolated.
+    void fireModSurfaceOnTag(tag);
   } catch (err) {
     // Non-fatal: existing modules keep working even if tag write fails.
     log.warn('tags: recordTag failed (non-fatal)', {
