@@ -30,6 +30,7 @@
     "seed:demo": "tsx scripts/seed-demo-data.ts"
   },
   "dependencies": {
+    "@ai-sdk/openai": "^3.0.64",
     "@ai-sdk/openai-compatible": "^2.0.47",
     "@devvit/start": "0.12.24-next-2026-05-14-23-46-48-630b04b92.0",
     "@devvit/web": "0.12.24-next-2026-05-14-23-46-48-630b04b92.0",

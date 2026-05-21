@@ -19,7 +19,7 @@
  */
 
 import { createHash } from 'node:crypto';
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createOpenAI } from '@ai-sdk/openai';
 import { reddit, redis, settings } from '@devvit/web/server';
 import { generateObject, NoObjectGeneratedError } from 'ai';
 import pRetry, { AbortError } from 'p-retry';
@@ -243,18 +243,11 @@ export async function llmObject<S extends ZodTypeAny>(args: {
     return { ok: false, reason: 'rate-limited' };
   }
 
-  // Build provider + model handle.
-  // NOTE: pointing at api.openai.com directly (Devvit's outbound HTTP gate
-  // is rejecting openrouter.ai despite the devvit.json entry — pending
-  // api@reddit.com approval). The OpenRouter key still works against the
-  // OpenAI-compatible interface for OpenAI's own models when the model
-  // slug is unprefixed (gpt-5-mini etc); for other providers you need
-  // an OpenAI key. See `docs/ADR-08-openai-direct.md` (to be written).
-  const provider = createOpenAICompatible({
-    name: 'openai-direct',
-    apiKey: cfg.apiKey,
-    baseURL: 'https://api.openai.com/v1',
-  });
+  // Official @ai-sdk/openai provider — handles gpt-5 family quirks
+  // (max_completion_tokens, reasoning_effort, etc.) natively.
+  // openrouter.ai is blocked by Devvit's outbound HTTP gate pending
+  // api@reddit.com approval; api.openai.com is in devvit.json.
+  const provider = createOpenAI({ apiKey: cfg.apiKey });
   const modelHandle = provider(cfg.model);
 
   const ac = new AbortController();

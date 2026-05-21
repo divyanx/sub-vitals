@@ -19,7 +19,7 @@
  * are still accounted via the same monthly Redis counters).
  */
 
-import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
+import { createOpenAI } from '@ai-sdk/openai';
 import { context, reddit, redis, settings } from '@devvit/web/server';
 import { K } from '@shared/keys.js';
 import { DEFAULT_MODEL, getEffectiveModel, readMonthlyCents } from '@shared/llm.js';
@@ -278,13 +278,9 @@ async function getProvider() {
     | undefined;
   if (!apiKey) return null;
   const { model } = await getEffectiveModel();
-  // OpenAI direct — see comment in shared/llm.ts. openrouter.ai pending
-  // Reddit approval; api.openai.com is in devvit.json from day one.
-  const provider = createOpenAICompatible({
-    name: 'openai-direct',
-    apiKey,
-    baseURL: 'https://api.openai.com/v1',
-  });
+  // Official @ai-sdk/openai provider — gpt-5 family requires
+  // max_completion_tokens which this provider handles automatically.
+  const provider = createOpenAI({ apiKey });
   return { handle: provider(model || DEFAULT_MODEL), model: model || DEFAULT_MODEL };
 }
 
