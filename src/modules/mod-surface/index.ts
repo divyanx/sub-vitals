@@ -22,8 +22,33 @@
 
 import { context, reddit, redis } from '@devvit/web/server';
 import { log } from '@shared/log.js';
+import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import { getTagsForTarget } from '@shared/tags.js';
 import type { Tag } from '@shared/types.js';
+
+// ---------------------------------------------------------------------------
+// Auto-reports gate (60s in-memory cache to avoid hitting settings on every
+// tag-write; same pattern as the Studio bridge).
+// ---------------------------------------------------------------------------
+
+let reportsEnabledCache: { value: boolean; expiresAt: number } | null = null;
+const REPORTS_CACHE_TTL_MS = 60_000;
+
+async function isAutoReportsEnabled(): Promise<boolean> {
+  const now = Date.now();
+  if (reportsEnabledCache && reportsEnabledCache.expiresAt > now) {
+    return reportsEnabledCache.value;
+  }
+  try {
+    const v = await readEffectiveSetting<boolean>('auto-reports-enabled', true);
+    reportsEnabledCache = { value: v !== false, expiresAt: now + REPORTS_CACHE_TTL_MS };
+    return reportsEnabledCache.value;
+  } catch {
+    // Fall open: default to true. Auto-reports are useful enough that a
+    // settings-read hiccup shouldn't disable them.
+    return true;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Lock + sentinel keys
@@ -31,8 +56,10 @@ import type { Tag } from '@shared/types.js';
 
 const FLAIR_LOCK_TTL_SEC = 2;
 const COMMENT_SENTINEL_TTL_SEC = 60 * 60 * 24 * 7; // 7 days — re-comment if a stale post is re-flagged later
+const REPORTS_SENTINEL_TTL_SEC = 60 * 60 * 24 * 30; // 30 days — match Reddit's report retention
 
 const lockKey = (postId: string) => `rl:modsurf:lock:${postId}`;
+const reportsKey = (postId: string) => `rl:modsurf:reports:${postId}`;
 const commentKey = (postId: string) => `rl:modsurf:comment:${postId}`;
 
 // ---------------------------------------------------------------------------
@@ -104,24 +131,19 @@ function buildFlair(tags: Tag[]): FlairChoice | null {
 
   const intent = findByEither('intent-classifier', 'contact-drivers');
   const sentiment = findByEither('sentiment-scorer', 'sentiment');
-  const pii = findByEither('pii-detector');
-  const brandMentions = findByEither('brand-mention-counter');
 
-  if (intent || sentiment || pii || brandMentions) {
+  if (intent || sentiment) {
+    // Keep the flair single-chip clean: intent + sentiment-emoji only.
+    // PII, brand mentions, and other signals get their own report lines
+    // (see buildReports below) instead of being crammed into the flair.
     const intentValue = intent ? valueLabel(intent.value) : '';
     const sentimentValue = sentiment ? valueLabel(sentiment.value) : '';
     const intentIcon = INTENT_ICON[intentValue] ?? '•';
     const sentimentIcon = SENTIMENT_ICON[sentimentValue] ?? '';
 
-    // Pack as many signals into the one flair slot Reddit gives us as
-    // possible — the queue list only shows this one chip.
     const parts: string[] = [];
     if (intent) parts.push(`${intentIcon} ${intentValue}`);
     if (sentiment) parts.push(sentimentIcon);
-    if (pii && (pii.value === true || pii.value === 'true')) parts.push('🔒');
-    if (brandMentions && typeof brandMentions.value === 'number' && brandMentions.value > 0) {
-      parts.push(`📊${brandMentions.value}`);
-    }
     const text = parts.join(' · ').slice(0, 64);
 
     const bg =
@@ -134,6 +156,83 @@ function buildFlair(tags: Tag[]): FlairChoice | null {
   }
 
   return null;
+}
+
+/**
+ * Build the set of report reasons to attach to this post. Each entry is
+ * one line that will appear under the post in Reddit's "Reported" queue.
+ *
+ * Why reports instead of cramming everything into the flair: Reddit's
+ * native queue groups multi-report posts and shows every reason inline,
+ * so each pipeline gets its own labeled line without competing for the
+ * single flair slot. AutoMod uses the same pattern.
+ *
+ * We dedupe within the function (one report per concept) and the caller
+ * dedupes across calls (per-post Redis set tracks already-submitted
+ * reason hashes) so re-runs don't pile on duplicates.
+ *
+ * Reasons MUST start with "RedLattice:" so mods can scan the queue and
+ * tell our reports apart from user reports at a glance.
+ */
+function buildReports(tags: Tag[]): string[] {
+  const findByEither = (templateId: string, hardcodedId?: string): Tag | undefined =>
+    tags.find(
+      (t) =>
+        t.pipelineId === `pi_${templateId}` ||
+        t.pipelineId === templateId ||
+        (hardcodedId !== undefined && t.pipelineId === hardcodedId),
+    );
+
+  const reports: string[] = [];
+
+  // Safety flags — each gets its own line so the queue shows the
+  // specific violation rather than a generic "flagged" badge.
+  const spam = findByEither('spam-detector');
+  if (spam && (spam.value === true || spam.value === 'true')) {
+    reports.push(formatReport('🚨 Spam detector fired', spam));
+  }
+  const fraud = findByEither('fraud-detector');
+  if (fraud && (fraud.value === true || fraud.value === 'true')) {
+    reports.push(formatReport('🚨 Fraud / scam detected', fraud));
+  }
+  const impostor = findByEither('impostor-flagger', 'impostor');
+  if (impostor && (impostor.value === true || impostor.value === 'true')) {
+    reports.push(formatReport('🎭 Possible brand impostor', impostor));
+  }
+  const pii = findByEither('pii-detector');
+  if (pii && (pii.value === true || pii.value === 'true')) {
+    reports.push(formatReport('🔒 PII detected (phone/email/SSN/etc)', pii));
+  }
+
+  // Intent + sentiment — combined into a single line. They almost always
+  // co-occur and splitting them adds noise. Skip when sentiment is the
+  // only signal (one line of "Sentiment: neutral" isn't worth queue space).
+  const intent = findByEither('intent-classifier', 'contact-drivers');
+  const sentiment = findByEither('sentiment-scorer', 'sentiment');
+  if (intent) {
+    const intentValue = valueLabel(intent.value);
+    const intentIcon = INTENT_ICON[intentValue] ?? '•';
+    let line = `${intentIcon} Intent: ${intentValue}`;
+    if (intent.confidence !== undefined) {
+      line += ` (${Math.round(intent.confidence * 100)}%)`;
+    }
+    if (sentiment) {
+      const sentimentValue = valueLabel(sentiment.value);
+      const sentimentIcon = SENTIMENT_ICON[sentimentValue] ?? '';
+      line += ` · ${sentimentIcon} ${sentimentValue}`;
+      if (sentiment.confidence !== undefined) {
+        line += ` (${sentiment.confidence.toFixed(2)})`;
+      }
+    }
+    reports.push(`RedLattice: ${line}`);
+  }
+
+  return reports;
+}
+
+function formatReport(label: string, tag: Tag): string {
+  const conf = tag.confidence !== undefined ? ` (${Math.round(tag.confidence * 100)}%)` : '';
+  return `RedLattice: ${label}${conf}`;
 }
 
 /**
@@ -286,7 +385,48 @@ export async function recomputeForPost(postId: string): Promise<void> {
     }
   }
 
-  // 2. Sticky distinguished analysis comment, once per post
+  // 2. Auto-reports — one line per signal in the native Reported queue.
+  //    Gated behind the per-installation `auto-reports-enabled` setting
+  //    (defaults true; mods can flip off if they don't want bot reports).
+  //    Idempotency: ZSET of reasons already submitted for this post.
+  if (await isAutoReportsEnabled()) {
+    const reports = buildReports(tags);
+    if (reports.length > 0) {
+      try {
+        const alreadyMembers = await redis.zRange(reportsKey(postId), 0, -1, { by: 'rank' });
+        const alreadySet = new Set(alreadyMembers.map((m) => m.member));
+
+        let post: Awaited<ReturnType<typeof reddit.getPostById>> | null = null;
+        for (const reason of reports) {
+          if (alreadySet.has(reason)) continue;
+          try {
+            if (!post) {
+              post = await reddit.getPostById(`t3_${postId}` as `t3_${string}`);
+            }
+            await reddit.report(post, { reason: reason.slice(0, 100) });
+            await redis.zAdd(reportsKey(postId), { score: Date.now(), member: reason });
+            log.info('mod-surface: report added', { postId, reason });
+          } catch (err) {
+            // Most common: insufficient mod scope, or Reddit rate-limited
+            // our reports. Don't blow up the loop.
+            log.warn('mod-surface: report failed (non-fatal)', {
+              postId,
+              reason,
+              err: String(err),
+            });
+          }
+        }
+        // Refresh TTL after any successful write.
+        if (reports.some((r) => !alreadySet.has(r))) {
+          await redis.expire(reportsKey(postId), REPORTS_SENTINEL_TTL_SEC);
+        }
+      } catch (err) {
+        log.warn('mod-surface: reports block failed (non-fatal)', { postId, err: String(err) });
+      }
+    }
+  }
+
+  // 3. Sticky distinguished analysis comment, once per post
   if (shouldComment(tags)) {
     try {
       const already = await redis.get(commentKey(postId));

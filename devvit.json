@@ -130,6 +130,12 @@
         "label": "Enable Studio webapp bridge (deprecated)",
         "helpText": "Forwards events to studio.redlattice.app. Disabled by default — the domain is pending Reddit gateway approval, so calls will fail until approved. Leave OFF unless you've been told otherwise.",
         "defaultValue": false
+      },
+      "auto-reports-enabled": {
+        "type": "boolean",
+        "label": "Auto-report posts with each pipeline verdict",
+        "helpText": "When ON (default), RedLattice attaches one report line per pipeline signal (Intent, Sentiment, Spam, Fraud, PII, Impostor). Reports appear inline in the native Reddit \"Reported\" queue — mods see each verdict without opening the post. Turn OFF if you don't want bot reports cluttering your queue.",
+        "defaultValue": true
       }
     },
     "subreddit": {
