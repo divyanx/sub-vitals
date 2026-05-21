@@ -125,7 +125,10 @@ export const CURATED_MODELS: ModelOption[] = [
   },
 ];
 
-export const DEFAULT_MODEL = 'anthropic/claude-haiku-4.5';
+// Default model — OpenAI direct because openrouter.ai is pending Reddit
+// outbound-domain approval. Once openrouter is approved we can switch
+// the default back to anthropic/claude-haiku-4.5 (cheaper + faster).
+export const DEFAULT_MODEL = 'gpt-4o-mini';
 
 /** Look up a model by slug. Returns null if not in the catalog. */
 export function findModel(slug: string): ModelOption | null {
