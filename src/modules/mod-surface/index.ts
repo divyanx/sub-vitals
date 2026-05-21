@@ -104,16 +104,24 @@ function buildFlair(tags: Tag[]): FlairChoice | null {
 
   const intent = findByEither('intent-classifier', 'contact-drivers');
   const sentiment = findByEither('sentiment-scorer', 'sentiment');
+  const pii = findByEither('pii-detector');
+  const brandMentions = findByEither('brand-mention-counter');
 
-  if (intent || sentiment) {
+  if (intent || sentiment || pii || brandMentions) {
     const intentValue = intent ? valueLabel(intent.value) : '';
     const sentimentValue = sentiment ? valueLabel(sentiment.value) : '';
     const intentIcon = INTENT_ICON[intentValue] ?? '•';
     const sentimentIcon = SENTIMENT_ICON[sentimentValue] ?? '';
 
+    // Pack as many signals into the one flair slot Reddit gives us as
+    // possible — the queue list only shows this one chip.
     const parts: string[] = [];
     if (intent) parts.push(`${intentIcon} ${intentValue}`);
     if (sentiment) parts.push(sentimentIcon);
+    if (pii && (pii.value === true || pii.value === 'true')) parts.push('🔒');
+    if (brandMentions && typeof brandMentions.value === 'number' && brandMentions.value > 0) {
+      parts.push(`📊${brandMentions.value}`);
+    }
     const text = parts.join(' · ').slice(0, 64);
 
     const bg =
@@ -129,9 +137,15 @@ function buildFlair(tags: Tag[]): FlairChoice | null {
 }
 
 /**
- * High-signal posts get a sticky distinguished analysis comment so mods
- * see the full reasoning one click in. Predicate is intentionally narrow
- * — we don't want to comment on every ordinary support post.
+ * Decide whether to post the sticky distinguished analysis comment.
+ *
+ * Rule: post once a post has accumulated 2+ meaningful tags, OR any
+ * single high-signal tag (spam/fraud/pii/impostor true). Mods asked for
+ * "show me ALL the enrichment in the queue" — since Reddit gives us one
+ * flair slot, the sticky comment is where the full picture lives.
+ *
+ * Threshold of 2 (not 1) keeps us from auto-commenting on posts where
+ * only sentiment landed; one tag isn't worth the noise.
  */
 function shouldComment(tags: Tag[]): boolean {
   const findByEither = (templateId: string, hardcodedId?: string): Tag | undefined =>
@@ -142,40 +156,81 @@ function shouldComment(tags: Tag[]): boolean {
         (hardcodedId !== undefined && t.pipelineId === hardcodedId),
     );
 
+  // Any single high-signal tag → comment.
   const spam = findByEither('spam-detector');
   if (spam && (spam.value === true || spam.value === 'true')) return true;
-
   const fraud = findByEither('fraud-detector');
   if (fraud && (fraud.value === true || fraud.value === 'true')) return true;
+  const pii = findByEither('pii-detector');
+  if (pii && (pii.value === true || pii.value === 'true')) return true;
+  const impostor = findByEither('impostor-flagger', 'impostor');
+  if (impostor && (impostor.value === true || impostor.value === 'true')) return true;
 
-  const intent = findByEither('intent-classifier', 'contact-drivers');
-  const sentiment = findByEither('sentiment-scorer', 'sentiment');
-  if (
-    intent?.value === 'bug' &&
-    (sentiment?.value === 'negative' || (sentiment?.confidence ?? 0) <= -0.5)
-  ) {
-    return true;
-  }
-  return false;
+  // Otherwise: post when at least two pipelines have produced anything.
+  // Filter out the boolean=false noise so a "no spam, no fraud" pair
+  // doesn't count as 2 tags.
+  const meaningful = tags.filter((t) => {
+    if (typeof t.value === 'boolean') return t.value === true;
+    if (typeof t.value === 'number') return t.value !== 0;
+    return String(t.value).trim().length > 0;
+  });
+  return meaningful.length >= 2;
+}
+
+/** Friendly display name for known pipelines; falls through to raw id. */
+const PIPELINE_DISPLAY: Record<string, string> = {
+  'pi_intent-classifier': 'Intent',
+  'contact-drivers': 'Intent',
+  'pi_sentiment-scorer': 'Sentiment',
+  sentiment: 'Sentiment',
+  'pi_topic-clusterer': 'Topic',
+  'pi_impostor-flagger': 'Impostor',
+  impostor: 'Impostor',
+  'pi_volume-spike-detector': 'Volume spike',
+  crisis: 'Volume spike',
+  'pi_team-response-tracker': 'Team response',
+  'pi_spam-detector': 'Spam',
+  'spam-detector': 'Spam',
+  'pi_fraud-detector': 'Fraud',
+  'fraud-detector': 'Fraud',
+  'pi_pii-detector': 'PII',
+  'pii-detector': 'PII',
+  'pi_brand-mention-counter': 'Brand mentions',
+};
+
+function displayName(pipelineId: string): string {
+  return PIPELINE_DISPLAY[pipelineId] ?? pipelineId;
 }
 
 function renderCommentBody(tags: Tag[]): string {
-  const rows = tags
+  // Order: high-signal flags first, then intent/sentiment, then the rest.
+  const priority = (t: Tag): number => {
+    const n = displayName(t.pipelineId);
+    if (n === 'Fraud' || n === 'Spam' || n === 'PII' || n === 'Impostor') return 0;
+    if (n === 'Intent') return 1;
+    if (n === 'Sentiment') return 2;
+    return 3;
+  };
+  const sorted = [...tags].sort((a, b) => priority(a) - priority(b));
+
+  const rows = sorted
     .map((t) => {
       const v = valueLabel(t.value);
-      const conf = t.confidence !== undefined ? ` (${Math.round(t.confidence * 100)}%)` : '';
-      return `| \`${t.pipelineId}\` | ${v}${conf} | ${t.by} |`;
+      const conf = t.confidence !== undefined ? ` _(${Math.round(t.confidence * 100)}%)_` : '';
+      const by = t.by === 'ai' ? 'AI' : t.by === 'lexicon' ? 'lexicon' : 'mod';
+      return `| **${displayName(t.pipelineId)}** | \`${v}\`${conf} | ${by} |`;
     })
     .join('\n');
 
   return [
-    '**🔬 RedLattice analysis**',
+    '### 🔬 RedLattice analysis',
     '',
     '| Pipeline | Result | Source |',
     '|---|---|---|',
     rows,
     '',
-    '_Auto-generated. Mods can disable in RedLattice Settings → Surface integration._',
+    `_${tags.length} ${tags.length === 1 ? 'pipeline' : 'pipelines'} ran on this post._ ` +
+      '_Edit pipelines + rules in the RedLattice dashboard._',
   ].join('\n');
 }
 
