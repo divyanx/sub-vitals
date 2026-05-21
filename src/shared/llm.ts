@@ -256,6 +256,14 @@ export async function llmObject<S extends ZodTypeAny>(args: {
   // Track the originally-configured slug (before fallback) for error accounting.
   const configuredSlug = cfg.originalSlug;
 
+  // gpt-5 family are reasoning models: they consume ~128-256 tokens of the
+  // output budget on internal reasoning BEFORE producing any content, and
+  // they reject non-default `temperature`. Compensate so small callers
+  // (e.g. sentiment with maxTokens=120) don't silently return empty.
+  const isReasoning = /^(gpt-5|o1|o3|o4)/.test(cfg.model);
+  const requestedMax = args.maxTokens ?? 200;
+  const effectiveMax = isReasoning ? Math.max(requestedMax + 512, 768) : requestedMax;
+
   try {
     const result = await pRetry(
       async () => {
@@ -265,8 +273,8 @@ export async function llmObject<S extends ZodTypeAny>(args: {
             schema: args.schema,
             ...(args.system ? { system: args.system } : {}),
             prompt: args.prompt,
-            maxOutputTokens: args.maxTokens ?? 200,
-            temperature: args.temperature ?? 0.2,
+            maxOutputTokens: effectiveMax,
+            ...(isReasoning ? {} : { temperature: args.temperature ?? 0.2 }),
             abortSignal: ac.signal,
           });
         } catch (err) {

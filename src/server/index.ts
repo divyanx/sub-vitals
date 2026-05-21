@@ -2563,29 +2563,26 @@ app.post('/api/ai/validate-model', async (c) => {
     });
   }
 
-  const { createOpenAICompatible } = await import('@ai-sdk/openai-compatible');
+  const { createOpenAI } = await import('@ai-sdk/openai');
   const { generateObject: go, NoObjectGeneratedError: NOGE } = await import('ai');
 
-  const openrouter = createOpenAICompatible({
-    name: 'openrouter',
-    apiKey: apiKeyRaw,
-    baseURL: 'https://openrouter.ai/api/v1',
-    headers: {
-      'HTTP-Referer': 'https://github.com/devvit/redlattice',
-      'X-Title': 'RedLattice',
-    },
-  });
+  // Direct OpenAI provider — openrouter.ai is pending Devvit gateway approval.
+  const openai = createOpenAI({ apiKey: apiKeyRaw });
 
   const ac = new AbortController();
-  const timer = setTimeout(() => ac.abort('timeout'), 8_000);
+  const timer = setTimeout(() => ac.abort('timeout'), 15_000);
+
+  // Reasoning models burn 128+ output tokens on internal thinking and reject
+  // non-default temperature; budget + omit accordingly.
+  const isReasoning = /^(gpt-5|o1|o3|o4)/.test(slug);
 
   try {
     await go({
-      model: openrouter(slug),
+      model: openai(slug),
       schema: probeSchema,
       prompt: 'Respond with ok: true.',
-      maxOutputTokens: 50,
-      temperature: 0,
+      maxOutputTokens: isReasoning ? 800 : 50,
+      ...(isReasoning ? {} : { temperature: 0 }),
       abortSignal: ac.signal,
     });
     clearTimeout(timer);

@@ -454,6 +454,9 @@ async function handleChat(c: Context): Promise<Response> {
 
   let assistantText = '';
   try {
+    // gpt-5 family rejects non-default temperature; only set it for
+    // non-reasoning models. Bump budget to leave room for reasoning tokens.
+    const isReasoning = /^(gpt-5|o1|o3|o4)/.test(provider.model);
     const result = await generateText({
       model: provider.handle,
       system: buildSystemPrompt(body.data.context),
@@ -464,8 +467,8 @@ async function handleChat(c: Context): Promise<Response> {
       tools,
       stopWhen: stepCountIs(MAX_STEPS),
       abortSignal: ac.signal,
-      temperature: 0.3,
-      maxOutputTokens: 800,
+      ...(isReasoning ? {} : { temperature: 0.3 }),
+      maxOutputTokens: isReasoning ? 1600 : 800,
     });
     assistantText = result.text || (collected.length > 0 ? 'Done.' : 'No response.');
   } catch (err) {

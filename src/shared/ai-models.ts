@@ -21,7 +21,7 @@ export interface ModelOption {
  */
 const COST_TABLE: Record<string, { in: number; out: number }> = {
   'anthropic/claude-haiku-4.5': { in: 0.1, out: 0.5 },
-  'openai/gpt-5-mini': { in: 0.025, out: 0.2 },
+  'gpt-5-mini': { in: 0.025, out: 0.2 },
   'google/gemini-2.5-flash': { in: 0.03, out: 0.25 },
   'anthropic/claude-sonnet-4-6': { in: 0.3, out: 1.5 },
   'openai/gpt-5': { in: 0.5, out: 2.0 },
@@ -52,13 +52,15 @@ export const CURATED_MODELS: ModelOption[] = [
     notes: 'Best balance of speed, cost, and reliability for tagging pipelines.',
   },
   {
-    slug: 'openai/gpt-5-mini',
+    // OpenAI direct (bare slug) — openrouter.ai pending Reddit gateway
+    // approval. Restore 'openai/gpt-5-mini' once approved.
+    slug: 'gpt-5-mini',
     label: 'GPT-5 Mini',
     provider: 'openai',
-    tier: 'fast',
-    pricePer1kTaggingCalls: estimateUsd('openai/gpt-5-mini'),
+    tier: 'recommended',
+    pricePer1kTaggingCalls: estimateUsd('gpt-5-mini'),
     supportsStructuredOutput: true,
-    notes: 'Low latency; good for real-time tagging.',
+    notes: 'Reasoning model; default choice while OpenRouter approval is pending.',
   },
   {
     slug: 'google/gemini-2.5-flash',
