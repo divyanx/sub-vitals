@@ -16,7 +16,7 @@ import type {
   RuleTestResult,
   RuleTrigger,
 } from '../../shared/rules-types.js';
-import { Button } from '../components/ui/index.ts';
+import { Button, Tag, type TagTone, toneFromValue } from '../components/ui/index.ts';
 
 // ---------------------------------------------------------------------------
 // API helpers
@@ -103,89 +103,133 @@ async function testRuleApi(
 // ---------------------------------------------------------------------------
 
 /**
- * Render the rule as a compact horizontal flow chip:
- *   [trigger] → [conditions] → [actions]
- * This turns the JSON shape into something a mod can read in 2 seconds.
+ * Render the rule as a horizontal flow chip:
+ *   [trigger] → [conditions tree] → [action 1] [action 2] …
+ * Each tag uses the unified Tag primitive with a semantic tone derived
+ * from its value (negative sentiment = red, bug intent = amber, etc.).
  */
-function summarizeConditions(tree: ConditionTree): string {
-  if (tree.op === 'condition') {
-    const v =
-      typeof tree.value === 'boolean'
-        ? String(tree.value)
-        : typeof tree.value === 'number'
-          ? String(tree.value)
-          : `"${tree.value}"`;
-    return `${tree.pipelineId}.${tree.field} ${tree.operator} ${v}`;
-  }
-  const sep = tree.op === 'and' ? ' & ' : ' | ';
-  return tree.children.map(summarizeConditions).join(sep);
+interface ActionVisual {
+  label: string;
+  tone: TagTone;
+  icon?: string;
 }
-
-function summarizeAction(action: Action): string {
+function visualForAction(action: Action): ActionVisual {
   switch (action.type) {
     case 'remove-post':
-      return action.spam ? 'remove (spam)' : 'remove';
+      return { label: action.spam ? 'Remove (spam)' : 'Remove', tone: 'danger', icon: '🗑️' };
     case 'remove-comment':
-      return action.spam ? 'remove cmt (spam)' : 'remove cmt';
+      return { label: action.spam ? 'Remove cmt' : 'Remove cmt', tone: 'danger', icon: '🗑️' };
     case 'send-modmail':
-      return 'modmail';
+      return { label: 'Modmail', tone: 'info', icon: '📬' };
     case 'set-status':
-      return `→ ${action.status}`;
+      return { label: `→ ${action.status}`, tone: 'info', icon: '🟢' };
     case 'lock-post':
-      return 'lock';
+      return { label: 'Lock', tone: 'warning', icon: '🔒' };
     case 'distinguish-comment':
-      return 'distinguish';
+      return { label: 'Distinguish', tone: 'info', icon: '⭐' };
     case 'approve':
-      return 'approve';
+      return { label: 'Approve', tone: 'success', icon: '✅' };
     case 'escalate':
-      return `escalate (${action.severity})`;
+      return { label: `Escalate ${action.severity}`, tone: 'warning', icon: '🚨' };
     case 'webhook':
-      return 'webhook';
+      return { label: 'Webhook', tone: 'info', icon: '🔗' };
     case 'tag-post':
-      return `tag ${action.instanceId}`;
+      return { label: `Tag ${action.instanceId}`, tone: 'brand', icon: '🏷️' };
     case 'ban-author':
-      return action.durationDays ? `ban ${action.durationDays}d` : 'permaban';
+      return {
+        label: action.durationDays ? `Ban ${action.durationDays}d` : 'Permaban',
+        tone: 'danger',
+        icon: '⛔',
+      };
     case 'ban-if-repeat':
-      return `ban-if ${action.threshold}/${action.windowDays}d`;
+      return {
+        label: `Ban-if ${action.threshold}/${action.windowDays}d`,
+        tone: 'danger',
+        icon: '⛔',
+      };
     case 'audit-only':
-      return 'audit';
+      return { label: 'Audit', tone: 'muted', icon: '📝' };
     default:
-      return 'action';
+      // Exhaustiveness fallback; cast through unknown so TS allows the
+      // never-typed action to be stringified.
+      return { label: String((action as { type?: string }).type ?? 'action'), tone: 'neutral' };
   }
+}
+
+/**
+ * Recursively render a condition tree as Tag chips with semantic tones.
+ * Leaf nodes use toneFromValue() so e.g. `sentiment = "negative"` renders
+ * red, `intent = "bug"` renders amber, `spam = true` renders red.
+ */
+function ConditionTags({ tree }: { tree: ConditionTree }) {
+  if (tree.op === 'condition') {
+    const tone = toneFromValue(tree.pipelineId, tree.value);
+    const vStr = typeof tree.value === 'boolean' ? String(tree.value) : String(tree.value);
+    return (
+      <Tag tone={tone} mono title={`${tree.pipelineId}.${tree.field} ${tree.operator} ${vStr}`}>
+        {tree.pipelineId}.{tree.field} {tree.operator} {vStr}
+      </Tag>
+    );
+  }
+  const sep = tree.op === 'and' ? 'AND' : 'OR';
+  return (
+    <span className="inline-flex flex-wrap items-center gap-1">
+      {tree.children.map((c, i) => (
+        <span key={i} className="inline-flex items-center gap-1">
+          {i > 0 ? (
+            <span className="text-[length:var(--t-xs)] font-semibold text-[var(--n-7)]">{sep}</span>
+          ) : null}
+          <ConditionTags tree={c} />
+        </span>
+      ))}
+    </span>
+  );
+}
+
+/** Map a rule template's category to a semantic Tag tone. */
+function categoryTone(category: RuleCategory): TagTone {
+  switch (category) {
+    case 'safety':
+      return 'danger';
+    case 'triage':
+      return 'warning';
+    case 'engagement':
+      return 'info';
+    case 'enforcement':
+      return 'danger';
+    case 'integration':
+      return 'brand';
+    default:
+      return 'neutral';
+  }
+}
+
+function FlowArrow() {
+  return (
+    <span aria-hidden="true" className="text-[length:var(--t-xs)] text-[var(--n-6)]">
+      →
+    </span>
+  );
 }
 
 function RuleFlow({ rule }: { rule: Rule }) {
-  const conditionSummary = summarizeConditions(rule.conditions);
   return (
-    <div className="flex flex-wrap items-center gap-1.5 text-[length:var(--t-xs)]">
-      <span className="rounded-[var(--r-1)] bg-[var(--n-3)] px-2 py-0.5 font-mono text-[var(--n-9)]">
-        {rule.trigger}
-      </span>
-      <span className="text-[var(--n-7)]" aria-hidden="true">
-        →
-      </span>
-      <span
-        className="max-w-[420px] truncate rounded-[var(--r-1)] bg-[var(--n-3)] px-2 py-0.5 font-mono text-[var(--n-11)]"
-        title={conditionSummary}
-      >
-        {conditionSummary}
-      </span>
-      <span className="text-[var(--n-7)]" aria-hidden="true">
-        →
-      </span>
+    <div className="flex flex-wrap items-center gap-1.5">
+      <Tag tone="mono">{rule.trigger}</Tag>
+      <FlowArrow />
+      <ConditionTags tree={rule.conditions} />
+      <FlowArrow />
       {rule.actions.length === 0 ? (
-        <span className="rounded-[var(--r-1)] bg-[var(--n-3)] px-2 py-0.5 italic text-[var(--n-8)]">
-          no actions
-        </span>
+        <Tag tone="muted">no actions</Tag>
       ) : (
-        rule.actions.map((a, i) => (
-          <span
-            key={i}
-            className="rounded-[var(--r-1)] bg-[var(--accent-3)] px-2 py-0.5 font-mono text-[var(--accent-11)]"
-          >
-            {summarizeAction(a)}
-          </span>
-        ))
+        rule.actions.map((a, i) => {
+          const v = visualForAction(a);
+          return (
+            <Tag key={i} tone={v.tone} icon={v.icon}>
+              {v.label}
+            </Tag>
+          );
+        })
       )}
     </div>
   );
@@ -1256,9 +1300,12 @@ function TemplatePicker({ onClose }: { onClose: () => void }) {
                       <p className="font-medium text-[var(--n-12)]">{t.name}</p>
                       <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">{t.whatHappens}</p>
                     </div>
-                    <span className="shrink-0 rounded-full bg-[var(--n-3)] px-2 py-0.5 text-[length:var(--t-xs)] uppercase tracking-wider text-[var(--n-8)]">
+                    <Tag
+                      tone={categoryTone(t.category)}
+                      className="shrink-0 uppercase tracking-wider"
+                    >
                       {t.category}
-                    </span>
+                    </Tag>
                   </div>
 
                   {/* Mini flow preview */}

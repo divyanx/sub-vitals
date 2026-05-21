@@ -21,6 +21,7 @@ import { CategoricalSummary } from './CategoricalSummary.tsx';
 import { ClusterSummary } from './ClusterSummary.tsx';
 import { OrdinalSummary } from './OrdinalSummary.tsx';
 import { ScalarSummary } from './ScalarSummary.tsx';
+import { Tag, toneFromKind } from './ui/index.ts';
 
 interface PipelineSummaryCardProps {
   instance: PipelineInstance;
@@ -65,7 +66,7 @@ export function PipelineSummaryCard({ instance, onOpen }: PipelineSummaryCardPro
       onClick={() => onOpen(instance.id)}
       aria-label={`Open ${instance.name} pipeline — ${distribution.length} categories. Click to see full details.`}
       style={themeStyle}
-      className="group relative flex min-h-[200px] w-full cursor-pointer flex-col gap-3 overflow-hidden rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-4 text-left shadow-[var(--shadow-1)] transition hover:border-[color:var(--pt-border-hover)] hover:shadow-[var(--shadow-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--pt-border-hover)]"
+      className="group relative flex min-h-[200px] w-full cursor-pointer flex-col gap-3 overflow-hidden rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-4 text-left shadow-[var(--shadow-1)] transition-[transform,border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease)] hover:-translate-y-px hover:border-[color:var(--pt-border-hover)] hover:shadow-[var(--shadow-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--pt-border-hover)] active:translate-y-0"
     >
       {/* Decorative theme layers — pointer-events-none so the whole card stays clickable */}
       <span
@@ -101,12 +102,9 @@ export function PipelineSummaryCard({ instance, onOpen }: PipelineSummaryCardPro
             )}
           </div>
         </div>
-        <span
-          className="shrink-0 rounded-full px-2 py-0.5 text-[length:var(--t-xs)] uppercase tracking-wider"
-          style={{ background: 'var(--pt-chip)', color: 'var(--pt-text)' }}
-        >
+        <Tag tone={toneFromKind(kind)} mono className="shrink-0 uppercase tracking-wider">
           {kind}
-        </span>
+        </Tag>
       </div>
 
       {/* Content area */}

@@ -22,6 +22,8 @@ export type { Column, TableProps } from './Table.tsx';
 export { Table } from './Table.tsx';
 export type { TabItem, TabsProps } from './Tabs.tsx';
 export { Tabs } from './Tabs.tsx';
+export type { TagProps, TagSize, TagTone } from './Tag.tsx';
+export { Tag, toneFromKind, toneFromValue } from './Tag.tsx';
 export type { TextareaProps } from './Textarea.tsx';
 export { Textarea } from './Textarea.tsx';
 export type { TooltipProps } from './Tooltip.tsx';
