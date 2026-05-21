@@ -977,30 +977,6 @@ function PipelinesTab({
           </div>
         </div>
       )}
-
-      {/* Hidden spans for legacy e2e test compatibility */}
-      <div className="hidden">
-        <span>Contact Drivers</span>
-        <span>Sentiment scoring</span>
-        <span>Impostor detection</span>
-        <span>Crisis detection</span>
-        <span>Theme clustering</span>
-        <span>Agent metrics</span>
-        <span>Active</span>
-        <span>Active</span>
-        <span>Active</span>
-        <span>Active</span>
-        <span>Active</span>
-        <span>Active</span>
-        <span>Intent classification</span>
-        <span>Sentiment</span>
-        <span>Theme clustering</span>
-        <span>Crisis detection</span>
-        <span>Identity verification</span>
-        <span>Performance</span>
-        <span>Root cause</span>
-        <span>Custom</span>
-      </div>
     </div>
   );
 }
@@ -2500,7 +2476,7 @@ function Overview({
               tooltip={TOOLTIPS.negativeShare}
             />
             <KpiTile
-              label="Top driver"
+              label="Top intent"
               value={kpis.topDriver}
               sub={`${kpis.topDriverCount} post${kpis.topDriverCount === 1 ? '' : 's'}`}
               onClick={() => navigateTo('insights', { section: 'intent' })}
@@ -2540,9 +2516,9 @@ function Overview({
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-6">
           {/* ── Per-driver sparklines ───────────────────────────────────── */}
-          <section aria-label="Driver volume sparklines">
+          <section aria-label="Intent volume sparklines">
             <h2 className="mb-3 text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
-              Drivers · 14-day trend
+              Intents · 14-day trend
             </h2>
             {volumeQ.isPending || taxonomyQ.isPending ? (
               <SkeletonGrid />
@@ -2562,7 +2538,7 @@ function Overview({
                     type="button"
                     onClick={() => navigateTo('insights', { section: 'intent', driver: node.id })}
                     className="group flex flex-col gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-left transition hover:border-[var(--border)] hover:bg-[var(--input-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
-                    aria-label={`${node.label}: ${current} posts today. Click to view driver.`}
+                    aria-label={`${node.label}: ${current} posts today. Click to view intent.`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-1.5">
@@ -2906,7 +2882,7 @@ function Drivers({
 
       <div>
         <h2 className="mb-4 text-sm uppercase tracking-wide text-[var(--text-muted)]">
-          Drivers · last 30 days · click to see posts
+          Intents · last 30 days · click to see posts
         </h2>
         <ul className="space-y-2">
           {sorted.map((d) => (

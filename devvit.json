@@ -124,6 +124,12 @@
         "label": "Monthly LLM cost cap (USD cents)",
         "helpText": "Hard limit on AI spend per calendar month per installation. When exceeded, falls back to lexicon-only. Default $5.00 = 500 cents.",
         "defaultValue": 500
+      },
+      "studio-bridge-enabled": {
+        "type": "boolean",
+        "label": "Enable Studio webapp bridge (deprecated)",
+        "helpText": "Forwards events to studio.redlattice.app. Disabled by default — the domain is pending Reddit gateway approval, so calls will fail until approved. Leave OFF unless you've been told otherwise.",
+        "defaultValue": false
       }
     },
     "subreddit": {

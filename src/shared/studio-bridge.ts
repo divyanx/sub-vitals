@@ -76,14 +76,52 @@ async function sign(message: string, secret: string): Promise<string> {
 // Core forward function
 // ---------------------------------------------------------------------------
 
+// ---------------------------------------------------------------------------
+// Enabled-flag cache — avoid hitting settings on every event.
+// The `studio-bridge-enabled` App-scope setting defaults to false because
+// studio.redlattice.app is pending Reddit gateway approval and every call
+// fails silently. Cached for 60s; flipping the setting takes up to 1min to
+// propagate, which is fine for an opt-in deprecated bridge.
+// ---------------------------------------------------------------------------
+
+const ENABLED_TTL_MS = 60_000;
+let enabledCache: { value: boolean; expiresAt: number } | null = null;
+
+async function isBridgeEnabled(): Promise<boolean> {
+  const now = Date.now();
+  if (enabledCache && enabledCache.expiresAt > now) {
+    return enabledCache.value;
+  }
+  let value = false;
+  try {
+    const raw = await readEffectiveSetting<boolean>('studio-bridge-enabled', false);
+    value = raw === true;
+  } catch {
+    value = false;
+  }
+  enabledCache = { value, expiresAt: now + ENABLED_TTL_MS };
+  return value;
+}
+
 /**
  * Post a StudioEvent to Studio's webhook endpoint.
+ *
+ * Gated behind the App-scope `studio-bridge-enabled` setting (default: false).
+ * When disabled, returns immediately — studio.redlattice.app is pending Reddit
+ * outbound-HTTP gateway approval, so calls would fail silently anyway. The
+ * enabled flag is cached for 60s to keep the per-event cost negligible.
+ *
  * Returns silently on any failure — the bridge must never break callers.
  */
 export async function forwardToStudio(
   kind: StudioEventKind,
   payload: Record<string, unknown>,
 ): Promise<void> {
+  // Feature-gate: bridge is opt-in and off by default.
+  if (!(await isBridgeEnabled())) {
+    return;
+  }
+
   // Read settings; skip if token is absent.
   const [token, studioUrl] = await Promise.all([
     readEffectiveSetting<string>('studio-token'),

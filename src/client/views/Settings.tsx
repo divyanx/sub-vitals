@@ -3,8 +3,8 @@
  *
  * Sections:
  *   - Brand identity (brand-name, brand-voice + test draft)
- *   - Taxonomy (visual card editor + JSON fallback for contact drivers)
- *   - Routing rules (per-driver modmail routing)
+ *   - Taxonomy (visual card editor + JSON fallback for intent taxonomy)
+ *   - Routing rules (per-intent modmail routing)
  *   - Identity & trust (agent flair pattern/text/color)
  *   - Thresholds (sentiment-threshold, sla-minutes, cost-cap)
  *   - AI (openrouter key status, llm-model)

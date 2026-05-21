@@ -74,6 +74,9 @@ function mockSettings(token: string, url = 'https://studio.redlattice.app') {
   mockReadEffectiveSetting.mockImplementation(async (name: string, fallback?: unknown) => {
     if (name === 'studio-token') return token;
     if (name === 'studio-url') return url;
+    // The bridge is gated off by default in production (since the domain
+    // isn't approved by Reddit). Tests assume it's on, so opt in here.
+    if (name === 'studio-bridge-enabled') return true;
     return fallback;
   });
 }

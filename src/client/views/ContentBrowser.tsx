@@ -1069,9 +1069,9 @@ function BulkToolbar({
             value={tagDriver}
             onChange={(e) => setTagDriver(e.target.value)}
             className="rounded-[var(--r-1)] border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-xs text-[var(--n-11)]"
-            aria-label="Tag with driver"
+            aria-label="Tag with intent"
           >
-            <option value="">Tag driver…</option>
+            <option value="">Tag intent…</option>
             {taxonomy.map((t) => (
               <option key={t.id} value={t.id}>
                 {t.label}
@@ -1483,7 +1483,7 @@ export function ContentBrowser() {
         )}
 
         <ChipDropdown
-          label="Driver"
+          label="Intent"
           options={DRIVER_OPTIONS}
           selected={filters.drivers}
           onChange={(v) => updateFilter('drivers', v)}
@@ -1682,7 +1682,7 @@ export function ContentBrowser() {
                     scope="col"
                     className="px-3 py-2 text-xs font-medium uppercase tracking-wide text-[var(--n-8)]"
                   >
-                    Driver
+                    Intent
                   </th>
                   <th
                     scope="col"
@@ -1886,7 +1886,7 @@ function ContentRow({
         u/{item.authorName}
       </td>
 
-      {/* Driver */}
+      {/* Intent */}
       <td className="px-3 py-2.5 text-xs">
         {driverLabel ? (
           <span className="text-[var(--accent-11)]">{driverLabel}</span>

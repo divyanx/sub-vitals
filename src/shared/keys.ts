@@ -107,10 +107,13 @@ export const K = {
     `rl:offender:${pipelineId}:${username.toLowerCase()}`,
 
   // llm auto-fallback
+  // Note: keyspace renamed bp: → rl: in the sweep; in-flight error counters
+  // simply re-zero on first run after deploy (which is correct: a fresh
+  // counter window starts the moment the new code runs).
   /** Per-model daily error counter (HASH, 48h TTL). Key = date string, field = slug. */
-  llmErrorDay: (date: string) => `bp:llm:errors:${date}`,
+  llmErrorDay: (date: string) => `rl:llm:errors:${date}`,
   /** Sticky fallback flag — set when a model crosses the error threshold. 7d TTL. */
-  llmFallbackActive: (slug: string) => `bp:llm:fallback-active:${encodeURIComponent(slug)}`,
+  llmFallbackActive: (slug: string) => `rl:llm:fallback-active:${encodeURIComponent(slug)}`,
 } as const;
 
 // ---------------------------------------------------------------------------

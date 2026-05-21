@@ -246,7 +246,7 @@ function SimulatePostSection({
           </div>
 
           <div>
-            <Label htmlFor="lab-driver">Driver override</Label>
+            <Label htmlFor="lab-driver">Intent override</Label>
             <select
               id="lab-driver"
               value={driverOverride}

@@ -6,9 +6,9 @@
  * others. Each module's `enabled()` is checked first.
  */
 
-// TODO(Sprint 13): Custom pipeline runtime — currently custom pipelines are persisted only.
-// The dispatcher does not yet fan events to custom pipelines. Implement in Sprint 13 after
-// the schema stabilizes. See listCustomPipelines() in pipeline-overrides.ts for the data model.
+// Note: catalogue-installed + scratch pipelines are now executed by
+// modules/generic-pipeline-runner — fan-out is automatic for any instance
+// whose template isn't already owned by a hardcoded module.
 
 import { log } from './log.js';
 import type {
