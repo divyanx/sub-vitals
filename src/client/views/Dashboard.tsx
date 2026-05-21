@@ -2811,19 +2811,22 @@ function Overview({
 }
 
 function ActivityTicker({ items }: { items: RecentPost[] }) {
+  // Cap visible height + scroll inside instead of growing the page.
+  // 70vh on tall viewports, with a sensible mobile floor.
   return (
-    <ul className="divide-y divide-[var(--border)] rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+    <ul className="max-h-[min(70vh,640px)] divide-y divide-[var(--border)] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       {items.map((p) => (
         <li key={p.postId} className="px-3 py-2.5">
-          <a
-            href={p.url}
-            target="_top"
-            rel="noopener noreferrer"
-            className="block truncate text-xs font-medium text-[var(--text)] hover:text-orange-300 hover:underline"
+          <button
+            type="button"
+            onClick={() => {
+              if (p.url) navigateTo(p.url);
+            }}
+            className="block w-full truncate text-left text-xs font-medium text-[var(--text)] hover:text-orange-300 hover:underline"
             title={p.title}
           >
             {p.title || '(no title)'}
-          </a>
+          </button>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
             <span>{relativeTime(p.createdAt)}</span>
             {p.driverId ? (
