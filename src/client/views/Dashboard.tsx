@@ -30,6 +30,9 @@ import {
   SkeletonList,
   Switch,
   Tabs,
+  Tag,
+  type TagTone,
+  toneFromKind,
   EmptyState as UIEmptyState,
   Input as UIInput,
 } from '../components/ui/index.ts';
@@ -1173,21 +1176,20 @@ function CatalogueTab({ onInstalled }: { onInstalled: (instanceId: string) => vo
         </div>
       </div>
 
-      {/* Category filter chips */}
-      <div className="flex flex-wrap gap-2">
+      {/* Category filter chips — matches the Rules → Browse templates modal */}
+      <div className="flex flex-wrap gap-1.5">
         {categories.map((cat) => (
           <button
             key={cat}
             type="button"
+            aria-pressed={categoryFilter === cat}
             onClick={() => setCategoryFilter(cat)}
-            className={[
-              'rounded-[var(--r-full)] border px-3 py-1 text-[length:var(--t-xs)] font-medium capitalize transition',
-              'min-h-[36px]',
-              categoryFilter === cat
-                ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
-                : 'border-[var(--n-4)] text-[var(--n-8)] hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]',
-            ].join(' ')}
             data-testid={`catalogue-filter-${cat}`}
+            className={`rounded-[var(--r-1)] px-3 py-1 text-[length:var(--t-xs)] capitalize transition ${
+              categoryFilter === cat
+                ? 'bg-[var(--accent-3)] text-[var(--accent-11)]'
+                : 'bg-[var(--n-2)] text-[var(--n-9)] hover:bg-[var(--n-3)] hover:text-[var(--n-11)]'
+            }`}
           >
             {cat}
           </button>
@@ -1199,53 +1201,87 @@ function CatalogueTab({ onInstalled }: { onInstalled: (instanceId: string) => vo
       ) : templatesQ.isError ? (
         <ErrorMsg msg="Failed to load catalogue." retry={() => templatesQ.refetch()} />
       ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
           {filtered.map((tpl) => (
-            <Card
+            <div
               key={tpl.id}
-              padding="md"
               data-testid={`template-card-${tpl.id}`}
-              className="flex flex-col transition hover:border-[var(--accent-9)]"
+              className="flex flex-col gap-2 rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-4 transition-[transform,border-color,box-shadow] duration-[var(--dur-base)] ease-[var(--ease)] hover:-translate-y-px hover:border-[var(--accent-9)] hover:shadow-[var(--shadow-1)]"
             >
-              <div className="mb-2 flex items-center gap-2">
-                {tpl.iconEmoji ? <span className="text-2xl">{tpl.iconEmoji}</span> : null}
-                <h3 className="text-[length:var(--t-base)] font-semibold text-[var(--n-12)]">
-                  {tpl.name}
-                </h3>
+              <div className="flex items-start gap-2">
+                {tpl.iconEmoji ? (
+                  <span role="img" aria-label={tpl.category} className="text-[length:var(--t-lg)]">
+                    {tpl.iconEmoji}
+                  </span>
+                ) : null}
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-[var(--n-12)]">{tpl.name}</p>
+                  <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+                    {tpl.shortDescription}
+                  </p>
+                </div>
+                <Tag
+                  tone={pipelineCategoryTone(tpl.category)}
+                  className="shrink-0 uppercase tracking-wider"
+                >
+                  {tpl.category}
+                </Tag>
               </div>
-              <p className="mb-1 text-[length:var(--t-sm)] text-[var(--n-8)]">
-                {tpl.shortDescription}
-              </p>
+
+              {/* Shape preview — kind + trigger (cheap signal of "how does it run") */}
+              <div className="flex flex-wrap items-center gap-1.5">
+                <Tag tone={toneFromKind(tpl.kind)} mono className="uppercase tracking-wider">
+                  {tpl.kind}
+                </Tag>
+                <Tag tone="mono">{tpl.defaultConfig.trigger}</Tag>
+                {tpl.alpha ? (
+                  <Tag tone="warning" icon="🧪">
+                    alpha
+                  </Tag>
+                ) : null}
+              </div>
+
               {tpl.example ? (
-                <div className="my-2 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-1)] px-3 py-2">
-                  <div className="text-[length:var(--t-xs)] uppercase tracking-wide text-[var(--n-8)]">
-                    Example
-                  </div>
-                  <div className="mt-0.5 text-[length:var(--t-xs)] text-[var(--n-8)]">
-                    <span className="text-[var(--n-11)]">in:</span> {tpl.example.input}
-                  </div>
-                  <div className="text-[length:var(--t-xs)] text-[var(--n-8)]">
-                    <span className="text-[var(--n-11)]">out:</span> {tpl.example.output}
-                  </div>
+                <div className="rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-1)] px-3 py-2 text-[length:var(--t-xs)] text-[var(--n-8)]">
+                  <span className="text-[var(--n-11)]">in:</span> {tpl.example.input}
+                  <br />
+                  <span className="text-[var(--n-11)]">out:</span> {tpl.example.output}
                 </div>
               ) : null}
-              <Badge variant="neutral" className="mb-3 capitalize self-start">
-                {tpl.category}
-              </Badge>
-              <Button
-                variant="primary"
-                size="sm"
-                className="mt-auto"
-                onClick={() => setInstallTemplate(tpl)}
-              >
-                + Install
-              </Button>
-            </Card>
+
+              <div className="mt-auto flex items-center justify-end pt-1">
+                <Button variant="primary" size="sm" onClick={() => setInstallTemplate(tpl)}>
+                  + Install
+                </Button>
+              </div>
+            </div>
           ))}
         </div>
       )}
     </div>
   );
+}
+
+/** Map a pipeline template's category to a semantic Tag tone. Mirrors
+ * `categoryTone()` in Rules.tsx so the two catalogues read with the
+ * same color grammar. */
+function pipelineCategoryTone(
+  category: 'tagging' | 'scoring' | 'flagging' | 'clustering' | 'extraction',
+): TagTone {
+  switch (category) {
+    case 'flagging':
+      return 'danger';
+    case 'scoring':
+      return 'brand';
+    case 'tagging':
+      return 'info';
+    case 'extraction':
+      return 'warning';
+    case 'clustering':
+      return 'info';
+    default:
+      return 'neutral';
+  }
 }
 
 // ---------------------------------------------------------------------------
