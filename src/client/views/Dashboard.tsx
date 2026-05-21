@@ -22,7 +22,17 @@ import { PipelineSummaryCard } from '../components/PipelineSummaryCard.tsx';
 import { PriorityQueuePanel } from '../components/PriorityQueuePanel.tsx';
 import { RuleFiringsPanel } from '../components/RuleFiringsPanel.tsx';
 import { ShortcutsModal } from '../components/ShortcutsModal.tsx';
-import { SkeletonList, Tabs } from '../components/ui/index.ts';
+import {
+  Badge,
+  Button,
+  Card,
+  Modal,
+  SkeletonList,
+  Switch,
+  Tabs,
+  EmptyState as UIEmptyState,
+  Input as UIInput,
+} from '../components/ui/index.ts';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import { type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
 import {
@@ -434,9 +444,9 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
       <div className="mx-auto flex max-w-6xl items-center gap-3">
         <span className="block h-3 w-3 rounded-full bg-[var(--accent-9)]" />
         <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattice</h1>
-        <span className="ml-2 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
+        <Badge variant="neutral" className="ml-2">
           analytics
-        </span>
+        </Badge>
 
         <div className="ml-auto flex items-center gap-2">
           {/* ⌘K command palette trigger */}
@@ -444,7 +454,7 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
             type="button"
             onClick={onOpenCmd}
             aria-label="Open command palette (⌘K)"
-            className="flex items-center gap-1.5 rounded-md border border-[var(--border)] bg-[var(--surface)] px-2.5 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+            className="flex min-h-[44px] items-center gap-1.5 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-2.5 py-1.5 text-[length:var(--t-xs)] text-[var(--n-8)] transition hover:border-[var(--accent-9)] hover:text-[var(--n-11)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
           >
             <svg
               className="h-3 w-3"
@@ -555,10 +565,10 @@ function Nav({
                 setSettingsOpen((o) => !o);
               }
             }}
-            className={`-mb-px flex items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-medium transition ${
+            className={`-mb-px flex min-h-[44px] items-center gap-1.5 border-b-2 px-4 py-3 text-[length:var(--t-sm)] font-medium transition ${
               tab === 'settings'
-                ? 'border-orange-500 text-[var(--text)]'
-                : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+                ? 'border-[var(--accent-9)] text-[var(--n-11)]'
+                : 'border-transparent text-[var(--n-8)] hover:text-[var(--n-11)]'
             }`}
           >
             Settings
@@ -576,7 +586,7 @@ function Nav({
           {settingsOpen && (
             <div
               role="menu"
-              className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-lg border border-[var(--border)] bg-[var(--surface)] py-1 shadow-xl"
+              className="absolute right-0 top-full z-50 mt-1 min-w-[180px] rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] py-1 shadow-[var(--shadow-2)]"
             >
               {SETTINGS_SECTIONS.map((s) => (
                 <button
@@ -587,10 +597,10 @@ function Nav({
                     onSettingsSection(s.id);
                     setSettingsOpen(false);
                   }}
-                  className={`flex w-full items-center px-4 py-2 text-sm transition hover:bg-[var(--bg)] ${
+                  className={`flex w-full items-center px-4 py-2 text-[length:var(--t-sm)] transition hover:bg-[var(--n-3)] ${
                     tab === 'settings' && settingsSection === s.id
-                      ? 'text-orange-400'
-                      : 'text-[var(--text-muted)] hover:text-[var(--text)]'
+                      ? 'font-medium text-[var(--accent-11)]'
+                      : 'text-[var(--n-8)] hover:text-[var(--n-11)]'
                   }`}
                 >
                   {s.label}
@@ -640,20 +650,22 @@ function Posts({
       {/* 1. Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-[var(--text)]">Today</h1>
-          <p className="mt-0.5 text-xs text-[var(--text-muted)]">
-            Last updated{'  '}
-            {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          <h1 className="text-[length:var(--t-2xl)] font-bold text-[var(--n-12)]">Today</h1>
+          <p className="mt-0.5 text-[length:var(--t-xs)] text-[var(--n-8)]">
+            Last updated{' '}
+            <span className="tabular-nums">
+              {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+            </span>
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={() => setContentBrowserOpen(true)}
-          className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-orange-500 hover:text-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
           aria-label="Browse all posts"
         >
           Browse all posts
-        </button>
+        </Button>
       </div>
 
       {/* 2. Cross-pipeline KPI strip */}
@@ -674,46 +686,25 @@ function Posts({
             Installed pipelines
           </h2>
           {instances.length > 0 && (
-            <button
-              type="button"
-              onClick={onOpenPipelines}
-              className="text-xs text-orange-400 hover:text-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-            >
+            <Button variant="ghost" size="sm" onClick={onOpenPipelines}>
               Manage &rarr;
-            </button>
+            </Button>
           )}
         </div>
 
         {instancesQ.isPending && <SkeletonList rows={3} rowHeight="200px" />}
 
         {!instancesQ.isPending && instances.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] py-12 text-center">
-            <svg
-              className="mb-3 h-8 w-8 text-[var(--text-muted)]"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-              aria-hidden="true"
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M9 3H5a2 2 0 00-2 2v4m6-6h10a2 2 0 012 2v4M9 3v18m0 0h10a2 2 0 002-2V9M9 21H5a2 2 0 01-2-2V9m0 0h18"
-              />
-            </svg>
-            <p className="text-sm font-medium text-[var(--text)]">No pipelines installed yet</p>
-            <p className="mt-1 text-xs text-[var(--text-muted)]">
-              Install a pipeline to start seeing insights here.
-            </p>
-            <button
-              type="button"
-              onClick={onOpenCatalogue}
-              className="mt-4 rounded-lg bg-orange-500 px-4 py-2 text-xs font-semibold text-white transition hover:bg-orange-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
-            >
-              Browse catalogue
-            </button>
-          </div>
+          <UIEmptyState
+            icon="📊"
+            title="No pipelines installed yet"
+            body="Install a pipeline to start seeing insights here."
+            cta={
+              <Button variant="primary" size="md" onClick={onOpenCatalogue}>
+                Browse catalogue
+              </Button>
+            }
+          />
         )}
 
         {instances.length > 0 && (
@@ -753,14 +744,16 @@ function Posts({
             if (e.key === 'Escape') setContentBrowserOpen(false);
           }}
         >
-          <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[var(--bg)]">
-            <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-              <h2 className="font-semibold text-[var(--text)]">All posts</h2>
+          <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[var(--n-0)]">
+            <div className="flex items-center justify-between border-b border-[var(--n-4)] px-6 py-4">
+              <h2 className="text-[length:var(--t-lg)] font-semibold text-[var(--n-12)]">
+                All posts
+              </h2>
               <button
                 type="button"
                 onClick={() => setContentBrowserOpen(false)}
                 aria-label="Close browse posts"
-                className="rounded-md p-1 text-[var(--text-muted)] hover:text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                className="flex h-8 w-8 items-center justify-center rounded-[var(--r-2)] text-[var(--n-8)] hover:bg-[var(--n-3)] hover:text-[var(--n-11)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
               >
                 <svg
                   className="h-5 w-5"
@@ -900,19 +893,21 @@ function PipelinesTab({
       {/* Header */}
       <div className="mb-6 flex items-baseline justify-between">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Pipelines</h2>
+          <h2 className="text-[length:var(--t-sm)] uppercase tracking-wide text-[var(--n-8)]">
+            Pipelines
+          </h2>
           <p className="mt-1 max-w-2xl text-xs text-[var(--text-muted)]">
             Installed pipeline instances. Click an instance to inspect its analytics view.
           </p>
         </div>
-        <button
-          type="button"
+        <Button
+          variant="primary"
+          size="sm"
           onClick={onOpenCatalogue}
-          className="rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-900/60"
           data-testid="new-pipeline-button"
         >
           + Install from catalogue
-        </button>
+        </Button>
       </div>
 
       {viewState === 'loading' && <SkeletonGrid />}
@@ -923,13 +918,9 @@ function PipelinesTab({
           title="No pipelines installed"
           body="Install templates from the Catalogue tab to start analysing your subreddit."
           cta={
-            <button
-              type="button"
-              onClick={onOpenCatalogue}
-              className="rounded-md border border-violet-700 bg-violet-900/30 px-4 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-900/60"
-            >
+            <Button variant="primary" size="md" onClick={onOpenCatalogue}>
               Go to Catalogue
-            </button>
+            </Button>
           }
         />
       )}
@@ -948,17 +939,19 @@ function PipelinesTab({
                     type="button"
                     data-testid={`instance-nav-${inst.id}`}
                     onClick={() => onSelectInstance(inst.id)}
-                    className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                    className={`w-full rounded-[var(--r-2)] px-3 py-2 text-left text-[length:var(--t-sm)] transition ${
                       inst.id === activeId
-                        ? 'bg-orange-500/10 font-medium text-orange-400'
-                        : 'text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]'
+                        ? 'bg-[var(--accent-3)] font-medium text-[var(--accent-11)]'
+                        : 'text-[var(--n-8)] hover:bg-[var(--n-3)] hover:text-[var(--n-11)]'
                     }`}
                   >
                     <div className="truncate">{inst.name}</div>
-                    <div
-                      className={`mt-0.5 text-[10px] ${inst.enabled ? 'text-emerald-400' : 'text-rose-400'}`}
-                    >
-                      {inst.enabled ? 'Active' : 'Disabled'}
+                    <div className="mt-0.5 text-[length:var(--t-xs)]">
+                      {inst.enabled ? (
+                        <span className="text-[var(--success-11)]">Active</span>
+                      ) : (
+                        <span className="text-[var(--error-11)]">Disabled</span>
+                      )}
                     </div>
                   </button>
                 </li>
@@ -1030,59 +1023,43 @@ function InstanceDetailView({
   return (
     <div className="space-y-6" data-testid={`instance-card-${instance.id}`}>
       {/* Instance header */}
-      <div className="flex flex-wrap items-start justify-between gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            {template?.iconEmoji ? <span className="text-2xl">{template.iconEmoji}</span> : null}
-            <h3 className="text-base font-semibold text-[var(--text)]">{instance.name}</h3>
-            <span
-              className={`rounded-full border px-2 py-0.5 text-[10px] font-medium ${
-                instance.enabled
-                  ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
-                  : 'border-rose-800 bg-rose-900/30 text-rose-300'
-              }`}
-            >
-              {instance.enabled ? 'Active' : 'Disabled'}
-            </span>
+      <Card padding="md">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              {template?.iconEmoji ? <span className="text-2xl">{template.iconEmoji}</span> : null}
+              <h3 className="text-[length:var(--t-lg)] font-semibold text-[var(--n-12)]">
+                {instance.name}
+              </h3>
+              <Badge variant={instance.enabled ? 'success' : 'error'} dot>
+                {instance.enabled ? 'Active' : 'Disabled'}
+              </Badge>
+            </div>
+            <p className="mt-1 text-[length:var(--t-sm)] text-[var(--n-8)]">
+              {instance.description}
+            </p>
+            {template?.category ? (
+              <Badge variant="neutral" className="mt-2 capitalize">
+                {template.category}
+              </Badge>
+            ) : null}
           </div>
-          <p className="mt-1 text-xs text-[var(--text-muted)]">{instance.description}</p>
-          {template?.category ? (
-            <span className="mt-2 inline-block rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] capitalize text-[var(--text-muted)]">
-              {template.category}
-            </span>
-          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <Button variant="secondary" size="sm" onClick={onTune}>
+              Edit
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => onToggle(!instance.enabled)}>
+              {instance.enabled ? 'Disable' : 'Enable'}
+            </Button>
+            <Button variant="ghost" size="sm" onClick={onDuplicate}>
+              Duplicate
+            </Button>
+            <Button variant="destructive" size="sm" onClick={onDelete}>
+              Delete
+            </Button>
+          </div>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            onClick={onTune}
-            className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-orange-500 hover:text-orange-300"
-          >
-            + Edit
-          </button>
-          <button
-            type="button"
-            onClick={() => onToggle(!instance.enabled)}
-            className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-orange-500 hover:text-orange-300"
-          >
-            {instance.enabled ? 'Disable' : 'Enable'}
-          </button>
-          <button
-            type="button"
-            onClick={onDuplicate}
-            className="rounded-md border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition hover:border-orange-500 hover:text-orange-300"
-          >
-            Duplicate
-          </button>
-          <button
-            type="button"
-            onClick={onDelete}
-            className="rounded-md border border-rose-800 px-3 py-1.5 text-xs text-rose-300 transition hover:bg-rose-900/30"
-          >
-            Delete
-          </button>
-        </div>
-      </div>
+      </Card>
 
       {/* Kind-based analytics view */}
       <PipelineKindView instance={instance} template={template} kind={kind} />
@@ -1207,7 +1184,9 @@ function CatalogueTab({ onInstalled }: { onInstalled: (instanceId: string) => vo
     <div className="space-y-6" data-testid="catalogue-grid">
       <div className="flex items-baseline justify-between">
         <div>
-          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Catalogue</h2>
+          <h2 className="text-[length:var(--t-sm)] uppercase tracking-wide text-[var(--n-8)]">
+            Catalogue
+          </h2>
           <p className="mt-1 max-w-2xl text-xs text-[var(--text-muted)]">
             Choose a pipeline template to install. Each creates an instance you can configure and
             monitor.
@@ -1222,11 +1201,13 @@ function CatalogueTab({ onInstalled }: { onInstalled: (instanceId: string) => vo
             key={cat}
             type="button"
             onClick={() => setCategoryFilter(cat)}
-            className={`rounded-full border px-3 py-1 text-xs font-medium capitalize transition ${
+            className={[
+              'rounded-[var(--r-full)] border px-3 py-1 text-[length:var(--t-xs)] font-medium capitalize transition',
+              'min-h-[36px]',
               categoryFilter === cat
-                ? 'border-violet-600 bg-violet-900/30 text-violet-200'
-                : 'border-[var(--border)] text-[var(--text-muted)] hover:border-violet-600 hover:text-violet-200'
-            }`}
+                ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
+                : 'border-[var(--n-4)] text-[var(--n-8)] hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]',
+            ].join(' ')}
             data-testid={`catalogue-filter-${cat}`}
           >
             {cat}
@@ -1241,38 +1222,46 @@ function CatalogueTab({ onInstalled }: { onInstalled: (instanceId: string) => vo
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {filtered.map((tpl) => (
-            <div
+            <Card
               key={tpl.id}
+              padding="md"
               data-testid={`template-card-${tpl.id}`}
-              className="flex flex-col rounded-xl border border-[var(--border)] bg-[var(--surface)] p-5 transition hover:border-violet-600"
+              className="flex flex-col transition hover:border-[var(--accent-9)]"
             >
               <div className="mb-2 flex items-center gap-2">
                 {tpl.iconEmoji ? <span className="text-2xl">{tpl.iconEmoji}</span> : null}
-                <h3 className="font-semibold text-[var(--text)]">{tpl.name}</h3>
+                <h3 className="text-[length:var(--t-base)] font-semibold text-[var(--n-12)]">
+                  {tpl.name}
+                </h3>
               </div>
-              <p className="mb-1 text-xs text-[var(--text-muted)]">{tpl.shortDescription}</p>
+              <p className="mb-1 text-[length:var(--t-sm)] text-[var(--n-8)]">
+                {tpl.shortDescription}
+              </p>
               {tpl.example ? (
-                <div className="my-2 rounded-md border border-[var(--border)] bg-[var(--bg)] px-3 py-2">
-                  <div className="text-[10px] uppercase text-[var(--text-muted)]">Example</div>
-                  <div className="mt-0.5 text-xs text-[var(--text-muted)]">
-                    <span className="text-[var(--text)]">in:</span> {tpl.example.input}
+                <div className="my-2 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-1)] px-3 py-2">
+                  <div className="text-[length:var(--t-xs)] uppercase tracking-wide text-[var(--n-8)]">
+                    Example
                   </div>
-                  <div className="text-xs text-[var(--text-muted)]">
-                    <span className="text-[var(--text)]">out:</span> {tpl.example.output}
+                  <div className="mt-0.5 text-[length:var(--t-xs)] text-[var(--n-8)]">
+                    <span className="text-[var(--n-11)]">in:</span> {tpl.example.input}
+                  </div>
+                  <div className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+                    <span className="text-[var(--n-11)]">out:</span> {tpl.example.output}
                   </div>
                 </div>
               ) : null}
-              <span className="mb-3 inline-block rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] capitalize text-[var(--text-muted)]">
+              <Badge variant="neutral" className="mb-3 capitalize self-start">
                 {tpl.category}
-              </span>
-              <button
-                type="button"
-                className="mt-auto rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-900/60"
+              </Badge>
+              <Button
+                variant="primary"
+                size="sm"
+                className="mt-auto"
                 onClick={() => setInstallTemplate(tpl)}
               >
                 + Install
-              </button>
-            </div>
+              </Button>
+            </Card>
           ))}
         </div>
       )}
@@ -1318,148 +1307,95 @@ function InstallWizard({
   };
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 px-4 backdrop-blur-sm"
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Install ${template.name}`}
-    >
-      <div className="w-full max-w-lg rounded-xl border border-[var(--border)] bg-[var(--surface)] shadow-2xl">
-        {/* Wizard header */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-          <div>
-            <h2 className="font-semibold text-[var(--text)]">
-              Install: {template.iconEmoji} {template.name}
-            </h2>
-            <p className="mt-0.5 text-xs text-[var(--text-muted)]">Step {step} of 3</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close wizard"
-            className="rounded-md p-1 text-[var(--text-muted)] transition hover:text-[var(--text)]"
-          >
-            <svg
-              className="h-4 w-4"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-              aria-hidden="true"
-            >
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-        </div>
-
-        <div className="px-6 py-5">
-          {/* Step 1: Name + show-in-nav */}
-          {step === 1 && (
-            <div className="space-y-4">
-              <div>
-                <label
-                  htmlFor="wizard-name"
-                  className="mb-1 block text-sm font-medium text-[var(--text)]"
-                >
-                  Instance name
-                </label>
-                <input
-                  id="wizard-name"
-                  type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value.slice(0, 32))}
-                  maxLength={32}
-                  className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus:ring-2 focus:ring-orange-500"
-                  placeholder="My pipeline instance"
-                />
-                <p className="mt-1 text-xs text-[var(--text-muted)]">
-                  {32 - name.length} chars remaining
-                </p>
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={showInNav}
-                  onChange={(e) => setShowInNav(e.target.checked)}
-                  className="rounded border border-[var(--border)]"
-                />
-                <span className="text-sm text-[var(--text)]">Show in Pipelines nav</span>
-              </label>
-            </div>
-          )}
-
-          {/* Step 2: Template-specific inputs */}
-          {step === 2 && (
-            <div className="space-y-4">
-              <p className="text-sm text-[var(--text-muted)]">{template.shortDescription}</p>
-              <div className="rounded-md border border-[var(--border)] bg-[var(--bg)] p-4">
-                <p className="text-xs text-[var(--text-muted)]">
-                  Template-specific configuration fields would appear here for{' '}
-                  <strong>{template.name}</strong>. In the full implementation, each template
-                  declares its required inputs and renders the appropriate form.
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Step 3: Review + Install */}
-          {step === 3 && (
-            <div className="space-y-4">
-              <h3 className="font-medium text-[var(--text)]">Review</h3>
-              <div className="space-y-2 rounded-lg border border-[var(--border)] bg-[var(--bg)] p-4 text-sm">
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">Template</span>
-                  <span className="text-[var(--text)]">{template.name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">Instance name</span>
-                  <span className="text-[var(--text)]">{name}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span className="text-[var(--text-muted)]">Show in Pipelines nav</span>
-                  <span className="text-[var(--text)]">{showInNav ? 'Yes' : 'No'}</span>
-                </div>
-              </div>
-              {error ? (
-                <div className="rounded-md border border-rose-800 bg-rose-950/40 p-3 text-xs text-rose-200">
-                  {error}
-                </div>
-              ) : null}
-            </div>
-          )}
-        </div>
-
-        {/* Wizard footer */}
-        <div className="flex items-center justify-between border-t border-[var(--border)] px-6 py-4">
-          <button
-            type="button"
+    <Modal
+      open
+      onClose={onClose}
+      title={`Install: ${template.iconEmoji ?? ''} ${template.name}`}
+      description={`Step ${step} of 3`}
+      footer={
+        <div className="flex w-full items-center justify-between">
+          <Button
+            variant="ghost"
+            size="sm"
             onClick={step === 1 ? onClose : () => setStep((s) => (s - 1) as 1 | 2 | 3)}
-            className="rounded-md border border-[var(--border)] px-4 py-2 text-sm text-[var(--text-muted)] transition hover:text-[var(--text)]"
           >
             {step === 1 ? 'Cancel' : 'Back'}
-          </button>
+          </Button>
           {step < 3 ? (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
               onClick={() => setStep((s) => (s + 1) as 1 | 2 | 3)}
               disabled={step === 1 && name.trim().length === 0}
-              className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
             >
               Next
-            </button>
+            </Button>
           ) : (
-            <button
-              type="button"
-              onClick={handleInstall}
-              disabled={busy}
-              className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
-            >
-              {busy ? 'Installing…' : 'Install'}
-            </button>
+            <Button variant="primary" size="sm" onClick={handleInstall} isLoading={busy}>
+              Install
+            </Button>
           )}
         </div>
-      </div>
-    </div>
+      }
+    >
+      {/* Step 1: Name + show-in-nav */}
+      {step === 1 && (
+        <div className="space-y-4">
+          <UIInput
+            label="Instance name"
+            id="wizard-name"
+            value={name}
+            onChange={(v) => setName(v.slice(0, 32))}
+            maxLength={32}
+            placeholder="My pipeline instance"
+            helper={`${32 - name.length} chars remaining`}
+          />
+          <Switch checked={showInNav} onChange={setShowInNav} label="Show in Pipelines nav" />
+        </div>
+      )}
+
+      {/* Step 2: Template-specific inputs */}
+      {step === 2 && (
+        <div className="space-y-4">
+          <p className="text-[length:var(--t-sm)] text-[var(--n-8)]">{template.shortDescription}</p>
+          <Card variant="subtle" padding="md">
+            <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+              Template-specific configuration fields would appear here for{' '}
+              <strong>{template.name}</strong>. In the full implementation, each template declares
+              its required inputs and renders the appropriate form.
+            </p>
+          </Card>
+        </div>
+      )}
+
+      {/* Step 3: Review + Install */}
+      {step === 3 && (
+        <div className="space-y-4">
+          <h3 className="text-[length:var(--t-base)] font-medium text-[var(--n-11)]">Review</h3>
+          <Card variant="subtle" padding="md">
+            <div className="space-y-2 text-[length:var(--t-sm)]">
+              <div className="flex justify-between">
+                <span className="text-[var(--n-8)]">Template</span>
+                <span className="text-[var(--n-11)]">{template.name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--n-8)]">Instance name</span>
+                <span className="text-[var(--n-11)]">{name}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-[var(--n-8)]">Show in Pipelines nav</span>
+                <span className="text-[var(--n-11)]">{showInNav ? 'Yes' : 'No'}</span>
+              </div>
+            </div>
+          </Card>
+          {error ? (
+            <div className="rounded-[var(--r-2)] border border-[var(--error-9)] bg-[var(--error-3)] p-3 text-[length:var(--t-xs)] text-[var(--error-11)]">
+              {error}
+            </div>
+          ) : null}
+        </div>
+      )}
+    </Modal>
   );
 }
 
@@ -1485,10 +1421,10 @@ function SettingsPane({
                 <button
                   type="button"
                   onClick={() => onSection(s.id)}
-                  className={`w-full rounded-md px-3 py-2 text-left text-sm transition ${
+                  className={`w-full rounded-[var(--r-2)] px-3 py-2 text-left text-[length:var(--t-sm)] transition ${
                     section === s.id
-                      ? 'bg-orange-500/10 font-medium text-orange-400'
-                      : 'text-[var(--text-muted)] hover:bg-[var(--surface)] hover:text-[var(--text)]'
+                      ? 'bg-[var(--accent-3)] font-medium text-[var(--accent-11)]'
+                      : 'text-[var(--n-8)] hover:bg-[var(--n-3)] hover:text-[var(--n-11)]'
                   }`}
                 >
                   {s.label}
@@ -2207,13 +2143,13 @@ function KpiTile({
 }: KpiTileProps) {
   const valueColor =
     tone === 'positive'
-      ? 'text-emerald-400'
+      ? 'text-[var(--success-11)]'
       : tone === 'negative'
-        ? 'text-rose-400'
+        ? 'text-[var(--error-11)]'
         : tone === 'warn'
-          ? 'text-amber-400'
-          : 'text-[var(--text)]';
-  const deltaColor = deltaPositive ? 'text-emerald-400' : 'text-rose-400';
+          ? 'text-[var(--warn-11)]'
+          : 'text-[var(--n-11)]';
+  const deltaColor = deltaPositive ? 'text-[var(--success-11)]' : 'text-[var(--error-11)]';
 
   const inner = (
     <>
@@ -2237,13 +2173,10 @@ function KpiTile({
 
   if (onClick) {
     return (
-      <article
-        className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5 transition hover:border-[var(--border)] hover:bg-[var(--input-bg)]"
-        aria-label={`${label}: ${value}`}
-      >
+      <article aria-label={`${label}: ${value}`}>
         <button
           type="button"
-          className="block w-full cursor-pointer text-left"
+          className="block w-full cursor-pointer rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-3.5 text-left shadow-[var(--shadow-1)] transition hover:bg-[var(--n-3)]"
           onClick={onClick}
           aria-label={`${label}: ${value}. Click for details.`}
         >
@@ -2253,12 +2186,9 @@ function KpiTile({
     );
   }
   return (
-    <article
-      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3.5"
-      aria-label={`${label}: ${value}`}
-    >
+    <Card padding="sm" aria-label={`${label}: ${value}`}>
       {inner}
-    </article>
+    </Card>
   );
 }
 
@@ -2501,29 +2431,30 @@ function Overview({
       {hasIncidents && firstIncident ? (
         <div
           role="alert"
-          className="flex items-center justify-between rounded-lg border border-rose-700 bg-rose-950/60 px-4 py-3 text-sm"
+          className="flex items-center justify-between rounded-[var(--r-3)] border border-[var(--error-9)] bg-[var(--error-3)] px-4 py-3 text-[length:var(--t-sm)]"
         >
           <div className="flex items-center gap-3">
-            <span className="h-2 w-2 animate-pulse rounded-full bg-rose-500" aria-hidden="true" />
-            <span className="font-medium text-rose-200">Active incident:</span>
-            <span className="text-rose-300">{firstIncident.reason}</span>
+            <span
+              className="h-2 w-2 animate-pulse rounded-full bg-[var(--error-9)]"
+              aria-hidden="true"
+            />
+            <span className="font-medium text-[var(--error-11)]">Active incident:</span>
+            <span className="text-[var(--error-11)]">{firstIncident.reason}</span>
             {(incidentsQ.data?.count ?? 0) > 1 ? (
-              <span className="text-rose-400/70">+{(incidentsQ.data?.count ?? 0) - 1} more</span>
+              <span className="text-[var(--error-11)] opacity-70">
+                +{(incidentsQ.data?.count ?? 0) - 1} more
+              </span>
             ) : null}
           </div>
-          <button
-            type="button"
-            onClick={() => navigateTo('incidents')}
-            className="rounded-md border border-rose-700 px-3 py-1 text-xs text-rose-200 transition hover:bg-rose-900/40"
-          >
-            View incidents →
-          </button>
+          <Button variant="destructive" size="sm" onClick={() => navigateTo('incidents')}>
+            View incidents &rarr;
+          </Button>
         </div>
       ) : null}
 
       {/* ── KPI strip ────────────────────────────────────────────────────── */}
       <section aria-label="Key performance indicators">
-        <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
+        <h2 className="mb-3 text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
           Pulse — today at a glance
         </h2>
         {summaryQ.isPending ? (
@@ -2606,7 +2537,7 @@ function Overview({
         <div className="min-w-0 space-y-6">
           {/* ── Per-driver sparklines ───────────────────────────────────── */}
           <section aria-label="Driver volume sparklines">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
+            <h2 className="mb-3 text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
               Drivers · 14-day trend
             </h2>
             {volumeQ.isPending || taxonomyQ.isPending ? (
@@ -2669,7 +2600,7 @@ function Overview({
 
           {/* ── Hour-of-day heatmap ─────────────────────────────────────── */}
           <section aria-label="Posts by day and hour of week">
-            <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
+            <h2 className="mb-3 text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
               Activity heatmap · day × hour
             </h2>
             {recentQ.isPending ? (
@@ -2759,7 +2690,7 @@ function Overview({
 
         {/* ── Activity ticker (sidebar on lg+) ─────────────────────────── */}
         <aside aria-label="Recent activity">
-          <h2 className="mb-3 text-[11px] uppercase tracking-widest text-[var(--text-muted)]">
+          <h2 className="mb-3 text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
             Recent activity
           </h2>
           {recentQ.isPending ? (
@@ -2849,18 +2780,13 @@ function SentimentBadge({
   score: number | null;
   by: 'lexicon' | 'ai' | null;
 }) {
-  const style =
-    label === 'positive'
-      ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
-      : label === 'negative'
-        ? 'border-rose-800 bg-rose-900/30 text-rose-200'
-        : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)]';
+  const variant = label === 'positive' ? 'success' : label === 'negative' ? 'error' : 'neutral';
   return (
-    <span className={`rounded-full border px-2 py-0.5 ${style}`}>
+    <Badge variant={variant} dot>
       {label}
-      {score != null ? ` ${score.toFixed(2)}` : ''}
+      {score != null ? <span className="tabular-nums"> {score.toFixed(2)}</span> : null}
       {by === 'ai' ? ' · ai' : ''}
-    </span>
+    </Badge>
   );
 }
 
@@ -3063,11 +2989,12 @@ function DriverPostsPanel({
             type="button"
             key={f.id}
             onClick={() => setFilter(f.id)}
-            className={`rounded-full border px-2 py-0.5 transition ${
+            className={[
+              'rounded-[var(--r-full)] border px-2 py-0.5 text-[length:var(--t-xs)] transition min-h-[32px]',
               filter === f.id
-                ? 'border-orange-500 bg-orange-500/10 text-orange-200'
-                : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
-            }`}
+                ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
+                : 'border-[var(--n-4)] bg-[var(--n-2)] text-[var(--n-8)] hover:text-[var(--n-11)]',
+            ].join(' ')}
           >
             {f.label}
           </button>
@@ -3151,41 +3078,29 @@ function DriverPostList({
           {p.reasoning ? (
             <div className="mt-1 text-xs italic text-[var(--text-muted)]">"{p.reasoning}"</div>
           ) : null}
-          <div className="mt-2 flex gap-2 text-xs">
+          <div className="mt-2 flex flex-wrap gap-2">
             <StatusBadge status={p.status} />
             {p.status !== 'resolved' ? (
-              <button
-                type="button"
-                onClick={() => mutate(p.postId, 'resolved')}
-                className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
-              >
+              <Button variant="secondary" size="sm" onClick={() => mutate(p.postId, 'resolved')}>
                 Mark resolved
-              </button>
+              </Button>
             ) : (
-              <button
-                type="button"
-                onClick={() => mutate(p.postId, 'open')}
-                className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:bg-neutral-700"
-              >
+              <Button variant="ghost" size="sm" onClick={() => mutate(p.postId, 'open')}>
                 Re-open
-              </button>
+              </Button>
             )}
             {p.status === 'open' ? (
-              <button
-                type="button"
-                onClick={() => mutate(p.postId, 'in-progress')}
-                className="rounded-full border border-blue-700 bg-blue-900/30 px-2 py-0.5 text-blue-200 transition hover:bg-blue-900/60"
-              >
+              <Button variant="secondary" size="sm" onClick={() => mutate(p.postId, 'in-progress')}>
                 Take ownership
-              </button>
+              </Button>
             ) : null}
-            <button
-              type="button"
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => setOpenThread(openThread === p.postId ? null : p.postId)}
-              className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:bg-neutral-700"
             >
               {openThread === p.postId ? 'Hide thread' : 'Show thread'}
-            </button>
+            </Button>
           </div>
           {openThread === p.postId ? (
             <div className="mt-3">
@@ -3219,11 +3134,13 @@ function ThreadPanel({ postId }: { postId: string }) {
           {comments.length} comment{comments.length === 1 ? '' : 's'} processed
         </span>
         {heat.isHot ? (
-          <span className="rounded-full border border-rose-700 bg-rose-900/40 px-2 py-0.5 text-rose-200">
-            🔥 thread heating up ({(heat.negativeShare * 100).toFixed(0)}% recent negative)
-          </span>
+          <Badge variant="error" dot>
+            🔥 thread heating up (
+            <span className="tabular-nums">{(heat.negativeShare * 100).toFixed(0)}%</span> recent
+            negative)
+          </Badge>
         ) : (
-          <span className="text-[var(--text-muted)]">
+          <span className="text-[length:var(--t-xs)] text-[var(--n-8)] tabular-nums">
             {(heat.negativeShare * 100).toFixed(0)}% recent negative
           </span>
         )}
@@ -3274,11 +3191,8 @@ function AgentSourceBadge({
   // signal. Other sources get a neutral "Verified" badge.
   if (source === 'distinguished') {
     return (
-      <span
-        className="rounded-full border border-emerald-600 bg-emerald-900/50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-200"
-        title="Reddit's own distinguished moderator/admin comment"
-      >
-        🛡 MOD
+      <span title="Reddit's own distinguished moderator/admin comment">
+        <Badge variant="success">MOD</Badge>
       </span>
     );
   }
@@ -3292,25 +3206,24 @@ function AgentSourceBadge({
   };
   const m = source ? meta[source] : meta.record;
   return (
-    <span
-      className="rounded-full border border-blue-700 bg-blue-900/50 px-2 py-0.5 text-[10px] uppercase tracking-wide text-blue-200"
-      title={m.title}
-    >
-      ✓ {m.label}
+    <span title={m.title}>
+      <Badge variant="accent">✓ {m.label}</Badge>
     </span>
   );
 }
 
 function StatusBadge({ status }: { status: PostStatus }) {
-  const style =
+  const variant =
     status === 'resolved'
-      ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
-      : status === 'in-progress'
-        ? 'border-blue-800 bg-blue-900/30 text-blue-200'
-        : status === 'responded'
-          ? 'border-violet-800 bg-violet-900/30 text-violet-200'
-          : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text)]';
-  return <span className={`rounded-full border px-2 py-0.5 ${style}`}>{status}</span>;
+      ? 'success'
+      : status === 'in-progress' || status === 'responded'
+        ? 'accent'
+        : 'neutral';
+  return (
+    <Badge variant={variant as 'success' | 'accent' | 'neutral'} dot>
+      {status}
+    </Badge>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -3418,17 +3331,17 @@ function SentimentDrillCard({
 }) {
   const accent =
     tone === 'positive'
-      ? 'text-emerald-400'
+      ? 'text-[var(--success-11)]'
       : tone === 'negative'
-        ? 'text-rose-400'
-        : 'text-[var(--text)]';
+        ? 'text-[var(--error-11)]'
+        : 'text-[var(--n-11)]';
 
   const ringClass = isOpen
     ? tone === 'positive'
-      ? 'ring-2 ring-emerald-600'
+      ? 'ring-2 ring-[var(--success-9)]'
       : tone === 'negative'
-        ? 'ring-2 ring-rose-600'
-        : 'ring-2 ring-neutral-500'
+        ? 'ring-2 ring-[var(--error-9)]'
+        : 'ring-2 ring-[var(--n-6)]'
     : '';
 
   return (
