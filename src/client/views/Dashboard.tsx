@@ -22,6 +22,7 @@ import { PipelineSummaryCard } from '../components/PipelineSummaryCard.tsx';
 import { PriorityQueuePanel } from '../components/PriorityQueuePanel.tsx';
 import { RuleFiringsPanel } from '../components/RuleFiringsPanel.tsx';
 import { ShortcutsModal } from '../components/ShortcutsModal.tsx';
+import { SkeletonList, Tabs } from '../components/ui/index.ts';
 import { ErrorBoundary } from '../ErrorBoundary.tsx';
 import { type NavBadges, useNavBadges } from '../hooks/useNavBadges.ts';
 import {
@@ -431,7 +432,7 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
   return (
     <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-4 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-3">
-        <span className="block h-3 w-3 rounded-full bg-orange-500" />
+        <span className="block h-3 w-3 rounded-full bg-[var(--accent-9)]" />
         <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattice</h1>
         <span className="ml-2 rounded-full border border-[var(--border)] px-2 py-0.5 text-xs text-[var(--text-muted)]">
           analytics
@@ -518,40 +519,22 @@ function Nav({
   }, [settingsOpen]);
 
   return (
-    <nav className="relative border-b border-[var(--border)] bg-[var(--bg)]">
+    <nav className="relative border-b border-[var(--n-4)] bg-[var(--n-0)]">
       <div className="mx-auto flex max-w-6xl items-stretch px-6">
-        <div
-          role="tablist"
-          aria-label="Dashboard tabs"
-          className="flex min-w-0 flex-1 items-stretch gap-1 overflow-x-auto [&::-webkit-scrollbar]:hidden"
-          style={{ scrollbarWidth: 'none' }}
-        >
-          {PRIMARY_TABS.map((t) => {
-            const isActive = tab === t.id;
-            const badge = t.id === 'posts' && badges.inbox > 0 ? badges.inbox : null;
-
-            return (
-              <button
-                type="button"
-                role="tab"
-                key={t.id}
-                aria-selected={isActive}
-                onClick={() => setTab(t.id)}
-                className={`-mb-px relative flex flex-shrink-0 items-center gap-1.5 border-b-2 px-4 py-3 text-sm font-medium transition ${
-                  isActive
-                    ? 'border-orange-500 text-[var(--text)]'
-                    : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
-                }`}
-              >
-                {t.label}
-                {badge !== null ? (
-                  <span className="inline-flex min-w-[18px] items-center justify-center rounded-full bg-orange-500 px-1 py-0.5 text-[10px] font-semibold leading-none text-white">
-                    {badge > 99 ? '99+' : badge}
-                  </span>
-                ) : null}
-              </button>
-            );
-          })}
+        <div className="min-w-0 flex-1">
+          <Tabs
+            tabs={PRIMARY_TABS.map((t) => {
+              const item: { id: Tab; label: string; badge?: number } = {
+                id: t.id,
+                label: t.label,
+              };
+              if (t.id === 'posts' && badges.inbox > 0) item.badge = badges.inbox;
+              return item;
+            })}
+            activeId={tab}
+            onChange={(id) => setTab(id as Tab)}
+            className="border-b-0"
+          />
         </div>
         {/* Settings ▾ dropdown */}
         <div
@@ -701,16 +684,7 @@ function Posts({
           )}
         </div>
 
-        {instancesQ.isPending && (
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {[1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="h-[200px] animate-pulse rounded-xl border border-[var(--border)] bg-[var(--surface)]"
-              />
-            ))}
-          </div>
-        )}
+        {instancesQ.isPending && <SkeletonList rows={3} rowHeight="200px" />}
 
         {!instancesQ.isPending && instances.length === 0 && (
           <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] py-12 text-center">
@@ -5269,18 +5243,8 @@ function SkeletonGrid() {
   );
 }
 
-function SkeletonList() {
-  return (
-    <div className="space-y-2" aria-busy="true">
-      {[0, 1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className="h-14 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
-        />
-      ))}
-    </div>
-  );
-}
+// SkeletonList is imported from components/ui/Skeleton (primitive replaces
+// the legacy local SkeletonList function as part of the UI revamp).
 
 function EmptyHint({ children }: { children: React.ReactNode }) {
   return (
