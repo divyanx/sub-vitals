@@ -1,14 +1,42 @@
 /**
- * Derives 4 CSS custom-property stops from a single #RRGGBB hex string.
+ * Derives accent CSS stops from a single #RRGGBB brand color and applies
+ * them so light + dark themes both look correct.
  *
- * stop-3  = very subtle background (low lightness in dark, high lightness in light)
- * stop-9  = primary action color (the hex itself)
- * stop-10 = hover (slightly darker)
- * stop-11 = text on subtle bg (contrasting but on-brand)
+ * Why a <style> element instead of inline style.setProperty():
+ *   Inline styles on <html> win over every CSS rule including @media
+ *   queries. The previous implementation computed isDark once at mount
+ *   time, wrote inline values, then never updated — so if Reddit's chrome
+ *   theme didn't agree with prefers-color-scheme (which happens inside
+ *   Devvit iframes when a user toggles mode via Reddit's UI rather than
+ *   the OS), the accent stops stayed wrong and were impossible to override.
  *
- * Strategy: convert hex → HSL, then nudge lightness for each stop.
- * No external library — pure 30-line math.
+ *   We now compute BOTH light and dark stops up front and inject them as
+ *   regular CSS rules. The native cascade — same selectors styles.css
+ *   uses — picks the right set at paint time, every time.
+ *
+ * Stop semantics (matches the static stylesheet):
+ *   --accent-3   very subtle background tint (low contrast)
+ *   --accent-9   primary action color (the brand hex)
+ *   --accent-10  hover (slightly darker)
+ *   --accent-11  text on subtle bg (readable contrast)
  */
+
+const STYLE_ELEMENT_ID = 'rl-brand-accent';
+
+const REDDIT_ORANGE_DEFAULTS = {
+  dark: {
+    '--accent-3': '#3d1500',
+    '--accent-9': '#ff4500',
+    '--accent-10': '#e03d00',
+    '--accent-11': '#ff7a54',
+  },
+  light: {
+    '--accent-3': '#ffe8e0',
+    '--accent-9': '#ff4500',
+    '--accent-10': '#e03d00',
+    '--accent-11': '#c23100',
+  },
+} as const;
 
 function hexToHsl(hex: string): [number, number, number] {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
@@ -49,41 +77,76 @@ export interface AccentStops {
 }
 
 /**
- * Given a base hex color (#RRGGBB), returns 4 CSS variable values.
- * Works for both dark and light themes — the stops are absolute, not relative.
+ * Compute both theme variants from a single brand hex. We always return
+ * both sets so the cascade can pick — never gate on a runtime media query.
  */
-export function deriveAccentStops(hex: string): AccentStops {
+export function deriveAccentStops(hex: string): { dark: AccentStops; light: AccentStops } {
   if (!/^#[0-9a-fA-F]{6}$/.test(hex)) {
-    // Fall back to Reddit orange defaults
-    return {
-      '--accent-3': '#3d1500',
-      '--accent-9': '#ff4500',
-      '--accent-10': '#e03d00',
-      '--accent-11': '#ff7a54',
-    };
+    return REDDIT_ORANGE_DEFAULTS;
   }
   const [h, s, l] = hexToHsl(hex);
-  const isDarkMode =
-    document.documentElement.getAttribute('data-theme') !== 'light' &&
-    !window.matchMedia('(prefers-color-scheme: light)').matches;
-
+  const hover = hslToHex(h, s, Math.max(l - 10, 0));
   return {
-    '--accent-3': isDarkMode
-      ? hslToHex(h, Math.min(s, 90), Math.max(l - 30, 8))
-      : hslToHex(h, Math.min(s, 60), Math.min(l + 32, 95)),
-    '--accent-9': hex,
-    '--accent-10': hslToHex(h, s, Math.max(l - 10, 0)),
-    '--accent-11': isDarkMode
-      ? hslToHex(h, Math.min(s, 80), Math.min(l + 20, 85))
-      : hslToHex(h, s, Math.max(l - 25, 10)),
+    dark: {
+      // Subtle background: pull lightness way down so it sits behind text
+      '--accent-3': hslToHex(h, Math.min(s, 90), Math.max(l - 30, 8)),
+      '--accent-9': hex,
+      '--accent-10': hover,
+      // Text on subtle bg: push lightness up for contrast
+      '--accent-11': hslToHex(h, Math.min(s, 80), Math.min(l + 20, 85)),
+    },
+    light: {
+      // Subtle background: high lightness, soft saturation (cream / pastel)
+      '--accent-3': hslToHex(h, Math.min(s, 60), Math.min(l + 32, 95)),
+      '--accent-9': hex,
+      '--accent-10': hover,
+      // Text on subtle bg: deep saturated tone of the brand color
+      '--accent-11': hslToHex(h, s, Math.max(l - 25, 10)),
+    },
   };
 }
 
-/** Applies derived stops to document.documentElement. */
+function formatRule(selector: string, stops: AccentStops): string {
+  const decls = Object.entries(stops)
+    .map(([k, v]) => `  ${k}: ${v};`)
+    .join('\n');
+  return `${selector} {\n${decls}\n}`;
+}
+
+/**
+ * Inject (or replace) a <style> element containing both light and dark
+ * stops scoped by the same selectors styles.css uses. Idempotent — safe
+ * to call on every settings change.
+ *
+ * Also clears any stale inline accent properties left by the previous
+ * implementation; otherwise they'd still win the cascade.
+ */
 export function applyAccentStops(hex: string): void {
-  const stops = deriveAccentStops(hex);
-  const root = document.documentElement;
-  for (const [k, v] of Object.entries(stops)) {
-    root.style.setProperty(k, v);
+  const { dark, light } = deriveAccentStops(hex);
+
+  const css = [
+    // Default = dark (matches styles.css :root block)
+    formatRule(':root', dark),
+    // Light when the OS prefers light AND no explicit dark override
+    `@media (prefers-color-scheme: light) {\n${formatRule('  :root:not([data-theme="dark"])', light)}\n}`,
+    // Explicit theme overrides win regardless of OS pref
+    formatRule('[data-theme="light"]', light),
+    formatRule('[data-theme="dark"]', dark),
+  ].join('\n\n');
+
+  let el = document.getElementById(STYLE_ELEMENT_ID) as HTMLStyleElement | null;
+  if (!el) {
+    el = document.createElement('style');
+    el.id = STYLE_ELEMENT_ID;
+    document.head.appendChild(el);
   }
+  el.textContent = css;
+
+  // Strip stale inline overrides written by previous implementations.
+  // No-op if they're not set.
+  const root = document.documentElement;
+  root.style.removeProperty('--accent-3');
+  root.style.removeProperty('--accent-9');
+  root.style.removeProperty('--accent-10');
+  root.style.removeProperty('--accent-11');
 }
