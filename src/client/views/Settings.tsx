@@ -16,6 +16,16 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { useId, useState } from 'react';
+import {
+  Badge,
+  Button,
+  Card,
+  Input,
+  Select,
+  Skeleton,
+  Switch,
+  Textarea,
+} from '../components/ui/index.ts';
 import { api, type Webhook, type WebhookDelivery, type WebhookFormat } from '../lib/api.ts';
 import { OnboardingSettingsSection } from './Onboarding.tsx';
 
@@ -53,11 +63,13 @@ function ToastContainer({ toasts }: { toasts: ToastItem[] }) {
       {toasts.map((t) => (
         <output
           key={t.id}
-          className={`pointer-events-auto block max-w-sm rounded-lg border px-4 py-3 text-sm shadow-lg transition-all ${
+          className={[
+            'pointer-events-auto block max-w-sm rounded-[var(--r-3)] border px-4 py-3',
+            'text-[length:var(--t-sm)] shadow-[var(--shadow-2)] transition-all',
             t.type === 'success'
-              ? 'border-emerald-700 bg-emerald-950 text-emerald-100'
-              : 'border-rose-700 bg-rose-950 text-rose-100'
-          }`}
+              ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
+              : 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]',
+          ].join(' ')}
         >
           {t.msg}
         </output>
@@ -80,11 +92,13 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
-      <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">{title}</h3>
-      {description ? <p className="mb-4 text-xs text-[var(--text-muted)]">{description}</p> : null}
+    <Card padding="lg">
+      <h3 className="mb-1 text-[length:var(--t-base)] font-semibold text-[var(--n-12)]">{title}</h3>
+      {description ? (
+        <p className="mb-4 text-[length:var(--t-sm)] text-[var(--n-8)]">{description}</p>
+      ) : null}
       {children}
-    </section>
+    </Card>
   );
 }
 
@@ -98,15 +112,10 @@ function SaveButton({
   disabled?: boolean;
 }) {
   return (
-    <div className="mt-6 flex justify-end border-t border-[var(--border)] pt-4">
-      <button
-        type="button"
-        onClick={onClick}
-        disabled={loading || disabled}
-        className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
-      >
-        {loading ? 'Saving…' : 'Save'}
-      </button>
+    <div className="mt-6 flex justify-end border-t border-[var(--n-4)] pt-4">
+      <Button variant="primary" size="sm" onClick={onClick} isLoading={loading} disabled={disabled}>
+        Save
+      </Button>
     </div>
   );
 }
@@ -114,45 +123,9 @@ function SaveButton({
 function FieldError({ msg }: { msg: string | null }) {
   if (!msg) return null;
   return (
-    <div className="mt-2 rounded border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
+    <div className="mt-2 rounded-[var(--r-2)] border border-[var(--error-9)] bg-[var(--error-3)] px-3 py-2 text-[length:var(--t-xs)] text-[var(--error-11)]">
       {msg}
     </div>
-  );
-}
-
-function Label({ children, htmlFor }: { children: React.ReactNode; htmlFor?: string }) {
-  return (
-    <label htmlFor={htmlFor} className="mb-1 block text-xs font-medium text-[var(--text)]">
-      {children}
-    </label>
-  );
-}
-
-function Input({
-  id,
-  value,
-  onChange,
-  placeholder,
-  type = 'text',
-  'aria-label': ariaLabel,
-}: {
-  id?: string;
-  value: string;
-  onChange: (v: string) => void;
-  placeholder?: string;
-  type?: string;
-  'aria-label'?: string;
-}) {
-  return (
-    <input
-      id={id}
-      type={type}
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-      placeholder={placeholder}
-      aria-label={ariaLabel}
-      className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
-    />
   );
 }
 
@@ -177,10 +150,7 @@ export function Settings({ initialSection = 'all' }: { initialSection?: Settings
     return (
       <div className="space-y-3">
         {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className="h-40 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
-          />
+          <Skeleton key={i} className="h-40" />
         ))}
       </div>
     );
@@ -189,8 +159,10 @@ export function Settings({ initialSection = 'all' }: { initialSection?: Settings
   if (settingsQ.isError) {
     return (
       <div className="space-y-4">
-        <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Settings</h2>
-        <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
+        <h2 className="text-[length:var(--t-sm)] uppercase tracking-wide text-[var(--n-8)]">
+          Settings
+        </h2>
+        <div className="rounded-[var(--r-3)] border border-[var(--error-9)] bg-[var(--error-3)] p-4 text-[length:var(--t-sm)] text-[var(--error-11)]">
           Failed to load settings.{' '}
           <button type="button" onClick={() => settingsQ.refetch()} className="underline">
             Retry
@@ -208,11 +180,13 @@ export function Settings({ initialSection = 'all' }: { initialSection?: Settings
       <ToastContainer toasts={toasts} />
       {initialSection === 'all' && (
         <header>
-          <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">Settings</h2>
-          <p className="mt-1 max-w-2xl text-xs text-[var(--text-muted)]">
+          <h2 className="text-[length:var(--t-sm)] uppercase tracking-wide text-[var(--n-8)]">
+            Settings
+          </h2>
+          <p className="mt-1 max-w-2xl text-[length:var(--t-xs)] text-[var(--n-8)]">
             Changes take effect immediately. All values are stored in Redis and override Devvit
             settings defaults. The OpenRouter API key must be set via{' '}
-            <code className="rounded bg-[var(--input-bg)] px-1">
+            <code className="rounded-[var(--r-1)] bg-[var(--n-3)] px-1">
               npx devvit settings set openrouter-api-key
             </code>
             .
@@ -238,12 +212,14 @@ export function Settings({ initialSection = 'all' }: { initialSection?: Settings
 // Brand identity
 // ---------------------------------------------------------------------------
 
-const TONE_COLOR: Record<string, string> = {
-  empathetic: 'border-emerald-700 bg-emerald-900/30 text-emerald-200',
-  direct: 'border-orange-700 bg-orange-900/30 text-orange-200',
-  concise: 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)]',
-  investigative: 'border-blue-700 bg-blue-900/30 text-blue-200',
+const TONE_COLOR: Record<string, BadgeVariant> = {
+  empathetic: 'success',
+  direct: 'accent',
+  concise: 'neutral',
+  investigative: 'warn',
 };
+
+type BadgeVariant = 'success' | 'accent' | 'neutral' | 'warn' | 'error';
 
 function BrandIdentitySection({
   data,
@@ -254,7 +230,6 @@ function BrandIdentitySection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
-  const brandNameId = useId();
   const brandVoiceId = useId();
   const [brandName, setBrandName] = useState(String(data['brand-name'] ?? ''));
   const [brandVoice, setBrandVoice] = useState(String(data['brand-voice'] ?? ''));
@@ -302,62 +277,57 @@ function BrandIdentitySection({
       description="Used across draft replies, impostor detection, and the triage cockpit."
     >
       <div className="space-y-4">
-        <div>
-          <Label htmlFor={brandNameId}>Brand name</Label>
-          <Input
-            id={brandNameId}
-            value={brandName}
-            onChange={setBrandName}
-            placeholder="e.g. Acme, Sonos, Duolingo"
-          />
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Used in impostor detection. Leave blank to disable.
-          </p>
-        </div>
+        <Input
+          label="Brand name"
+          value={brandName}
+          onChange={setBrandName}
+          placeholder="e.g. Acme, Sonos, Duolingo"
+          helper="Used in impostor detection. Leave blank to disable."
+        />
         <div>
           <div className="mb-1 flex items-center justify-between">
-            <Label htmlFor={brandVoiceId}>Brand voice</Label>
-            <span className="text-[10px] text-[var(--text-muted)]">{brandVoice.length}/2000</span>
+            <label
+              htmlFor={brandVoiceId}
+              className="text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+            >
+              Brand voice
+            </label>
+            <span className="text-[length:var(--t-xs)] text-[var(--n-8)] tabular-nums">
+              {brandVoice.length}/2000
+            </span>
           </div>
-          <textarea
+          <Textarea
             id={brandVoiceId}
             value={brandVoice}
-            onChange={(e) => setBrandVoice(e.target.value)}
+            onChange={setBrandVoice}
             rows={5}
             maxLength={2000}
             placeholder="Friendly, empathetic, never defensive. Acknowledge frustration first. Sign off as the Acme support team."
-            className="w-full resize-y rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-1 focus-visible:ring-offset-neutral-900"
+            helper="Shapes AI draft replies. Describe tone, things to avoid, sign-off style."
           />
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Shapes AI draft replies. Describe tone, things to avoid, sign-off style.
-          </p>
         </div>
       </div>
       <FieldError msg={error} />
       <div className="mt-4">
-        <button
-          type="button"
-          onClick={testDraft}
-          disabled={draftLoading}
-          className="rounded-md border border-violet-700 bg-violet-900/20 px-3 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-900/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-violet-500"
-        >
-          {draftLoading ? '✨ Generating…' : '✨ Test brand voice'}
-        </button>
-        <p className="mt-2 text-xs text-[var(--text-muted)]">
+        <Button variant="secondary" size="sm" onClick={testDraft} isLoading={draftLoading}>
+          Test brand voice
+        </Button>
+        <p className="mt-2 text-[length:var(--t-xs)] text-[var(--n-8)]">
           Generates 3 sample AI replies against a recent post to preview your tone.
         </p>
       </div>
       {draftError ? (
-        <div className="mt-3 rounded border border-rose-800 bg-rose-950/40 px-3 py-2 text-xs text-rose-200">
+        <div className="mt-3 rounded-[var(--r-2)] border border-[var(--error-9)] bg-[var(--error-3)] px-3 py-2 text-[length:var(--t-xs)] text-[var(--error-11)]">
           {draftError}
         </div>
       ) : null}
       {draftData ? (
         <div className="mt-4 space-y-3">
-          <p className="text-xs text-[var(--text-muted)]">
-            Draft against: <span className="text-[var(--text)]">"{draftData.postTitle}"</span>
-            <span className="ml-2 text-[var(--text-muted)]">
-              · {draftData.tokensIn + draftData.tokensOut} tokens · $
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+            Draft against:{' '}
+            <span className="text-[var(--n-11)]">&ldquo;{draftData.postTitle}&rdquo;</span>
+            <span className="ml-2 tabular-nums text-[var(--n-8)]">
+              &middot; {draftData.tokensIn + draftData.tokensOut} tokens &middot; $
               {(draftData.costCents / 100).toFixed(4)}
               {draftData.cached ? ' · cached' : ''}
             </span>
@@ -366,17 +336,15 @@ function BrandIdentitySection({
             {draftData.candidates.map((c, i) => (
               <li
                 key={`${c.tone}-${i}`}
-                className="rounded-lg border border-[var(--border)] bg-[var(--bg)]/50 p-3"
+                className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-1)] p-3"
               >
-                <div className="mb-2 flex items-center gap-2 text-xs">
-                  <span
-                    className={`rounded-full border px-2 py-0.5 ${TONE_COLOR[c.tone] ?? TONE_COLOR.concise}`}
-                  >
-                    {c.tone}
-                  </span>
-                  <span className="text-[var(--text-muted)]">{c.rationale}</span>
+                <div className="mb-2 flex items-center gap-2 text-[length:var(--t-xs)]">
+                  <Badge variant={TONE_COLOR[c.tone] ?? 'neutral'}>{c.tone}</Badge>
+                  <span className="text-[var(--n-8)]">{c.rationale}</span>
                 </div>
-                <p className="whitespace-pre-wrap text-sm text-[var(--text)]">{c.reply}</p>
+                <p className="whitespace-pre-wrap text-[length:var(--t-sm)] text-[var(--n-11)]">
+                  {c.reply}
+                </p>
               </li>
             ))}
           </ul>
@@ -422,7 +390,10 @@ function BrandAccentSection({
     >
       <div className="flex flex-col gap-4 sm:flex-row sm:items-end">
         <div className="flex flex-col gap-1">
-          <label htmlFor="accent-picker" className="text-xs font-medium text-[var(--n-11)]">
+          <label
+            htmlFor="accent-picker"
+            className="text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+          >
             Accent hex
           </label>
           <div className="flex items-center gap-3">
@@ -442,7 +413,7 @@ function BrandAccentSection({
                 if (/^#[0-9a-fA-F]{0,6}$/.test(v)) setHex(v);
               }}
               maxLength={7}
-              className="w-28 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-2 text-sm font-mono text-[var(--n-11)] uppercase outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
+              className="w-28 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-2 text-[length:var(--t-sm)] font-mono text-[var(--n-11)] uppercase outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
               aria-label="Accent color hex value"
             />
             <span
@@ -453,15 +424,16 @@ function BrandAccentSection({
           </div>
         </div>
       </div>
-      <div className="mt-6 flex justify-end border-t border-[var(--border)] pt-4">
-        <button
-          type="button"
+      <div className="mt-6 flex justify-end border-t border-[var(--n-4)] pt-4">
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => mut.mutate({ 'brand-accent': hex })}
-          disabled={mut.isPending || !/^#[0-9a-fA-F]{6}$/.test(hex)}
-          className="rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] px-4 py-1.5 text-sm font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-9)] hover:text-white disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
+          isLoading={mut.isPending}
+          disabled={!/^#[0-9a-fA-F]{6}$/.test(hex)}
         >
-          {mut.isPending ? 'Saving…' : 'Save accent'}
-        </button>
+          Save accent
+        </Button>
       </div>
     </Section>
   );
@@ -480,10 +452,7 @@ function IdentityTrustSection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
-  const patternId = useId();
   const testFlairId = useId();
-  const flairTextId = useId();
-  const flairColorId = useId();
   const [pattern, setPattern] = useState(String(data['agent-flair-pattern'] ?? ''));
   const [flairText, setFlairText] = useState(String(data['agent-flair-text'] ?? 'Verified Agent'));
   const [flairColor, setFlairColor] = useState(String(data['agent-flair-color'] ?? '#1e3a8a'));
@@ -524,14 +493,14 @@ function IdentityTrustSection({
       description="Configure how RedLattice detects and displays verified brand reps."
     >
       <div className="space-y-4">
+        <Input
+          label="Verified-rep flair regex"
+          value={pattern}
+          onChange={setPattern}
+          placeholder="^(Verified|Brand Team|Acme Support)$"
+          helper="Commenters whose flair matches this regex are treated as verified reps."
+        />
         <div>
-          <Label htmlFor={patternId}>Verified-rep flair regex</Label>
-          <Input
-            id={patternId}
-            value={pattern}
-            onChange={setPattern}
-            placeholder="^(Verified|Brand Team|Acme Support)$"
-          />
           <div className="mt-1 flex items-center gap-2">
             <label htmlFor={testFlairId} className="sr-only">
               Test flair text
@@ -542,47 +511,48 @@ function IdentityTrustSection({
               value={testFlair}
               onChange={(e) => setTestFlair(e.target.value)}
               placeholder="Test flair text…"
-              className="flex-1 rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-xs text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+              className="min-h-[44px] flex-1 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-2 py-1 text-[length:var(--t-sm)] text-[var(--n-11)] outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
             />
             {regexResult ? (
-              <span
-                className={`rounded px-2 py-0.5 text-xs font-medium ${
+              <Badge
+                variant={
                   regexResult === 'MATCH'
-                    ? 'bg-emerald-900/50 text-emerald-200'
-                    : regexResult === 'NO MATCH'
-                      ? 'bg-[var(--input-bg)] text-[var(--text-muted)]'
-                      : 'bg-rose-900/50 text-rose-200'
-                }`}
+                    ? 'success'
+                    : regexResult === 'INVALID REGEX'
+                      ? 'error'
+                      : 'neutral'
+                }
               >
                 {regexResult}
-              </span>
+              </Badge>
             ) : null}
           </div>
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Commenters whose flair matches this regex are treated as verified reps.
-          </p>
         </div>
+        <Input
+          label="Flair text to apply on verification"
+          value={flairText}
+          onChange={setFlairText}
+          placeholder="Verified Agent"
+        />
         <div>
-          <Label htmlFor={flairTextId}>Flair text to apply on verification</Label>
-          <Input
-            id={flairTextId}
-            value={flairText}
-            onChange={setFlairText}
-            placeholder="Verified Agent"
-          />
-        </div>
-        <div>
-          <Label htmlFor={flairColorId}>Flair background color</Label>
+          <label
+            htmlFor="flair-color-picker"
+            className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+          >
+            Flair background color
+          </label>
           <div className="flex items-center gap-3">
             <input
-              id={flairColorId}
+              id="flair-color-picker"
               type="color"
               value={flairColor}
               onChange={(e) => setFlairColor(e.target.value)}
               aria-label="Flair background color picker"
-              className="h-9 w-14 cursor-pointer rounded border border-[var(--border)] bg-[var(--input-bg)] p-0.5"
+              className="h-9 w-14 cursor-pointer rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] p-0.5"
             />
-            <span className="text-xs text-[var(--text-muted)]">{flairColor}</span>
+            <span className="text-[length:var(--t-xs)] text-[var(--n-8)] tabular-nums">
+              {flairColor}
+            </span>
           </div>
         </div>
       </div>
@@ -641,7 +611,12 @@ function ThresholdsSection({
     >
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <div>
-          <Label htmlFor={sentThreshId}>Negative comment alert threshold</Label>
+          <label
+            htmlFor={sentThreshId}
+            className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+          >
+            Negative comment alert threshold
+          </label>
           <input
             id={sentThreshId}
             type="number"
@@ -649,15 +624,20 @@ function ThresholdsSection({
             max={50}
             value={sentThreshold}
             onChange={(e) => setSentThreshold(Number(e.target.value))}
-            className="w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+            className="min-h-[44px] w-full rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-2 text-[length:var(--t-base)] tabular-nums text-[var(--n-11)] outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
           />
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
+          <p className="mt-1 text-[length:var(--t-xs)] text-[var(--n-8)]">
             Modmail fires when a thread has this many negative comments in the last{' '}
-            {Math.round(sentThreshold)} sampled.
+            <span className="tabular-nums">{Math.round(sentThreshold)}</span> sampled.
           </p>
         </div>
         <div>
-          <Label htmlFor={slaMinutesId}>First-response SLA (minutes)</Label>
+          <label
+            htmlFor={slaMinutesId}
+            className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+          >
+            First-response SLA (minutes)
+          </label>
           <input
             id={slaMinutesId}
             type="number"
@@ -665,16 +645,21 @@ function ThresholdsSection({
             max={1440}
             value={slaMinutes}
             onChange={(e) => setSlaMinutes(Number(e.target.value))}
-            className="w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+            className="min-h-[44px] w-full rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-2 text-[length:var(--t-base)] tabular-nums text-[var(--n-11)] outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
           />
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
+          <p className="mt-1 text-[length:var(--t-xs)] text-[var(--n-8)]">
             Posts unanswered beyond this SLA appear in the breach feed.
           </p>
         </div>
         <div>
-          <Label htmlFor={costCapId}>Monthly AI cost cap</Label>
+          <label
+            htmlFor={costCapId}
+            className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+          >
+            Monthly AI cost cap
+          </label>
           <div className="flex items-center gap-2">
-            <span className="text-sm text-[var(--text-muted)]" aria-hidden="true">
+            <span className="text-[length:var(--t-sm)] text-[var(--n-8)]" aria-hidden="true">
               $
             </span>
             <input
@@ -685,12 +670,12 @@ function ThresholdsSection({
               step={0.01}
               value={(costCapCents / 100).toFixed(2)}
               onChange={(e) => setCostCapCents(Math.round(Number(e.target.value) * 100))}
-              className="w-full rounded border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+              className="min-h-[44px] w-full rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-2 text-[length:var(--t-base)] tabular-nums text-[var(--n-11)] outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
             />
           </div>
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            When exceeded, AI tagging falls back to lexicon-only. Current value: {costCapCents}{' '}
-            cents.
+          <p className="mt-1 text-[length:var(--t-xs)] text-[var(--n-8)]">
+            When exceeded, AI tagging falls back to lexicon-only. Current:{' '}
+            <span className="tabular-nums">{costCapCents}</span> cents.
           </p>
         </div>
       </div>
@@ -704,12 +689,12 @@ function ThresholdsSection({
 // AI
 // ---------------------------------------------------------------------------
 
-const TIER_BADGE: Record<string, string> = {
-  recommended: 'bg-orange-900/50 text-orange-200 border-orange-700',
-  fast: 'bg-blue-900/50 text-blue-200 border-blue-700',
-  cheapest: 'bg-emerald-900/50 text-emerald-200 border-emerald-700',
-  best: 'bg-violet-900/50 text-violet-200 border-violet-700',
-  'eu-hosted': 'bg-sky-900/50 text-sky-200 border-sky-700',
+const TIER_BADGE: Record<string, BadgeVariant> = {
+  recommended: 'accent',
+  fast: 'neutral',
+  cheapest: 'success',
+  best: 'warn',
+  'eu-hosted': 'neutral',
 };
 
 const TIER_LABELS: Record<string, string> = {
@@ -740,7 +725,6 @@ function AISection({
 }) {
   const customModelId = useId();
 
-  // AI status query (catalog + fallback state).
   const aiStatusQ = useQuery({
     queryKey: ['ai-status'],
     queryFn: api.ai.status,
@@ -752,7 +736,6 @@ function AISection({
   const originalSlug = aiStatusQ.data?.originalSlug ?? null;
   const defaultModel = aiStatusQ.data?.defaultModel ?? 'anthropic/claude-haiku-4.5';
 
-  // Current effective model slug from settings (may be a custom slug not in catalog).
   const currentSlug = String(data['llm-model'] ?? defaultModel);
   const inCatalog = catalog.some((m) => m.slug === currentSlug);
 
@@ -796,7 +779,6 @@ function AISection({
 
   const acceptDefaultMut = useMutation({
     mutationFn: async () => {
-      // Clear the fallback flag then save the default model explicitly.
       await api.ai.clearFallback();
       return api.settings.put({ 'llm-model': defaultModel });
     },
@@ -848,7 +830,6 @@ function AISection({
     }
   };
 
-  // Cost estimate widget — read daily volume from driver rollup.
   const todayDriverQ = useQuery({
     queryKey: ['driver-volume-today'],
     queryFn: api.driverVolume,
@@ -868,19 +849,23 @@ function AISection({
       <div className="space-y-4">
         {/* API Key status */}
         <div
-          className={`flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
+          className={[
+            'flex items-center gap-3 rounded-[var(--r-3)] border px-4 py-3',
+            'text-[length:var(--t-sm)]',
             data.openrouterKeyConfigured
-              ? 'border-emerald-800 bg-emerald-950/30 text-emerald-200'
-              : 'border-amber-800 bg-amber-950/30 text-amber-200'
-          }`}
+              ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
+              : 'border-[var(--warn-9)] bg-[var(--warn-3)] text-[var(--warn-11)]',
+          ].join(' ')}
         >
-          <span className="text-base">{data.openrouterKeyConfigured ? '✓' : '⚠'}</span>
+          <span className="text-base" aria-hidden="true">
+            {data.openrouterKeyConfigured ? '✓' : '⚠'}
+          </span>
           {data.openrouterKeyConfigured ? (
             <span>OpenRouter API key is configured.</span>
           ) : (
             <span>
               No API key set. Run{' '}
-              <code className="rounded bg-amber-900/40 px-1">
+              <code className="rounded-[var(--r-1)] bg-[var(--warn-3)] px-1">
                 npx devvit settings set openrouter-api-key
               </code>{' '}
               to enable AI features.
@@ -891,44 +876,52 @@ function AISection({
         {/* Auto-fallback alert */}
         {isFallback && originalSlug ? (
           <div
-            className="flex flex-col gap-3 rounded-lg border border-amber-700 bg-amber-950/30 px-4 py-3 text-sm text-amber-200"
+            className="flex flex-col gap-3 rounded-[var(--r-3)] border border-[var(--warn-9)] bg-[var(--warn-3)] px-4 py-3 text-[length:var(--t-sm)] text-[var(--warn-11)]"
             data-testid="fallback-alert"
           >
             <div className="flex items-start gap-2">
-              <span className="mt-0.5 text-base">⚠</span>
+              <span className="mt-0.5 text-base" aria-hidden="true">
+                ⚠
+              </span>
               <span>
                 <strong>AI auto-fallback active</strong> — using{' '}
-                <code className="rounded bg-amber-900/40 px-1">{defaultModel}</code> because{' '}
-                <code className="rounded bg-amber-900/40 px-1">{originalSlug}</code> had repeated
-                errors.
+                <code className="rounded-[var(--r-1)] bg-[var(--warn-3)] px-1">{defaultModel}</code>{' '}
+                because{' '}
+                <code className="rounded-[var(--r-1)] bg-[var(--warn-3)] px-1">{originalSlug}</code>{' '}
+                had repeated errors.
               </span>
             </div>
             <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => acceptDefaultMut.mutate()}
-                disabled={acceptDefaultMut.isPending}
-                className="rounded border border-emerald-700 bg-emerald-900/30 px-3 py-1 text-xs font-medium text-emerald-200 transition hover:bg-emerald-900/50 disabled:opacity-50"
+                isLoading={acceptDefaultMut.isPending}
               >
                 Use default permanently
-              </button>
-              <button
-                type="button"
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
                 onClick={() => clearFallbackMut.mutate()}
-                disabled={clearFallbackMut.isPending}
-                className="rounded border border-amber-700 bg-amber-900/30 px-3 py-1 text-xs font-medium text-amber-200 transition hover:bg-amber-900/50 disabled:opacity-50"
+                isLoading={clearFallbackMut.isPending}
               >
                 Try {originalSlug} again
-              </button>
+              </Button>
             </div>
           </div>
         ) : null}
 
         {/* Model dropdown */}
         <div>
-          <Label>AI model</Label>
+          <label
+            htmlFor="ai-model-select"
+            className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+          >
+            AI model
+          </label>
           {aiStatusQ.isPending ? (
-            <div className="h-10 animate-pulse rounded-md border border-[var(--border)] bg-[var(--input-bg)]" />
+            <Skeleton className="h-11" />
           ) : (
             <select
               value={useCustom ? '__custom__' : selectedSlug}
@@ -940,7 +933,8 @@ function AISection({
                   handleDropdownChange(e.target.value);
                 }
               }}
-              className="w-full rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-sm text-[var(--text)] outline-none focus:border-orange-500 focus-visible:ring-2 focus-visible:ring-orange-500"
+              id="ai-model-select"
+              className="min-h-[44px] w-full rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-2 text-[length:var(--t-base)] text-[var(--n-11)] outline-none focus:border-[var(--accent-9)] focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
               data-testid="model-dropdown"
             >
               {catalog.map((m) => (
@@ -956,19 +950,16 @@ function AISection({
           {/* Tier + price chips for selected model */}
           {!useCustom && catalogEntry ? (
             <div className="mt-2 flex flex-wrap items-center gap-2">
-              <span
-                className={`rounded-full border px-2 py-0.5 text-xs font-medium ${
-                  TIER_BADGE[catalogEntry.tier] ??
-                  'bg-[var(--input-bg)] text-[var(--text)] border-[var(--border)]'
-                }`}
-              >
+              <Badge variant={TIER_BADGE[catalogEntry.tier] ?? 'neutral'}>
                 {TIER_LABELS[catalogEntry.tier] ?? catalogEntry.tier}
-              </span>
-              <span className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-xs text-[var(--text)]">
+              </Badge>
+              <Badge variant="neutral">
                 ~${catalogEntry.pricePer1kTaggingCalls.toFixed(4)}/1k posts
-              </span>
+              </Badge>
               {catalogEntry.notes ? (
-                <span className="text-xs text-[var(--text-muted)]">{catalogEntry.notes}</span>
+                <span className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+                  {catalogEntry.notes}
+                </span>
               ) : null}
             </div>
           ) : null}
@@ -976,8 +967,13 @@ function AISection({
 
         {/* Custom model input */}
         {useCustom ? (
-          <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
-            <Label htmlFor={customModelId}>Custom model slug</Label>
+          <Card variant="subtle" padding="md">
+            <label
+              htmlFor={customModelId}
+              className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
+            >
+              Custom model slug
+            </label>
             <div className="mt-1 flex gap-2">
               <Input
                 id={customModelId}
@@ -985,38 +981,44 @@ function AISection({
                 onChange={handleCustomChange}
                 placeholder="provider/model-name"
               />
-              <button
-                type="button"
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={handleCustomBlur}
-                disabled={validating || !customModel.trim()}
-                className="shrink-0 rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-2 text-xs font-medium text-[var(--text)] transition hover:bg-neutral-700 disabled:opacity-50"
+                isLoading={validating}
+                disabled={!customModel.trim()}
+                className="shrink-0"
               >
-                {validating ? 'Checking…' : 'Validate'}
-              </button>
+                Validate
+              </Button>
             </div>
-            <p className="mt-1 text-xs text-amber-400">
+            <p className="mt-1 text-[length:var(--t-xs)] text-[var(--warn-11)]">
               Unverified — may not work with all pipelines.
             </p>
-          </div>
+          </Card>
         ) : null}
 
         {/* Validation result */}
         {validating ? (
-          <div className="flex items-center gap-2 rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text-muted)]">
-            <span className="animate-spin">⟳</span> Validating model…
+          <div className="flex items-center gap-2 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-3 py-2 text-[length:var(--t-xs)] text-[var(--n-8)]">
+            <span className="animate-spin" aria-hidden="true">
+              ⟳
+            </span>{' '}
+            Validating model…
           </div>
         ) : validation ? (
           <div
-            className={`rounded border px-3 py-2 text-xs ${
+            className={[
+              'rounded-[var(--r-2)] border px-3 py-2 text-[length:var(--t-xs)]',
               !validation.valid
-                ? 'border-rose-700 bg-rose-950/40 text-rose-200'
+                ? 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]'
                 : !validation.supportsStructuredOutput
-                  ? 'border-amber-700 bg-amber-950/40 text-amber-200'
-                  : 'border-emerald-700 bg-emerald-950/40 text-emerald-200'
-            }`}
+                  ? 'border-[var(--warn-9)] bg-[var(--warn-3)] text-[var(--warn-11)]'
+                  : 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]',
+            ].join(' ')}
             data-testid="validation-result"
           >
-            <span className="mr-1 font-bold">
+            <span className="mr-1 font-bold" aria-hidden="true">
               {!validation.valid ? '✗' : !validation.supportsStructuredOutput ? '⚠' : '✓'}
             </span>
             {!validation.valid
@@ -1025,34 +1027,34 @@ function AISection({
                 ? 'This model returned a result but does not reliably support structured output. Tagging pipelines may fail; free-text drafts will work.'
                 : 'Validated — this model supports all pipelines.'}
             {!validation.inCatalog && validation.valid ? (
-              <span className="ml-1 text-amber-400">(Not in curated catalog.)</span>
+              <span className="ml-1 text-[var(--warn-11)]">(Not in curated catalog.)</span>
             ) : null}
           </div>
         ) : null}
 
         {/* Cost estimate widget */}
         {monthlyCostEst !== null && dailyPosts !== null ? (
-          <div className="rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs text-[var(--text)]">
-            At {dailyPosts} posts/day, estimated monthly AI cost ≈{' '}
-            <strong className="text-[var(--text)]">${monthlyCostEst}</strong>
+          <div className="rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-3 py-2 text-[length:var(--t-xs)] text-[var(--n-11)]">
+            At <span className="tabular-nums">{dailyPosts}</span> posts/day, estimated monthly AI
+            cost ≈ <strong className="tabular-nums">${monthlyCostEst}</strong>
           </div>
         ) : null}
       </div>
 
       <FieldError msg={saveError} />
 
-      <div className="mt-6 flex justify-end border-t border-[var(--border)] pt-4">
-        <button
-          type="button"
+      <div className="mt-6 flex justify-end border-t border-[var(--n-4)] pt-4">
+        <Button
+          variant="primary"
+          size="sm"
           onClick={() => {
             void validate(effectiveSlug);
             saveMut.mutate();
           }}
-          disabled={saveMut.isPending}
-          className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+          isLoading={saveMut.isPending}
         >
-          {saveMut.isPending ? 'Saving…' : 'Save'}
-        </button>
+          Save
+        </Button>
       </div>
     </Section>
   );
@@ -1083,8 +1085,6 @@ function StudioSection({
   toast: (type: 'success' | 'error', msg: string) => void;
   onSaved: () => void;
 }) {
-  const studioUrlId = useId();
-  const studioTokenId = useId();
   const [studioUrl, setStudioUrl] = useState(
     String(data['studio-url'] ?? 'https://studio.redlattice.app'),
   );
@@ -1158,18 +1158,24 @@ function StudioSection({
     >
       {/* Connection status banner */}
       <div
-        className={`mb-4 flex items-center gap-3 rounded-lg border px-4 py-3 text-sm ${
+        className={[
+          'mb-4 flex items-center gap-3 rounded-[var(--r-3)] border px-4 py-3',
+          'text-[length:var(--t-sm)]',
           connected
-            ? 'border-emerald-800 bg-emerald-950/30 text-emerald-200'
-            : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]'
-        }`}
+            ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
+            : 'border-[var(--n-4)] bg-[var(--n-2)] text-[var(--n-8)]',
+        ].join(' ')}
         data-testid="studio-status-banner"
       >
-        <span className="text-base">{connected ? '✓' : '○'}</span>
+        <span className="text-base" aria-hidden="true">
+          {connected ? '✓' : '○'}
+        </span>
         {connected ? (
           <span>
             Connected to{' '}
-            <span className="font-medium text-emerald-100">{status?.studioUrl ?? studioUrl}</span>
+            <span className="font-medium text-[var(--success-11)]">
+              {status?.studioUrl ?? studioUrl}
+            </span>
           </span>
         ) : (
           <span>Not connected — enter a Studio URL and connection token below.</span>
@@ -1177,40 +1183,31 @@ function StudioSection({
       </div>
 
       <div className="space-y-4">
-        <div>
-          <Label htmlFor={studioUrlId}>Studio URL</Label>
-          <Input
-            id={studioUrlId}
-            value={studioUrl}
-            onChange={setStudioUrl}
-            placeholder="https://studio.redlattice.app"
-          />
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Base URL of your RedLattice Studio instance.
-          </p>
-        </div>
-        <div>
-          <Label htmlFor={studioTokenId}>Connection token</Label>
-          <Input
-            id={studioTokenId}
-            type="password"
-            value={token}
-            onChange={setToken}
-            placeholder="Paste the token from Studio > Settings > Connections"
-          />
-          <p className="mt-1 text-xs text-[var(--text-muted)]">
-            Issued by Studio. Stored encrypted in Redis per installation.
-          </p>
-        </div>
+        <Input
+          label="Studio URL"
+          value={studioUrl}
+          onChange={setStudioUrl}
+          placeholder="https://studio.redlattice.app"
+          helper="Base URL of your RedLattice Studio instance."
+        />
+        <Input
+          label="Connection token"
+          type="password"
+          value={token}
+          onChange={setToken}
+          placeholder="Paste the token from Studio > Settings > Connections"
+          helper="Issued by Studio. Stored encrypted in Redis per installation."
+        />
       </div>
 
       {testResult ? (
         <div
-          className={`mt-3 rounded border px-3 py-2 text-xs ${
+          className={[
+            'mt-3 rounded-[var(--r-2)] border px-3 py-2 text-[length:var(--t-xs)]',
             testResult.ok
-              ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200'
-              : 'border-rose-700 bg-rose-950/40 text-rose-200'
-          }`}
+              ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
+              : 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]',
+          ].join(' ')}
         >
           {testResult.ok
             ? `Connection test passed (HTTP ${testResult.statusCode ?? 200}).`
@@ -1221,25 +1218,26 @@ function StudioSection({
       <FieldError msg={error} />
 
       <div className="mt-4 flex flex-wrap items-center gap-2">
-        <button
-          type="button"
+        <Button
+          variant="secondary"
+          size="sm"
           onClick={testConnection}
-          disabled={testLoading || !token.trim()}
-          className="rounded-md border border-blue-700 bg-blue-900/20 px-3 py-1.5 text-xs font-medium text-blue-200 transition hover:bg-blue-900/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-500"
+          isLoading={testLoading}
+          disabled={!token.trim()}
           data-testid="studio-test-button"
         >
-          {testLoading ? 'Testing…' : '🔌 Test connection'}
-        </button>
+          Test connection
+        </Button>
         {connected ? (
-          <button
-            type="button"
+          <Button
+            variant="destructive"
+            size="sm"
             onClick={() => disconnectMut.mutate()}
-            disabled={disconnectMut.isPending}
-            className="rounded-md border border-rose-800 bg-rose-950/30 px-3 py-1.5 text-xs font-medium text-rose-300 transition hover:bg-rose-900/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-rose-500"
+            isLoading={disconnectMut.isPending}
             data-testid="studio-disconnect-button"
           >
-            {disconnectMut.isPending ? 'Disconnecting…' : 'Disconnect'}
-          </button>
+            Disconnect
+          </Button>
         ) : null}
       </div>
       <SaveButton onClick={() => saveMut.mutate()} loading={saveMut.isPending} />
@@ -1269,35 +1267,33 @@ const FORMAT_LABELS: Record<string, string> = {
 };
 
 function FormatChip({ format }: { format: WebhookFormat }) {
-  const colors: Record<string, string> = {
-    slack: 'border-emerald-700 bg-emerald-900/30 text-emerald-200',
-    discord: 'border-indigo-700 bg-indigo-900/30 text-indigo-200',
-    pagerduty: 'border-green-700 bg-green-900/30 text-green-200',
-    generic: 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]',
+  const variantMap: Record<string, BadgeVariant> = {
+    slack: 'success',
+    discord: 'accent',
+    pagerduty: 'success',
+    generic: 'neutral',
   };
-  return (
-    <span
-      className={`inline-block rounded border px-1.5 py-0.5 text-[10px] font-medium ${colors[format] ?? colors.generic}`}
-    >
-      {FORMAT_LABELS[format] ?? format}
-    </span>
-  );
+  return <Badge variant={variantMap[format] ?? 'neutral'}>{FORMAT_LABELS[format] ?? format}</Badge>;
 }
 
 function DeliveryRow({ d }: { d: WebhookDelivery }) {
   const ts = new Date(d.attemptedAt).toLocaleString();
   return (
-    <tr className="border-t border-[var(--border)] text-xs">
-      <td className="py-1 pr-3 text-[var(--text-muted)]">{ts}</td>
-      <td className="py-1 pr-3 font-mono text-[var(--text)]">{d.eventKind}</td>
+    <tr className="border-t border-[var(--n-4)] text-[length:var(--t-xs)]">
+      <td className="py-1 pr-3 text-[var(--n-8)] tabular-nums">{ts}</td>
+      <td className="py-1 pr-3 font-mono text-[var(--n-11)]">{d.eventKind}</td>
       <td className="py-1 pr-3">
         {d.success ? (
-          <span className="text-emerald-400">&#x2713; {d.statusCode}</span>
+          <Badge variant="success" dot>
+            {d.statusCode}
+          </Badge>
         ) : (
-          <span className="text-rose-400">&#x2717; {d.statusCode ?? 'err'}</span>
+          <Badge variant="error" dot>
+            {d.statusCode ?? 'err'}
+          </Badge>
         )}
       </td>
-      <td className="max-w-[180px] truncate py-1 text-[var(--text-muted)]">{d.responseExcerpt}</td>
+      <td className="max-w-[180px] truncate py-1 text-[var(--n-8)]">{d.responseExcerpt}</td>
     </tr>
   );
 }
@@ -1326,66 +1322,41 @@ function WebhookRow({
 
   return (
     <>
-      <tr className="border-t border-[var(--border)] text-xs">
-        <td className="py-2 pr-3 font-medium text-[var(--text)]">{hook.name}</td>
+      <tr className="border-t border-[var(--n-4)] text-[length:var(--t-xs)]">
+        <td className="py-2 pr-3 font-medium text-[var(--n-11)]">{hook.name}</td>
         <td className="py-2 pr-3">
           <FormatChip format={hook.format} />
         </td>
         <td className="py-2 pr-3">
           {lastDelivery == null ? (
-            <span className="text-[var(--text-muted)]">—</span>
+            <span className="text-[var(--n-8)]">—</span>
           ) : lastDelivery.success ? (
-            <span className="text-emerald-400">&#x2713;</span>
+            <Badge variant="success" dot>
+              OK
+            </Badge>
           ) : (
-            <span className="text-rose-400">&#x2717;</span>
+            <Badge variant="error" dot>
+              Fail
+            </Badge>
           )}
         </td>
         <td className="py-2 pr-3">
-          <button
-            type="button"
-            onClick={() => onToggle(hook.id, !hook.enabled)}
-            className={`relative inline-flex h-5 w-10 items-center rounded-full transition ${
-              hook.enabled ? 'bg-orange-500' : 'bg-neutral-600'
-            }`}
-            aria-label={hook.enabled ? 'Disable' : 'Enable'}
-          >
-            <span
-              className={`inline-block h-4 w-4 rounded-full bg-white shadow transition-transform ${
-                hook.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
+          <Switch checked={hook.enabled} onChange={(checked) => onToggle(hook.id, checked)} />
         </td>
         <td className="py-2">
           <div className="flex gap-1">
-            <button
-              type="button"
-              onClick={() => setExpanded((e) => !e)}
-              className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[10px] text-[var(--text)] hover:bg-neutral-700"
-            >
+            <Button variant="ghost" size="sm" onClick={() => setExpanded((e) => !e)}>
               {expanded ? 'Hide' : 'Logs'}
-            </button>
-            <button
-              type="button"
-              onClick={() => onTest(hook.id)}
-              className="rounded border border-blue-700 bg-blue-900/20 px-2 py-0.5 text-[10px] text-blue-200 hover:bg-blue-900/40"
-            >
+            </Button>
+            <Button variant="secondary" size="sm" onClick={() => onTest(hook.id)}>
               Test
-            </button>
-            <button
-              type="button"
-              onClick={() => onEdit(hook)}
-              className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[10px] text-[var(--text)] hover:bg-neutral-700"
-            >
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => onEdit(hook)}>
               Edit
-            </button>
-            <button
-              type="button"
-              onClick={() => onDelete(hook.id)}
-              className="rounded border border-rose-800 bg-rose-950/20 px-2 py-0.5 text-[10px] text-rose-300 hover:bg-rose-900/40"
-            >
+            </Button>
+            <Button variant="destructive" size="sm" onClick={() => onDelete(hook.id)}>
               Del
-            </button>
+            </Button>
           </div>
         </td>
       </tr>
@@ -1393,7 +1364,7 @@ function WebhookRow({
         <tr>
           <td colSpan={5} className="pb-3 pt-1">
             {deliveriesQ.isPending ? (
-              <p className="text-xs text-[var(--text-muted)]">Loading…</p>
+              <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">Loading…</p>
             ) : deliveriesQ.data && deliveriesQ.data.deliveries.length > 0 ? (
               <table className="w-full">
                 <tbody>
@@ -1403,7 +1374,7 @@ function WebhookRow({
                 </tbody>
               </table>
             ) : (
-              <p className="text-xs text-[var(--text-muted)]">No deliveries yet.</p>
+              <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">No deliveries yet.</p>
             )}
           </td>
         </tr>
@@ -1568,11 +1539,11 @@ function WebhooksSection({ toast }: { toast: (type: 'success' | 'error', msg: st
       description="Send event notifications to Slack, Discord, PagerDuty, or any HTTP endpoint."
     >
       {hooksQ.isPending ? (
-        <div className="h-12 animate-pulse rounded bg-[var(--input-bg)]" />
+        <Skeleton className="h-12" />
       ) : hooks.length > 0 ? (
         <table className="w-full table-auto">
           <thead>
-            <tr className="text-left text-[10px] uppercase tracking-wide text-[var(--text-muted)]">
+            <tr className="text-left text-[length:var(--t-xs)] uppercase tracking-wide text-[var(--n-8)]">
               <th className="pb-1 pr-3">Name</th>
               <th className="pb-1 pr-3">Format</th>
               <th className="pb-1 pr-3">Last</th>
@@ -1594,138 +1565,114 @@ function WebhooksSection({ toast }: { toast: (type: 'success' | 'error', msg: st
           </tbody>
         </table>
       ) : (
-        <p className="text-xs text-[var(--text-muted)]">No webhooks configured yet.</p>
+        <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">No webhooks configured yet.</p>
       )}
 
       {testResult ? (
         <div
-          className={`mt-3 rounded border px-3 py-2 text-xs ${
+          className={[
+            'mt-3 rounded-[var(--r-2)] border px-3 py-2 text-[length:var(--t-xs)]',
             testResult.ok
-              ? 'border-emerald-700 bg-emerald-950/40 text-emerald-200'
-              : 'border-rose-700 bg-rose-950/40 text-rose-200'
-          }`}
+              ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
+              : 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]',
+          ].join(' ')}
         >
           {testResult.msg}
         </div>
       ) : null}
 
       {showForm ? (
-        <div className="mt-4 rounded-lg border border-[var(--border)] bg-[var(--input-bg)] p-4">
-          <h4 className="mb-3 text-xs font-semibold text-[var(--text)]">
+        <Card variant="subtle" padding="md" className="mt-4">
+          <h4 className="mb-3 text-[length:var(--t-xs)] font-semibold text-[var(--n-11)]">
             {editHook ? 'Edit webhook' : 'Add webhook'}
           </h4>
           <div className="space-y-3">
-            <div>
-              <label
-                htmlFor="wh-name"
-                className="mb-1 block text-xs font-medium text-[var(--text)]"
-              >
-                Name
-              </label>
-              <input
-                id="wh-name"
-                type="text"
-                value={form.name}
-                onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))}
-                placeholder="My Slack Alert"
-                className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-orange-500"
-              />
-            </div>
+            <Input
+              label="Name"
+              id="wh-name"
+              value={form.name}
+              onChange={(v) => setForm((p) => ({ ...p, name: v }))}
+              placeholder="My Slack Alert"
+            />
             {!editHook ? (
-              <div>
-                <label
-                  htmlFor="wh-url"
-                  className="mb-1 block text-xs font-medium text-[var(--text)]"
-                >
-                  Target URL
-                </label>
-                <input
-                  id="wh-url"
-                  type="url"
-                  value={form.targetUrl}
-                  onChange={(e) => setForm((p) => ({ ...p, targetUrl: e.target.value }))}
-                  placeholder="https://hooks.slack.com/…"
-                  className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-1.5 text-sm text-[var(--text)] placeholder:text-[var(--text-muted)] focus:outline-none focus:ring-1 focus:ring-orange-500"
-                />
-              </div>
+              <Input
+                label="Target URL"
+                id="wh-url"
+                type="url"
+                value={form.targetUrl}
+                onChange={(v) => setForm((p) => ({ ...p, targetUrl: v }))}
+                placeholder="https://hooks.slack.com/…"
+              />
             ) : null}
             <div>
-              <p className="mb-1 block text-xs font-medium text-[var(--text)]">Events</p>
+              <p className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]">
+                Events
+              </p>
               <div className="flex flex-wrap gap-2">
                 {ALL_EVENT_KINDS.map((ek) => (
                   <label
                     key={ek.value}
-                    className="flex cursor-pointer items-center gap-1 text-xs text-[var(--text)]"
+                    className="flex cursor-pointer items-center gap-1 text-[length:var(--t-xs)] text-[var(--n-11)]"
                   >
                     <input
                       type="checkbox"
                       checked={form.events.includes(ek.value)}
                       onChange={() => handleEventToggle(ek.value)}
-                      className="accent-orange-500"
+                      className="accent-[var(--accent-9)]"
                     />
                     {ek.label}
                   </label>
                 ))}
               </div>
             </div>
-            <div>
-              <label
-                htmlFor="wh-format"
-                className="mb-1 block text-xs font-medium text-[var(--text)]"
-              >
-                Format
-              </label>
-              <select
-                id="wh-format"
-                value={form.format}
-                onChange={(e) =>
-                  setForm((p) => ({ ...p, format: e.target.value as 'auto' | WebhookFormat }))
-                }
-                className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1.5 text-sm text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-orange-500"
-              >
-                <option value="auto">Auto-detect</option>
-                <option value="slack">Slack</option>
-                <option value="discord">Discord</option>
-                <option value="pagerduty">PagerDuty</option>
-                <option value="generic">Generic JSON</option>
-              </select>
-            </div>
+            <Select
+              label="Format"
+              id="wh-format"
+              value={form.format}
+              onChange={(v) => setForm((p) => ({ ...p, format: v as 'auto' | WebhookFormat }))}
+            >
+              <option value="auto">Auto-detect</option>
+              <option value="slack">Slack</option>
+              <option value="discord">Discord</option>
+              <option value="pagerduty">PagerDuty</option>
+              <option value="generic">Generic JSON</option>
+            </Select>
           </div>
           <div className="mt-4 flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleSubmit}
-              disabled={createMut.isPending || updateMut.isPending}
-              className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-1.5 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
+              isLoading={createMut.isPending || updateMut.isPending}
             >
-              {createMut.isPending || updateMut.isPending ? 'Saving…' : editHook ? 'Update' : 'Add'}
-            </button>
-            <button
-              type="button"
+              {editHook ? 'Update' : 'Add'}
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={() => {
                 setShowForm(false);
                 setEditHook(null);
                 setForm(BLANK_FORM);
               }}
-              className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-4 py-1.5 text-sm font-medium text-[var(--text)] hover:bg-neutral-700"
             >
               Cancel
-            </button>
+            </Button>
           </div>
-        </div>
+        </Card>
       ) : (
         <div className="mt-4">
-          <button
-            type="button"
+          <Button
+            variant="secondary"
+            size="sm"
             onClick={() => {
               setEditHook(null);
               setForm(BLANK_FORM);
               setShowForm(true);
             }}
-            className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-3 py-1.5 text-xs font-medium text-[var(--text)] hover:bg-neutral-700"
           >
             + Add webhook
-          </button>
+          </Button>
         </div>
       )}
     </Section>

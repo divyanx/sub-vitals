@@ -93,10 +93,10 @@ function StepDots({ total, current }: { total: number; current: number }) {
           aria-hidden="true"
           className={`block rounded-full transition-all duration-300 ${
             i === current
-              ? 'h-2 w-6 bg-orange-500'
+              ? 'h-2 w-6 bg-[var(--accent-9)]'
               : i < current
-                ? 'h-2 w-2 bg-orange-800'
-                : 'h-2 w-2 bg-neutral-700'
+                ? 'h-2 w-2 bg-[var(--accent-3)]'
+                : 'h-2 w-2 bg-[var(--n-4)]'
           }`}
         />
       ))}
@@ -153,14 +153,14 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
       aria-label="RedLattice onboarding tour"
       aria-modal="true"
       onClose={dismiss}
-      className="m-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-2xl border border-[var(--border)] bg-[var(--bg)] p-0 shadow-2xl backdrop:bg-black/60 open:flex open:flex-col"
+      className="m-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] p-0 shadow-[var(--shadow-3)] backdrop:bg-black/60 open:flex open:flex-col max-sm:fixed max-sm:inset-0 max-sm:m-0 max-sm:max-w-none max-sm:rounded-none max-sm:h-dvh"
     >
       {/* Skip button */}
       <div className="flex items-center justify-end px-6 pt-5">
         <button
           type="button"
           onClick={dismiss}
-          className="rounded px-2 py-1 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+          className="rounded-[var(--r-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-8)] transition hover:text-[var(--n-11)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
           aria-label="Skip onboarding"
         >
           Skip
@@ -170,12 +170,12 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
       {/* Icon */}
       <div className="flex justify-center px-6 pt-2">
         <span
-          className={`flex h-20 w-20 items-center justify-center rounded-2xl text-4xl transition-all duration-300 ${
+          className={`flex h-20 w-20 items-center justify-center rounded-[var(--r-3)] text-4xl transition-all duration-300 ${
             step === 0
-              ? 'bg-orange-950/60 text-orange-400'
+              ? 'bg-[var(--accent-3)] text-[var(--accent-11)]'
               : step === STEPS.length - 1
-                ? 'bg-emerald-950/60 text-emerald-400'
-                : 'bg-blue-950/60 text-blue-400'
+                ? 'bg-[var(--success-3)] text-[var(--success-11)]'
+                : 'bg-[var(--n-3)] text-[var(--accent-11)]'
           }`}
           aria-hidden="true"
         >
@@ -185,9 +185,15 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
 
       {/* Content */}
       <div className="px-8 pt-6 pb-4 text-center">
-        <h2 className="text-xl font-semibold text-neutral-50">{current.title}</h2>
-        <p className="mt-2 text-sm font-medium text-[var(--text)]">{current.body}</p>
-        <p className="mt-3 text-sm leading-relaxed text-[var(--text-muted)]">{current.detail}</p>
+        <h2 className="text-[length:var(--t-xl)] font-semibold text-[var(--n-12)]">
+          {current.title}
+        </h2>
+        <p className="mt-2 text-[length:var(--t-sm)] font-medium text-[var(--n-11)]">
+          {current.body}
+        </p>
+        <p className="mt-3 text-[length:var(--t-sm)] leading-relaxed text-[var(--n-8)]">
+          {current.detail}
+        </p>
       </div>
 
       {/* Footer */}
@@ -199,7 +205,7 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
             type="button"
             onClick={() => setStep((s) => Math.max(0, s - 1))}
             disabled={step === 0}
-            className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text)] transition hover:bg-[var(--input-bg)] disabled:pointer-events-none disabled:opacity-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+            className="rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-2 text-[length:var(--t-sm)] text-[var(--n-11)] transition hover:bg-[var(--n-3)] disabled:pointer-events-none disabled:opacity-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
             aria-label="Previous step"
           >
             Back
@@ -210,7 +216,7 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
               <button
                 type="button"
                 onClick={dismiss}
-                className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm text-[var(--text-muted)] transition hover:bg-[var(--input-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+                className="rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-2 text-[length:var(--t-sm)] text-[var(--n-8)] transition hover:bg-[var(--n-3)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
               >
                 Skip for now
               </button>
@@ -218,7 +224,7 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
                 type="button"
                 onClick={dismiss}
                 disabled={completeMut.isPending}
-                className="rounded-lg bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-orange-500 disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400"
+                className="rounded-[var(--r-2)] bg-[var(--accent-9)] px-5 py-2 text-[length:var(--t-sm)] font-semibold text-white transition hover:bg-[var(--accent-10)] disabled:opacity-60 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
               >
                 Open Inbox
               </button>
@@ -227,7 +233,7 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
             <button
               type="button"
               onClick={() => setStep((s) => Math.min(STEPS.length - 1, s + 1))}
-              className="ml-auto rounded-lg bg-orange-600 px-5 py-2 text-sm font-semibold text-white transition hover:bg-orange-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-400"
+              className="ml-auto rounded-[var(--r-2)] bg-[var(--accent-9)] px-5 py-2 text-[length:var(--t-sm)] font-semibold text-white transition hover:bg-[var(--accent-10)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
               aria-label="Next step"
             >
               Next
@@ -284,22 +290,26 @@ export function OnboardingSettingsSection() {
   });
 
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-6">
-      <h3 className="mb-1 text-sm font-semibold text-[var(--text)]">Onboarding</h3>
-      <p className="mb-4 text-xs text-[var(--text-muted)]">
+    <div className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-6 shadow-[var(--shadow-1)]">
+      <h3 className="mb-1 text-[length:var(--t-sm)] font-semibold text-[var(--n-12)]">
+        Onboarding
+      </h3>
+      <p className="mb-4 text-[length:var(--t-xs)] text-[var(--n-8)]">
         Replay the first-run walkthrough to re-familiarise yourself or onboard a new mod.
       </p>
       <button
         type="button"
         onClick={() => resetMut.mutate()}
         disabled={resetMut.isPending}
-        className="rounded-md border border-orange-700 bg-orange-900/20 px-4 py-1.5 text-sm font-medium text-orange-300 transition hover:bg-orange-900/40 disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
+        className="rounded-[var(--r-2)] border border-[var(--accent-9)] bg-[var(--accent-3)] px-4 py-1.5 text-[length:var(--t-sm)] font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-3)] disabled:opacity-50 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent-9)]"
         data-testid="replay-onboarding"
       >
         {resetMut.isPending ? 'Resetting…' : 'Replay onboarding tour'}
       </button>
       {resetMut.isError ? (
-        <p className="mt-2 text-xs text-rose-400">Failed to reset — try again.</p>
+        <p className="mt-2 text-[length:var(--t-xs)] text-[var(--error-11)]">
+          Failed to reset — try again.
+        </p>
       ) : null}
     </div>
   );

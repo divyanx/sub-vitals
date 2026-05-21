@@ -11,21 +11,21 @@ interface OrdinalSummaryProps {
 }
 
 const LABEL_COLORS: Record<string, string> = {
-  positive: 'text-emerald-400',
-  high: 'text-emerald-400',
-  neutral: 'text-[var(--text-muted)]',
-  medium: 'text-amber-400',
-  negative: 'text-rose-400',
-  low: 'text-rose-400',
+  positive: 'text-[var(--success-11)]',
+  high: 'text-[var(--success-11)]',
+  neutral: 'text-[var(--n-8)]',
+  medium: 'text-[var(--warn-11)]',
+  negative: 'text-[var(--error-11)]',
+  low: 'text-[var(--error-11)]',
 };
 
 const LABEL_BG: Record<string, string> = {
-  positive: 'bg-emerald-500/10 border-emerald-500/20',
-  high: 'bg-emerald-500/10 border-emerald-500/20',
-  neutral: 'bg-[var(--surface)] border-[var(--border)]',
-  medium: 'bg-amber-500/10 border-amber-500/20',
-  negative: 'bg-rose-500/10 border-rose-500/20',
-  low: 'bg-rose-500/10 border-rose-500/20',
+  positive: 'bg-[var(--success-3)] border-[var(--success-9)]',
+  high: 'bg-[var(--success-3)] border-[var(--success-9)]',
+  neutral: 'bg-[var(--n-2)] border-[var(--n-4)]',
+  medium: 'bg-[var(--warn-3)] border-[var(--warn-9)]',
+  negative: 'bg-[var(--error-3)] border-[var(--error-9)]',
+  low: 'bg-[var(--error-3)] border-[var(--error-9)]',
 };
 
 export function OrdinalSummary({ distribution }: OrdinalSummaryProps) {
@@ -46,10 +46,12 @@ export function OrdinalSummary({ distribution }: OrdinalSummaryProps) {
         return (
           <div
             key={entry.value}
-            className={`flex flex-1 flex-col items-center rounded-lg border p-2 ${bgClass}`}
+            className={`flex flex-1 flex-col items-center rounded-[var(--r-2)] border p-2 ${bgClass}`}
           >
-            <span className={`text-xl font-bold tabular-nums ${textColor}`}>{entry.count}</span>
-            <span className="mt-0.5 text-[10px] capitalize text-[var(--text-muted)]">
+            <span className={`text-[length:var(--t-xl)] font-bold tabular-nums ${textColor}`}>
+              {entry.count}
+            </span>
+            <span className="mt-0.5 text-[length:var(--t-xs)] capitalize text-[var(--n-8)]">
               {entry.value}
             </span>
           </div>

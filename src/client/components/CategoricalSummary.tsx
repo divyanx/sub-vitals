@@ -30,9 +30,9 @@ export function CategoricalSummary({ distribution }: CategoricalSummaryProps) {
               <span className="truncate pr-2 text-[var(--text)]">{entry.value}</span>
               <span className="shrink-0 tabular-nums text-[var(--text-muted)]">{entry.count}</span>
             </div>
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--border)]">
+            <div className="h-1.5 w-full overflow-hidden rounded-full bg-[var(--n-4)]">
               <div
-                className="h-full rounded-full bg-orange-500 transition-all"
+                className="h-full rounded-full bg-[var(--accent-9)] transition-all"
                 style={{ width: `${pct}%` }}
                 role="presentation"
               />

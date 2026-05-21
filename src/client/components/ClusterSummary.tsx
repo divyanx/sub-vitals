@@ -19,7 +19,7 @@ export function ClusterSummary({ distribution }: ClusterSummaryProps) {
     <ul className="space-y-2">
       {top3.map((entry, i) => (
         <li key={entry.value} className="flex items-center gap-2 text-xs">
-          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-500/20 text-[10px] font-bold text-orange-400">
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[var(--accent-3)] text-[length:var(--t-xs)] font-bold text-[var(--accent-11)]">
             {i + 1}
           </span>
           <span className="flex-1 truncate text-[var(--text)]">{entry.value}</span>

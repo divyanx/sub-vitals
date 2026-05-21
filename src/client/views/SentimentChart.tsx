@@ -35,36 +35,42 @@ export function SentimentChart({ series }: Props) {
     [series],
   );
   return (
-    <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
+    <div className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-4 shadow-[var(--shadow-1)]">
       <div className="h-64 w-full">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={data} margin={{ top: 6, right: 6, left: -16, bottom: 0 }}>
-            <CartesianGrid stroke="#1f2937" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="date" stroke="#525866" fontSize={11} tickMargin={6} />
-            <YAxis stroke="#525866" fontSize={11} allowDecimals={false} />
+            <CartesianGrid stroke="var(--n-4)" strokeDasharray="3 3" vertical={false} />
+            <XAxis dataKey="date" stroke="var(--n-7)" fontSize={11} tickMargin={6} />
+            <YAxis stroke="var(--n-7)" fontSize={11} allowDecimals={false} />
             <Tooltip
               contentStyle={{
-                background: '#0a0a0a',
-                border: '1px solid #262626',
+                background: 'var(--n-2)',
+                border: '1px solid var(--n-4)',
                 borderRadius: 6,
                 fontSize: 12,
               }}
-              labelStyle={{ color: '#9ca3af' }}
+              labelStyle={{ color: 'var(--n-8)' }}
             />
             <Area
               type="monotone"
               dataKey="positive"
               stackId="1"
-              stroke="#10b981"
-              fill="#10b98155"
+              stroke="var(--success-9)"
+              fill="var(--success-3)"
             />
-            <Area type="monotone" dataKey="neutral" stackId="1" stroke="#737373" fill="#73737355" />
+            <Area
+              type="monotone"
+              dataKey="neutral"
+              stackId="1"
+              stroke="var(--n-7)"
+              fill="var(--n-3)"
+            />
             <Area
               type="monotone"
               dataKey="negative"
               stackId="1"
-              stroke="#f43f5e"
-              fill="#f43f5e55"
+              stroke="var(--error-9)"
+              fill="var(--error-3)"
             />
           </AreaChart>
         </ResponsiveContainer>

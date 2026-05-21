@@ -26,10 +26,10 @@ export function Pulse({ onOpenDashboard }: Props) {
       {/* Header */}
       <header className="mb-5 flex items-center gap-3">
         <span
-          className="block h-3 w-3 flex-shrink-0 rounded-full bg-orange-500"
+          className="block h-3 w-3 flex-shrink-0 rounded-full bg-[var(--accent-9)]"
           aria-hidden="true"
         />
-        <h1 className="text-xl font-semibold tracking-tight text-[var(--text)]">
+        <h1 className="text-[length:var(--t-xl)] font-semibold tracking-tight text-[var(--n-12)]">
           RedLattice · Today's Pulse
         </h1>
         {stats.data && (
@@ -56,7 +56,7 @@ export function Pulse({ onOpenDashboard }: Props) {
         <button
           type="button"
           onClick={onOpenDashboard}
-          className="w-full rounded-md bg-orange-500 px-4 py-3 font-medium text-white transition hover:bg-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-300"
+          className="w-full rounded-[var(--r-2)] bg-[var(--accent-9)] px-4 py-3 font-medium text-white transition hover:bg-[var(--accent-10)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-9)]"
         >
           Open full dashboard →
         </button>
@@ -126,20 +126,24 @@ function Stat({
 }) {
   const valueColor =
     tone === 'positive'
-      ? 'text-emerald-400'
+      ? 'text-[var(--success-11)]'
       : tone === 'negative'
-        ? 'text-rose-400'
+        ? 'text-[var(--error-11)]'
         : tone === 'warn'
-          ? 'text-amber-400'
-          : 'text-[var(--text)]';
+          ? 'text-[var(--warn-11)]'
+          : 'text-[var(--n-12)]';
 
   return (
-    <article className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3">
-      <div className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+    <article className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 shadow-[var(--shadow-1)]">
+      <div className="text-[length:var(--t-xs)] font-medium uppercase tracking-wide text-[var(--n-8)]">
         {label}
       </div>
-      <div className={`mt-1.5 text-2xl font-semibold leading-none ${valueColor}`}>{value}</div>
-      <div className="mt-1 truncate text-xs text-[var(--text-muted)]">{sub}</div>
+      <div
+        className={`mt-1.5 text-[length:var(--t-2xl)] font-semibold leading-none tabular-nums ${valueColor}`}
+      >
+        {value}
+      </div>
+      <div className="mt-1 truncate text-[length:var(--t-xs)] text-[var(--n-8)]">{sub}</div>
     </article>
   );
 }
@@ -157,17 +161,17 @@ function TrendSection({ data }: { data: PulseStats }) {
 
   return (
     <section
-      className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3"
+      className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 shadow-[var(--shadow-1)]"
       aria-label="Last 7 days sentiment"
     >
       <div className="mb-2 flex items-center justify-between">
-        <span className="text-xs font-medium uppercase tracking-wide text-[var(--text-muted)]">
+        <span className="text-[length:var(--t-xs)] font-medium uppercase tracking-wide text-[var(--n-8)]">
           Last 7 days — sentiment
         </span>
-        <span className="flex items-center gap-3 text-xs text-[var(--text-muted)]">
-          <LegendDot color="bg-emerald-500" label="positive" />
-          <LegendDot color="bg-neutral-600" label="neutral" />
-          <LegendDot color="bg-rose-500" label="negative" />
+        <span className="flex items-center gap-3 text-[length:var(--t-xs)] text-[var(--n-8)]">
+          <LegendDot color="bg-[var(--success-9)]" label="positive" />
+          <LegendDot color="bg-[var(--n-6)]" label="neutral" />
+          <LegendDot color="bg-[var(--error-9)]" label="negative" />
         </span>
       </div>
 
@@ -192,44 +196,44 @@ function TrendSection({ data }: { data: PulseStats }) {
                 {/* Stacked from bottom: positive / neutral / negative */}
                 <div className="flex h-full flex-col-reverse">
                   <div
-                    className="w-full bg-emerald-500"
+                    className="w-full bg-[var(--success-9)]"
                     style={{ height: `${posPct}%` }}
                     role="presentation"
                   />
                   <div
-                    className="w-full bg-neutral-600"
+                    className="w-full bg-[var(--n-6)]"
                     style={{ height: `${neuPct}%` }}
                     role="presentation"
                   />
                   <div
-                    className="w-full bg-rose-500"
+                    className="w-full bg-[var(--error-9)]"
                     style={{ height: `${negPct}%` }}
                     role="presentation"
                   />
                 </div>
               </div>
-              <span className="text-[10px] text-[var(--text-muted)]">{shortDate}</span>
+              <span className="text-[length:var(--t-xs)] text-[var(--n-8)]">{shortDate}</span>
             </div>
           );
         })}
       </div>
 
       {/* Numeric summary row */}
-      <div className="mt-2 flex justify-around border-t border-[var(--border)] pt-2 text-xs">
+      <div className="mt-2 flex justify-around border-t border-[var(--n-4)] pt-2 text-[length:var(--t-xs)]">
         <TrendTotal
           label="positive"
           value={series.reduce((s, d) => s + d.positive, 0)}
-          color="text-emerald-400"
+          color="text-[var(--success-11)]"
         />
         <TrendTotal
           label="neutral"
           value={series.reduce((s, d) => s + d.neutral, 0)}
-          color="text-[var(--text-muted)]"
+          color="text-[var(--n-8)]"
         />
         <TrendTotal
           label="negative"
           value={series.reduce((s, d) => s + d.negative, 0)}
-          color="text-rose-400"
+          color="text-[var(--error-11)]"
         />
       </div>
     </section>
@@ -265,23 +269,23 @@ function StatRowSkeleton() {
         {[0, 1, 2, 3].map((i) => (
           <div
             key={i}
-            className="h-20 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]"
+            className="h-20 animate-pulse rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)]"
           />
         ))}
       </section>
-      <div className="h-32 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
+      <div className="h-32 animate-pulse rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)]" />
     </>
   );
 }
 
 function ErrorBlock({ retry }: { retry: () => void }) {
   return (
-    <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
+    <div className="rounded-[var(--r-3)] border border-[var(--error-9)] bg-[var(--error-3)] p-4 text-[length:var(--t-sm)] text-[var(--error-11)]">
       <p className="mb-2 font-medium">Couldn't load today's stats</p>
-      <p className="mb-3 text-rose-300/70">
+      <p className="mb-3 opacity-70">
         The dashboard is still accessible — click "Open full dashboard" below.
       </p>
-      <button type="button" onClick={retry} className="text-sm underline">
+      <button type="button" onClick={retry} className="text-[length:var(--t-sm)] underline">
         Retry
       </button>
     </div>

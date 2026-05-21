@@ -39,7 +39,7 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
 
   return (
     <section
-      className="rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+      className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] shadow-[var(--shadow-1)]"
       aria-label="Recent rule firings"
     >
       {/* Header */}
@@ -52,7 +52,7 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
       >
         <div className="flex items-center gap-2">
           <svg
-            className="h-3.5 w-3.5 text-orange-400"
+            className="h-3.5 w-3.5 text-[var(--accent-9)]"
             fill="none"
             viewBox="0 0 24 24"
             stroke="currentColor"
@@ -61,9 +61,11 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
           >
             <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
           </svg>
-          <span className="text-sm font-semibold text-[var(--text)]">Recent rule firings</span>
+          <span className="text-[length:var(--t-sm)] font-semibold text-[var(--n-12)]">
+            Recent rule firings
+          </span>
           {recentFirings.length > 0 && (
-            <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-medium text-orange-400">
+            <span className="rounded-full bg-[var(--accent-3)] px-2 py-0.5 text-[length:var(--t-xs)] font-medium text-[var(--accent-11)]">
               {recentFirings.length}
             </span>
           )}
@@ -82,22 +84,24 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
 
       {/* Body */}
       {!collapsed && (
-        <div id="rule-firings-body" className="border-t border-[var(--border)] px-4 pb-4 pt-3">
+        <div id="rule-firings-body" className="border-t border-[var(--n-4)] px-4 pb-4 pt-3">
           {rulesQ.isPending && (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-8 animate-pulse rounded bg-[var(--border)]" />
+                <div key={i} className="h-8 animate-pulse rounded-[var(--r-1)] bg-[var(--n-4)]" />
               ))}
             </div>
           )}
 
           {!rulesQ.isPending && !hasRules && (
             <div className="py-4 text-center">
-              <p className="text-sm text-[var(--text-muted)]">No automation rules yet.</p>
+              <p className="text-[length:var(--t-sm)] text-[var(--n-8)]">
+                No automation rules yet.
+              </p>
               <button
                 type="button"
                 onClick={onOpenRules}
-                className="mt-2 text-xs text-orange-400 underline underline-offset-2 hover:text-orange-300"
+                className="mt-2 text-[length:var(--t-xs)] text-[var(--accent-11)] underline underline-offset-2 hover:text-[var(--accent-10)]"
               >
                 Visit Rules tab to create one
               </button>
@@ -105,13 +109,13 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
           )}
 
           {!rulesQ.isPending && hasRules && recentFirings.length === 0 && (
-            <p className="py-4 text-center text-sm text-[var(--text-muted)]">
+            <p className="py-4 text-center text-[length:var(--t-sm)] text-[var(--n-8)]">
               No rules have fired yet.
             </p>
           )}
 
           {recentFirings.length > 0 && (
-            <ul className="divide-y divide-[var(--border)]">
+            <ul className="divide-y divide-[var(--n-4)]">
               {recentFirings.map((rule) => {
                 const action = rule.actions[0];
                 const actionLabel = action
@@ -127,19 +131,19 @@ export function RuleFiringsPanel({ onOpenRules }: RuleFiringsPanelProps) {
                 return (
                   <li key={rule.id} className="flex flex-col gap-0.5 py-2.5 text-xs">
                     <div className="flex items-center justify-between gap-2">
-                      <span className="font-medium text-[var(--text)]">{rule.name}</span>
-                      <span className="shrink-0 text-[var(--text-muted)]">
+                      <span className="font-medium text-[var(--n-12)]">{rule.name}</span>
+                      <span className="shrink-0 text-[var(--n-8)]">
                         {relativeTime(rule.lastFiredAt ?? 0)}
                       </span>
                     </div>
-                    <div className="flex items-center gap-2 text-[var(--text-muted)]">
-                      <span className="rounded bg-[var(--bg)] px-1.5 py-0.5 font-mono text-[10px]">
+                    <div className="flex items-center gap-2 text-[var(--n-8)]">
+                      <span className="rounded-[var(--r-1)] bg-[var(--n-1)] px-1.5 py-0.5 font-mono text-[length:var(--t-xs)]">
                         {rule.trigger}
                       </span>
                       <span>&rarr;</span>
                       <span>{actionLabel}</span>
                       {rule.fireCount > 0 && (
-                        <span className="ml-auto text-[var(--text-muted)]">
+                        <span className="ml-auto text-[var(--n-8)]">
                           &times;{rule.fireCount} total
                         </span>
                       )}

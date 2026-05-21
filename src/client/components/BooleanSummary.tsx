@@ -32,13 +32,17 @@ export function BooleanSummary({ distribution }: BooleanSummaryProps) {
 
   return (
     <div className="flex gap-3">
-      <div className="flex flex-1 flex-col items-center rounded-lg border border-rose-500/20 bg-rose-500/10 p-3">
-        <span className="text-2xl font-bold tabular-nums text-rose-400">{yesVal}</span>
-        <span className="mt-0.5 text-[10px] text-[var(--text-muted)]">{yesLabel}</span>
+      <div className="flex flex-1 flex-col items-center rounded-[var(--r-2)] border border-[var(--error-9)] bg-[var(--error-3)] p-3">
+        <span className="text-[length:var(--t-2xl)] font-bold tabular-nums text-[var(--error-11)]">
+          {yesVal}
+        </span>
+        <span className="mt-0.5 text-[length:var(--t-xs)] text-[var(--n-8)]">{yesLabel}</span>
       </div>
-      <div className="flex flex-1 flex-col items-center rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3">
-        <span className="text-2xl font-bold tabular-nums text-[var(--text)]">{noVal}</span>
-        <span className="mt-0.5 text-[10px] text-[var(--text-muted)]">{noLabel}</span>
+      <div className="flex flex-1 flex-col items-center rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] p-3">
+        <span className="text-[length:var(--t-2xl)] font-bold tabular-nums text-[var(--n-11)]">
+          {noVal}
+        </span>
+        <span className="mt-0.5 text-[length:var(--t-xs)] text-[var(--n-8)]">{noLabel}</span>
       </div>
     </div>
   );

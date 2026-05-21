@@ -35,9 +35,8 @@ function Sparkline({ values }: { values: number[] }) {
       <polyline
         points={pts.join(' ')}
         fill="none"
-        stroke="currentColor"
+        stroke="var(--accent-9)"
         strokeWidth="1.5"
-        className="text-orange-400"
         strokeLinejoin="round"
         strokeLinecap="round"
       />
@@ -58,7 +57,9 @@ export function ScalarSummary({ distribution }: ScalarSummaryProps) {
 
   return (
     <div className="flex items-end gap-4">
-      <span className="text-3xl font-bold tabular-nums text-[var(--text)]">{latest}</span>
+      <span className="text-[length:var(--t-2xl)] font-bold tabular-nums text-[var(--n-12)]">
+        {latest}
+      </span>
       <Sparkline values={values} />
     </div>
   );

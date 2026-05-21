@@ -13,9 +13,9 @@ interface PriorityQueuePanelProps {
 }
 
 const SENTIMENT_COLORS: Record<string, string> = {
-  positive: 'bg-emerald-500/15 text-emerald-400',
-  neutral: 'bg-[var(--bg)] text-[var(--text-muted)]',
-  negative: 'bg-rose-500/15 text-rose-400',
+  positive: 'bg-[var(--success-3)] text-[var(--success-11)]',
+  neutral: 'bg-[var(--n-1)] text-[var(--n-8)]',
+  negative: 'bg-[var(--error-3)] text-[var(--error-11)]',
 };
 
 type PriorityItem = RecentPost & { priority: number };
@@ -31,12 +31,12 @@ export function PriorityQueuePanel({ onOpenPost }: PriorityQueuePanelProps) {
 
   return (
     <section
-      className="rounded-xl border border-[var(--border)] bg-[var(--surface)]"
+      className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] shadow-[var(--shadow-1)]"
       aria-label="Priority queue"
     >
       <div className="flex items-center gap-2 px-4 py-3">
         <svg
-          className="h-3.5 w-3.5 text-orange-400"
+          className="h-3.5 w-3.5 text-[var(--accent-9)]"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -49,35 +49,41 @@ export function PriorityQueuePanel({ onOpenPost }: PriorityQueuePanelProps) {
             d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
           />
         </svg>
-        <h2 className="text-sm font-semibold text-[var(--text)]">Priority queue</h2>
+        <h2 className="text-[length:var(--t-sm)] font-semibold text-[var(--n-12)]">
+          Priority queue
+        </h2>
         {items.length > 0 && (
-          <span className="rounded-full bg-orange-500/20 px-2 py-0.5 text-[10px] font-medium text-orange-400">
+          <span className="rounded-full bg-[var(--accent-3)] px-2 py-0.5 text-[length:var(--t-xs)] font-medium text-[var(--accent-11)]">
             {items.length}
           </span>
         )}
       </div>
 
-      <div className="border-t border-[var(--border)] px-4 pb-4 pt-3">
+      <div className="border-t border-[var(--n-4)] px-4 pb-4 pt-3">
         {queueQ.isPending && (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-10 animate-pulse rounded bg-[var(--border)]" />
+              <div key={i} className="h-10 animate-pulse rounded-[var(--r-1)] bg-[var(--n-4)]" />
             ))}
           </div>
         )}
 
         {!queueQ.isPending && items.length === 0 && (
           <div className="py-6 text-center">
-            <span className="text-2xl" aria-hidden="true">
+            <span className="text-[length:var(--t-2xl)]" aria-hidden="true">
               ✓
             </span>
-            <p className="mt-2 text-sm font-medium text-[var(--text)]">Inbox clear</p>
-            <p className="text-xs text-[var(--text-muted)]">No open posts needing attention.</p>
+            <p className="mt-2 text-[length:var(--t-sm)] font-medium text-[var(--n-12)]">
+              Inbox clear
+            </p>
+            <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+              No open posts needing attention.
+            </p>
           </div>
         )}
 
         {items.length > 0 && (
-          <ul className="divide-y divide-[var(--border)]">
+          <ul className="divide-y divide-[var(--n-4)]">
             {items.map((item) => {
               const sentColor = item.sentimentLabel
                 ? SENTIMENT_COLORS[item.sentimentLabel]
@@ -87,26 +93,26 @@ export function PriorityQueuePanel({ onOpenPost }: PriorityQueuePanelProps) {
                   <button
                     type="button"
                     onClick={() => onOpenPost(item.postId, item.url)}
-                    className="flex w-full flex-col gap-1 py-2.5 text-left transition hover:text-orange-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+                    className="flex w-full flex-col gap-1 py-2.5 text-left transition hover:text-[var(--accent-11)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
                     aria-label={`Open post: ${item.title}`}
                   >
-                    <p className="text-xs font-medium text-[var(--text)] line-clamp-2">
+                    <p className="text-[length:var(--t-xs)] font-medium text-[var(--n-12)] line-clamp-2">
                       {item.title}
                     </p>
                     <div className="flex flex-wrap items-center gap-1.5">
                       {item.sentimentLabel && sentColor && (
                         <span
-                          className={`rounded-full px-1.5 py-0.5 text-[9px] capitalize ${sentColor}`}
+                          className={`rounded-full px-1.5 py-0.5 text-[length:var(--t-xs)] capitalize ${sentColor}`}
                         >
                           {item.sentimentLabel}
                         </span>
                       )}
                       {item.driverId && (
-                        <span className="rounded-full bg-[var(--bg)] px-1.5 py-0.5 text-[9px] text-[var(--text-muted)]">
+                        <span className="rounded-full bg-[var(--n-1)] px-1.5 py-0.5 text-[length:var(--t-xs)] text-[var(--n-8)]">
                           {item.driverId}
                         </span>
                       )}
-                      <span className="ml-auto text-[9px] text-[var(--text-muted)]">
+                      <span className="ml-auto text-[length:var(--t-xs)] text-[var(--n-8)]">
                         {relativeTime(item.createdAt)}
                       </span>
                     </div>

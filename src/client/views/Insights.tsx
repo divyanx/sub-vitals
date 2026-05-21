@@ -97,9 +97,9 @@ function ClusterView({
   }
 
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-8 py-16 text-center">
-      <h3 className="mb-2 font-semibold text-[var(--text)]">{pipeline.name}</h3>
-      <p className="max-w-md text-sm text-[var(--text-muted)]">
+    <div className="flex flex-col items-center justify-center rounded-[var(--r-3)] border border-dashed border-[var(--n-4)] bg-[var(--n-2)] px-8 py-16 text-center">
+      <h3 className="mb-2 font-semibold text-[var(--n-12)]">{pipeline.name}</h3>
+      <p className="max-w-md text-[length:var(--t-sm)] text-[var(--n-8)]">
         Cluster data will appear here once the pipeline has processed enough posts.
       </p>
     </div>
@@ -108,9 +108,9 @@ function ClusterView({
 
 function ScalarView({ pipeline }: { pipeline: PipelineRecord }) {
   return (
-    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-8 py-16 text-center">
-      <h3 className="mb-2 font-semibold text-[var(--text)]">{pipeline.name}</h3>
-      <p className="max-w-md text-sm text-[var(--text-muted)]">
+    <div className="flex flex-col items-center justify-center rounded-[var(--r-3)] border border-dashed border-[var(--n-4)] bg-[var(--n-2)] px-8 py-16 text-center">
+      <h3 className="mb-2 font-semibold text-[var(--n-12)]">{pipeline.name}</h3>
+      <p className="max-w-md text-[length:var(--t-sm)] text-[var(--n-8)]">
         Scalar distribution chart will render once this pipeline has scored posts.
       </p>
     </div>
@@ -155,7 +155,7 @@ function TagDistributionPanel({
     return (
       <div className="space-y-2 py-4">
         {[0, 1, 2].map((i) => (
-          <div key={i} className="h-10 animate-pulse rounded-lg bg-[var(--input-bg)]" />
+          <div key={i} className="h-10 animate-pulse rounded-[var(--r-2)] bg-[var(--n-3)]" />
         ))}
       </div>
     );
@@ -163,32 +163,37 @@ function TagDistributionPanel({
 
   if (distribution.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-8 py-16 text-center">
-        <h3 className="mb-2 font-semibold text-[var(--text)]">{pipeline.name}</h3>
-        <p className="max-w-md text-sm text-[var(--text-muted)]">{emptyMessage}</p>
+      <div className="flex flex-col items-center justify-center rounded-[var(--r-3)] border border-dashed border-[var(--n-4)] bg-[var(--n-2)] px-8 py-16 text-center">
+        <h3 className="mb-2 font-semibold text-[var(--n-12)]">{pipeline.name}</h3>
+        <p className="max-w-md text-[length:var(--t-sm)] text-[var(--n-8)]">{emptyMessage}</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-4">
-      <h2 className="text-sm uppercase tracking-wide text-[var(--text-muted)]">{pipeline.name}</h2>
+      <h2 className="text-[length:var(--t-sm)] uppercase tracking-wide text-[var(--n-8)]">
+        {pipeline.name}
+      </h2>
       <ul className="space-y-2">
         {distribution.map((entry) => {
           const pct = total > 0 ? Math.round((entry.count / total) * 100) : 0;
           return (
             <li
               key={entry.value}
-              className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3"
+              className="rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] p-3"
             >
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span className="font-medium text-[var(--text)] capitalize">{entry.value}</span>
-                <span className="text-xs text-[var(--text-muted)]">
+              <div className="mb-1 flex items-center justify-between text-[length:var(--t-sm)]">
+                <span className="font-medium text-[var(--n-11)] capitalize">{entry.value}</span>
+                <span className="text-[length:var(--t-xs)] text-[var(--n-8)]">
                   {entry.count.toLocaleString()} ({pct}%)
                 </span>
               </div>
-              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--input-bg)]">
-                <div className="h-full rounded-full bg-orange-400" style={{ width: `${pct}%` }} />
+              <div className="h-1.5 overflow-hidden rounded-full bg-[var(--n-3)]">
+                <div
+                  className="h-full rounded-full bg-[var(--accent-9)]"
+                  style={{ width: `${pct}%` }}
+                />
               </div>
             </li>
           );
@@ -248,21 +253,24 @@ export function Insights({
   if (pipelinesQ.isPending) {
     return (
       <div className="space-y-4 py-4">
-        <div className="flex gap-1 border-b border-[var(--border)] pb-0">
+        <div className="flex gap-1 border-b border-[var(--n-4)] pb-0">
           {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="h-8 w-24 animate-pulse rounded-t-md bg-[var(--input-bg)]" />
+            <div
+              key={i}
+              className="h-8 w-24 animate-pulse rounded-t-[var(--r-2)] bg-[var(--n-3)]"
+            />
           ))}
         </div>
-        <div className="h-48 animate-pulse rounded-lg bg-[var(--surface)]" />
+        <div className="h-48 animate-pulse rounded-[var(--r-2)] bg-[var(--n-2)]" />
       </div>
     );
   }
 
   if (pipelines.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] px-8 py-16 text-center">
-        <h3 className="mb-2 font-semibold text-[var(--text)]">No pipelines enabled</h3>
-        <p className="max-w-md text-sm text-[var(--text-muted)]">
+      <div className="flex flex-col items-center justify-center rounded-[var(--r-3)] border border-dashed border-[var(--n-4)] bg-[var(--n-2)] px-8 py-16 text-center">
+        <h3 className="mb-2 font-semibold text-[var(--n-12)]">No pipelines enabled</h3>
+        <p className="max-w-md text-[length:var(--t-sm)] text-[var(--n-8)]">
           Enable pipelines from the Pipelines tab to see analytics sections here.
         </p>
       </div>
@@ -277,7 +285,7 @@ export function Insights({
       <div
         role="tablist"
         aria-label="Insights sections"
-        className="flex gap-1 overflow-x-auto border-b border-[var(--border)] pb-0"
+        className="flex gap-1 overflow-x-auto border-b border-[var(--n-4)] pb-0"
         style={{ scrollbarWidth: 'none' }}
       >
         {pipelines.map((p) => {
@@ -289,10 +297,10 @@ export function Insights({
               role="tab"
               aria-selected={isActive}
               onClick={() => navigate(p.id)}
-              className={`-mb-px flex-shrink-0 border-b-2 px-4 py-2.5 text-sm font-medium transition ${
+              className={`-mb-px flex-shrink-0 border-b-2 px-4 py-2.5 text-[length:var(--t-sm)] font-medium transition ${
                 isActive
-                  ? 'border-orange-400 text-[var(--text)]'
-                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+                  ? 'border-[var(--accent-9)] text-[var(--n-12)]'
+                  : 'border-transparent text-[var(--n-8)] hover:text-[var(--n-11)]'
               }`}
             >
               {p.name}
@@ -307,7 +315,7 @@ export function Insights({
             aria-label="Create new pipeline"
             data-testid="insights-new-pipeline-btn"
             onClick={onOpenNewPipeline}
-            className="-mb-px ml-1 flex flex-shrink-0 items-center gap-1 border-b-2 border-transparent px-3 py-2.5 text-sm font-medium text-[var(--text-muted)] transition hover:border-violet-500 hover:text-violet-400"
+            className="-mb-px ml-1 flex flex-shrink-0 items-center gap-1 border-b-2 border-transparent px-3 py-2.5 text-[length:var(--t-sm)] font-medium text-[var(--n-8)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
           >
             <svg
               className="h-3.5 w-3.5"

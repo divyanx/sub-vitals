@@ -52,21 +52,21 @@ export function PipelineSummaryCard({ instance, onOpen }: PipelineSummaryCardPro
       type="button"
       onClick={() => onOpen(instance.id)}
       aria-label={`Open ${instance.name} pipeline — ${distribution.length} categories. Click to see full details.`}
-      className="group flex min-h-[200px] w-full cursor-pointer flex-col gap-3 rounded-xl border border-[var(--border)] bg-[var(--surface)] p-4 text-left shadow-sm transition hover:border-orange-500/60 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500"
+      className="group flex min-h-[200px] w-full cursor-pointer flex-col gap-3 rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-4 text-left shadow-[var(--shadow-1)] transition hover:border-[var(--accent-9)] hover:shadow-[var(--shadow-2)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
     >
       {/* Card header */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <h3 className="truncate text-sm font-semibold text-[var(--text)] group-hover:text-orange-300">
+          <h3 className="truncate text-[length:var(--t-sm)] font-semibold text-[var(--n-12)] group-hover:text-[var(--accent-11)]">
             {instance.name}
           </h3>
           {instance.description && (
-            <p className="mt-0.5 truncate text-[10px] text-[var(--text-muted)]">
+            <p className="mt-0.5 truncate text-[length:var(--t-xs)] text-[var(--n-8)]">
               {instance.description}
             </p>
           )}
         </div>
-        <span className="shrink-0 rounded-full bg-[var(--bg)] px-2 py-0.5 text-[9px] uppercase tracking-wider text-[var(--text-muted)]">
+        <span className="shrink-0 rounded-full bg-[var(--n-1)] px-2 py-0.5 text-[length:var(--t-xs)] uppercase tracking-wider text-[var(--n-8)]">
           {kind}
         </span>
       </div>
@@ -76,12 +76,14 @@ export function PipelineSummaryCard({ instance, onOpen }: PipelineSummaryCardPro
         {distQ.isPending && (
           <div className="space-y-2">
             {[1, 2, 3].map((i) => (
-              <div key={i} className="h-3 animate-pulse rounded bg-[var(--border)]" />
+              <div key={i} className="h-3 animate-pulse rounded-[var(--r-1)] bg-[var(--n-4)]" />
             ))}
           </div>
         )}
         {distQ.isError && (
-          <p className="text-xs text-[var(--text-muted)]">Could not load distribution.</p>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+            Could not load distribution.
+          </p>
         )}
         {!distQ.isPending && !distQ.isError && (
           <>
@@ -95,7 +97,7 @@ export function PipelineSummaryCard({ instance, onOpen }: PipelineSummaryCardPro
       </div>
 
       {/* Footer */}
-      <p className="text-[10px] text-orange-400 opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
+      <p className="text-[length:var(--t-xs)] text-[var(--accent-11)] opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">
         View in Pipelines &rarr;
       </p>
     </button>

@@ -15,6 +15,7 @@ import type {
   RuleTestResult,
   RuleTrigger,
 } from '../../shared/rules-types.js';
+import { Button } from '../components/ui/index.ts';
 
 // ---------------------------------------------------------------------------
 // API helpers
@@ -87,7 +88,7 @@ const TRIGGER_LABELS: Record<RuleTrigger, string> = {
 
 function TriggerBadge({ trigger }: { trigger: RuleTrigger }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-[var(--border)] px-2 py-0.5 text-[10px] font-medium text-[var(--text-muted)]">
+    <span className="inline-flex items-center rounded-full border border-[var(--n-4)] px-2 py-0.5 text-[length:var(--t-xs)] font-medium text-[var(--n-8)]">
       {TRIGGER_LABELS[trigger]}
     </span>
   );
@@ -115,14 +116,14 @@ function RuleRow({
   return (
     <div
       data-testid={`rule-row-${rule.id}`}
-      className="flex items-center gap-4 rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 transition hover:border-[var(--accent)]/40"
+      className="flex items-center gap-4 rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 transition hover:border-[var(--accent-9)] shadow-[var(--shadow-1)]"
     >
       {/* Enabled toggle */}
       <button
         type="button"
         aria-label={rule.enabled ? 'Disable rule' : 'Enable rule'}
         onClick={() => onToggle(rule.id)}
-        className={`relative h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)] ${rule.enabled ? 'bg-orange-500' : 'bg-[var(--border)]'}`}
+        className={`relative h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)] ${rule.enabled ? 'bg-[var(--accent-9)]' : 'bg-[var(--n-5)]'}`}
       >
         <span
           className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${rule.enabled ? 'translate-x-4' : 'translate-x-0.5'}`}
@@ -131,9 +132,11 @@ function RuleRow({
 
       {/* Name + trigger */}
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium text-[var(--text)]">{rule.name}</p>
+        <p className="truncate text-[length:var(--t-sm)] font-medium text-[var(--n-12)]">
+          {rule.name}
+        </p>
         {rule.description && (
-          <p className="truncate text-xs text-[var(--text-muted)]">{rule.description}</p>
+          <p className="truncate text-[length:var(--t-xs)] text-[var(--n-8)]">{rule.description}</p>
         )}
       </div>
 
@@ -141,9 +144,9 @@ function RuleRow({
 
       {/* Stats */}
       <div className="hidden text-right sm:block">
-        <p className="text-xs text-[var(--text-muted)]">{rule.fireCount ?? 0} fires</p>
+        <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">{rule.fireCount ?? 0} fires</p>
         {rule.lastFiredAt && (
-          <p className="text-xs text-[var(--text-muted)]">
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
             {new Date(rule.lastFiredAt).toLocaleDateString()}
           </p>
         )}
@@ -151,34 +154,18 @@ function RuleRow({
 
       {/* Actions */}
       <div className="flex flex-shrink-0 items-center gap-1">
-        <button
-          type="button"
-          onClick={() => onTest(rule)}
-          className="rounded px-2 py-1 text-xs text-[var(--text-muted)] transition hover:bg-[var(--bg)] hover:text-[var(--text)]"
-        >
+        <Button variant="ghost" size="sm" onClick={() => onTest(rule)}>
           Test
-        </button>
-        <button
-          type="button"
-          onClick={() => onEdit(rule)}
-          className="rounded px-2 py-1 text-xs text-[var(--text-muted)] transition hover:bg-[var(--bg)] hover:text-[var(--text)]"
-        >
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onEdit(rule)}>
           Edit
-        </button>
-        <button
-          type="button"
-          onClick={() => onDuplicate(rule)}
-          className="rounded px-2 py-1 text-xs text-[var(--text-muted)] transition hover:bg-[var(--bg)] hover:text-[var(--text)]"
-        >
+        </Button>
+        <Button variant="ghost" size="sm" onClick={() => onDuplicate(rule)}>
           Dup
-        </button>
-        <button
-          type="button"
-          onClick={() => onDelete(rule.id)}
-          className="rounded px-2 py-1 text-xs text-red-500 transition hover:bg-red-50 hover:text-red-700"
-        >
+        </Button>
+        <Button variant="destructive" size="sm" onClick={() => onDelete(rule.id)}>
           Del
-        </button>
+        </Button>
       </div>
     </div>
   );
@@ -233,20 +220,20 @@ function ConditionLeafEditor({
   onRemove: () => void;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-2 rounded border border-[var(--border)] bg-[var(--bg)] p-2">
+    <div className="flex flex-wrap items-center gap-2 rounded border border-[var(--n-4)] bg-[var(--n-1)] p-2">
       <input
         type="text"
         aria-label="Pipeline ID"
         placeholder="pipeline-id"
         value={node.pipelineId}
         onChange={(e) => onChange({ ...node, pipelineId: e.target.value })}
-        className="w-32 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+        className="w-32 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
       />
       <select
         aria-label="Field"
         value={node.field}
         onChange={(e) => onChange({ ...node, field: e.target.value as ConditionField })}
-        className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none"
+        className="rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
       >
         {FIELDS.map((f) => (
           <option key={f.value} value={f.value}>
@@ -258,7 +245,7 @@ function ConditionLeafEditor({
         aria-label="Operator"
         value={node.operator}
         onChange={(e) => onChange({ ...node, operator: e.target.value as ConditionOperator })}
-        className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none"
+        className="rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
       >
         {OPERATORS.map((op) => (
           <option key={op.value} value={op.value}>
@@ -272,12 +259,12 @@ function ConditionLeafEditor({
         placeholder="value"
         value={String(node.value)}
         onChange={(e) => onChange({ ...node, value: e.target.value })}
-        className="w-28 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+        className="w-28 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
       />
       <button
         type="button"
         onClick={onRemove}
-        className="ml-auto text-xs text-red-400 hover:text-red-600"
+        className="ml-auto text-[length:var(--t-xs)] text-[var(--error-11)] hover:text-[var(--error-9)]"
         aria-label="Remove condition"
       >
         Remove
@@ -317,13 +304,13 @@ function ConditionGroupEditor({
   };
 
   return (
-    <div className={`rounded border border-[var(--border)] p-2 ${depth > 0 ? 'ml-4' : ''}`}>
+    <div className={`rounded border border-[var(--n-4)] p-2 ${depth > 0 ? 'ml-4' : ''}`}>
       <div className="mb-2 flex items-center gap-2">
         <select
           aria-label="Group operator"
           value={node.op}
           onChange={(e) => onChange({ ...node, op: e.target.value as 'and' | 'or' })}
-          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs font-bold text-[var(--text)] focus:outline-none"
+          className="rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] font-bold text-[var(--n-11)] focus:outline-none"
         >
           <option value="and">AND (all must match)</option>
           <option value="or">OR (any must match)</option>
@@ -332,7 +319,7 @@ function ConditionGroupEditor({
           <button
             type="button"
             onClick={onRemove}
-            className="ml-auto text-xs text-red-400 hover:text-red-600"
+            className="ml-auto text-[length:var(--t-xs)] text-[var(--error-11)] hover:text-[var(--error-9)]"
           >
             Remove group
           </button>
@@ -362,7 +349,7 @@ function ConditionGroupEditor({
         <button
           type="button"
           onClick={addCondition}
-          className="rounded border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+          className="rounded border border-[var(--n-4)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-8)] hover:text-[var(--n-11)]"
         >
           + Add condition
         </button>
@@ -370,7 +357,7 @@ function ConditionGroupEditor({
           <button
             type="button"
             onClick={addGroup}
-            className="rounded border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+            className="rounded border border-[var(--n-4)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-8)] hover:text-[var(--n-11)]"
           >
             + Group (AND/OR)
           </button>
@@ -394,7 +381,7 @@ function ConditionEditor({
           <button
             type="button"
             onClick={() => onChange({ op: 'and', children: [tree] })}
-            className="rounded border border-[var(--border)] px-2 py-1 text-xs text-[var(--text-muted)] hover:text-[var(--text)]"
+            className="rounded border border-[var(--n-4)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-8)] hover:text-[var(--n-11)]"
           >
             Wrap in group
           </button>
@@ -460,14 +447,16 @@ function ActionEditor({
   };
 
   return (
-    <div className="rounded border border-[var(--border)] bg-[var(--bg)] p-3">
+    <div className="rounded border border-[var(--n-4)] bg-[var(--n-1)] p-3">
       <div className="mb-2 flex items-center gap-2">
-        <span className="text-xs font-medium text-[var(--text-muted)]">Action {index + 1}</span>
+        <span className="text-[length:var(--t-xs)] font-medium text-[var(--n-8)]">
+          Action {index + 1}
+        </span>
         <select
           aria-label={`Action ${index + 1} type`}
           value={action.type}
           onChange={(e) => changeType(e.target.value as Action['type'])}
-          className="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none"
+          className="flex-1 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
         >
           {ACTION_TYPES.map((t) => (
             <option key={t.value} value={t.value}>
@@ -478,7 +467,7 @@ function ActionEditor({
         <button
           type="button"
           onClick={onRemove}
-          className="text-xs text-red-400 hover:text-red-600"
+          className="text-[length:var(--t-xs)] text-[var(--error-11)] hover:text-[var(--error-9)]"
           aria-label={`Remove action ${index + 1}`}
         >
           Remove
@@ -493,7 +482,7 @@ function ActionEditor({
           placeholder="Note for audit log"
           value={action.note}
           onChange={(e) => onChange({ ...action, note: e.target.value })}
-          className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+          className="w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
         />
       )}
       {action.type === 'set-status' && (
@@ -501,7 +490,7 @@ function ActionEditor({
           aria-label="Status"
           value={action.status}
           onChange={(e) => onChange({ ...action, status: e.target.value as PostStatus })}
-          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none"
+          className="rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
         >
           {(['open', 'in-progress', 'responded', 'resolved'] as PostStatus[]).map((s) => (
             <option key={s} value={s}>
@@ -518,7 +507,7 @@ function ActionEditor({
             placeholder="Subject"
             value={action.subject}
             onChange={(e) => onChange({ ...action, subject: e.target.value })}
-            className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+            className="w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
           />
           <textarea
             aria-label="Body template"
@@ -526,12 +515,12 @@ function ActionEditor({
             value={action.bodyTemplate}
             onChange={(e) => onChange({ ...action, bodyTemplate: e.target.value })}
             rows={3}
-            className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+            className="w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
           />
         </div>
       )}
       {(action.type === 'remove-post' || action.type === 'remove-comment') && (
-        <label className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
+        <label className="flex items-center gap-2 text-[length:var(--t-xs)] text-[var(--n-8)]">
           <input
             type="checkbox"
             checked={action.spam ?? false}
@@ -551,7 +540,7 @@ function ActionEditor({
               severity: e.target.value as 'low' | 'medium' | 'high' | 'critical',
             })
           }
-          className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none"
+          className="rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
         >
           {(['low', 'medium', 'high', 'critical'] as const).map((s) => (
             <option key={s} value={s}>
@@ -568,13 +557,13 @@ function ActionEditor({
             placeholder="https://..."
             value={action.url}
             onChange={(e) => onChange({ ...action, url: e.target.value })}
-            className="flex-1 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+            className="flex-1 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
           />
           <select
             aria-label="HTTP method"
             value={action.method ?? 'POST'}
             onChange={(e) => onChange({ ...action, method: e.target.value as 'POST' | 'PUT' })}
-            className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none"
+            className="rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
           >
             <option value="POST">POST</option>
             <option value="PUT">PUT</option>
@@ -589,7 +578,7 @@ function ActionEditor({
             placeholder="pipeline-id"
             value={action.instanceId}
             onChange={(e) => onChange({ ...action, instanceId: e.target.value })}
-            className="w-32 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+            className="w-32 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
           />
           <input
             type="text"
@@ -597,7 +586,7 @@ function ActionEditor({
             placeholder="value"
             value={action.value}
             onChange={(e) => onChange({ ...action, value: e.target.value })}
-            className="w-24 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+            className="w-24 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
           />
         </div>
       )}
@@ -690,18 +679,18 @@ function RuleBuilderModal({
       }}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--n-4)] bg-[var(--n-1)] shadow-xl"
         data-testid="rule-builder-modal"
       >
         {/* Header */}
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-          <h2 className="text-base font-semibold text-[var(--text)]">
+        <div className="flex items-center justify-between border-b border-[var(--n-4)] px-6 py-4">
+          <h2 className="text-[length:var(--t-base)] font-semibold text-[var(--n-11)]">
             {isEdit ? 'Edit rule' : 'New rule'}
           </h2>
           <button
             type="button"
             onClick={onClose}
-            className="rounded p-1 text-[var(--text-muted)] hover:text-[var(--text)]"
+            className="rounded p-1 text-[var(--n-8)] hover:text-[var(--n-11)]"
             aria-label="Close"
           >
             x
@@ -709,16 +698,16 @@ function RuleBuilderModal({
         </div>
 
         {/* Step indicator */}
-        <div className="flex border-b border-[var(--border)] px-6">
+        <div className="flex border-b border-[var(--n-4)] px-6">
           {([1, 2, 3, 4] as Step[]).map((s) => (
             <button
               key={s}
               type="button"
               onClick={() => setStep(s)}
-              className={`-mb-px border-b-2 px-4 py-2 text-xs font-medium transition ${
+              className={`-mb-px border-b-2 px-4 py-2 text-[length:var(--t-xs)] font-medium transition ${
                 step === s
-                  ? 'border-orange-500 text-[var(--text)]'
-                  : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
+                  ? 'border-[var(--accent-9)] text-[var(--n-12)]'
+                  : 'border-transparent text-[var(--n-8)] hover:text-[var(--n-11)]'
               }`}
             >
               {s === 1 ? 'Name' : s === 2 ? 'Trigger' : s === 3 ? 'Conditions' : 'Actions'}
@@ -733,9 +722,9 @@ function RuleBuilderModal({
               <div>
                 <label
                   htmlFor="rule-name"
-                  className="mb-1 block text-xs font-medium text-[var(--text)]"
+                  className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
                 >
-                  Name <span className="text-red-500">*</span>
+                  Name <span className="text-[var(--error-11)]">*</span>
                 </label>
                 <input
                   id="rule-name"
@@ -744,13 +733,13 @@ function RuleBuilderModal({
                   placeholder="Rule name"
                   value={state.name}
                   onChange={(e) => setState({ ...state, name: e.target.value })}
-                  className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  className="w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-3 py-2 text-[length:var(--t-sm)] text-[var(--n-11)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
                 />
               </div>
               <div>
                 <label
                   htmlFor="rule-desc"
-                  className="mb-1 block text-xs font-medium text-[var(--text)]"
+                  className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
                 >
                   Description
                 </label>
@@ -760,10 +749,10 @@ function RuleBuilderModal({
                   value={state.description}
                   onChange={(e) => setState({ ...state, description: e.target.value })}
                   rows={3}
-                  className="w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-sm text-[var(--text)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent)]"
+                  className="w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-3 py-2 text-[length:var(--t-sm)] text-[var(--n-11)] focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)]"
                 />
               </div>
-              <label className="flex items-center gap-2 text-sm text-[var(--text)]">
+              <label className="flex items-center gap-2 text-[length:var(--t-sm)] text-[var(--n-11)]">
                 <input
                   type="checkbox"
                   checked={state.enabled}
@@ -777,7 +766,9 @@ function RuleBuilderModal({
 
           {step === 2 && (
             <div>
-              <p className="mb-2 text-xs font-medium text-[var(--text)]">Trigger</p>
+              <p className="mb-2 text-[length:var(--t-xs)] font-medium text-[var(--n-11)]">
+                Trigger
+              </p>
               <div className="flex flex-col gap-2">
                 {(
                   [
@@ -807,8 +798,8 @@ function RuleBuilderModal({
                     key={t.value}
                     className={`flex cursor-pointer flex-col rounded-lg border p-3 transition ${
                       state.trigger === t.value
-                        ? 'border-orange-500 bg-orange-50/10'
-                        : 'border-[var(--border)] hover:border-[var(--accent)]/40'
+                        ? 'border-[var(--accent-9)] bg-[var(--accent-3)]'
+                        : 'border-[var(--n-4)] hover:border-[var(--accent-9)]'
                     }`}
                   >
                     <div className="flex items-center gap-2">
@@ -818,11 +809,15 @@ function RuleBuilderModal({
                         value={t.value}
                         checked={state.trigger === t.value}
                         onChange={() => setState({ ...state, trigger: t.value })}
-                        className="accent-orange-500"
+                        className="accent-[var(--accent-9)]"
                       />
-                      <span className="text-sm font-medium text-[var(--text)]">{t.label}</span>
+                      <span className="text-[length:var(--t-sm)] font-medium text-[var(--n-11)]">
+                        {t.label}
+                      </span>
                     </div>
-                    <p className="mt-1 pl-5 text-xs text-[var(--text-muted)]">{t.desc}</p>
+                    <p className="mt-1 pl-5 text-[length:var(--t-xs)] text-[var(--n-8)]">
+                      {t.desc}
+                    </p>
                   </label>
                 ))}
               </div>
@@ -831,7 +826,7 @@ function RuleBuilderModal({
 
           {step === 3 && (
             <div>
-              <p className="mb-3 text-xs text-[var(--text-muted)]">
+              <p className="mb-3 text-[length:var(--t-xs)] text-[var(--n-8)]">
                 Conditions evaluate against pipeline tags on the target content.
               </p>
               <ConditionEditor
@@ -843,7 +838,7 @@ function RuleBuilderModal({
 
           {step === 4 && (
             <div className="flex flex-col gap-3">
-              <p className="text-xs text-[var(--text-muted)]">
+              <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
                 Actions run sequentially. One failing action does not block the rest.
               </p>
               {state.actions.map((action, i) => (
@@ -858,7 +853,7 @@ function RuleBuilderModal({
               <button
                 type="button"
                 onClick={addAction}
-                className="flex items-center gap-1 rounded border border-dashed border-[var(--border)] px-3 py-2 text-xs text-[var(--text-muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)]"
+                className="flex items-center gap-1 rounded-[var(--r-2)] border border-dashed border-[var(--n-4)] px-3 py-2 text-[length:var(--t-xs)] text-[var(--n-8)] transition hover:border-[var(--accent-9)] hover:text-[var(--n-11)]"
               >
                 + Add action
               </button>
@@ -868,39 +863,42 @@ function RuleBuilderModal({
 
         {/* Footer */}
         {error && (
-          <p className="border-t border-[var(--border)] px-6 py-2 text-xs text-red-500">{error}</p>
+          <p className="border-t border-[var(--n-4)] px-6 py-2 text-[length:var(--t-xs)] text-[var(--error-11)]">
+            {error}
+          </p>
         )}
-        <div className="flex items-center justify-between border-t border-[var(--border)] px-6 py-4">
+        <div className="flex items-center justify-between border-t border-[var(--n-4)] px-6 py-4">
           <div className="flex gap-2">
-            <button
-              type="button"
+            <Button
+              variant="secondary"
+              size="sm"
               onClick={() => setStep((s) => Math.max(1, s - 1) as Step)}
               disabled={step === 1}
-              className="rounded border border-[var(--border)] px-3 py-1.5 text-xs text-[var(--text-muted)] transition hover:text-[var(--text)] disabled:opacity-40"
             >
               Back
-            </button>
+            </Button>
             {step < 4 && (
-              <button
-                type="button"
+              <Button
+                variant="primary"
+                size="sm"
                 data-testid="rule-builder-next"
                 onClick={() => setStep((s) => (s + 1) as Step)}
-                className="rounded bg-orange-500 px-3 py-1.5 text-xs font-medium text-white hover:bg-orange-600"
               >
                 Next
-              </button>
+              </Button>
             )}
           </div>
           {step === 4 && (
-            <button
-              type="button"
+            <Button
+              variant="primary"
+              size="sm"
               data-testid="rule-builder-save"
               onClick={handleSave}
               disabled={saving || !state.name.trim() || state.actions.length === 0}
-              className="rounded bg-orange-500 px-4 py-1.5 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-40"
+              isLoading={saving}
             >
               {saving ? 'Saving...' : isEdit ? 'Save changes' : 'Create rule'}
-            </button>
+            </Button>
           )}
         </div>
       </div>
@@ -944,13 +942,15 @@ function TestModal({ rule, onClose }: { rule: Rule; onClose: () => void }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[var(--border)] bg-[var(--bg)] shadow-xl">
-        <div className="flex items-center justify-between border-b border-[var(--border)] px-6 py-4">
-          <h2 className="text-base font-semibold text-[var(--text)]">Test: {rule.name}</h2>
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[var(--n-4)] bg-[var(--n-1)] shadow-xl">
+        <div className="flex items-center justify-between border-b border-[var(--n-4)] px-6 py-4">
+          <h2 className="text-[length:var(--t-base)] font-semibold text-[var(--n-11)]">
+            Test: {rule.name}
+          </h2>
           <button
             type="button"
             onClick={onClose}
-            className="text-[var(--text-muted)] hover:text-[var(--text)]"
+            className="text-[var(--n-8)] hover:text-[var(--n-11)]"
           >
             x
           </button>
@@ -958,7 +958,7 @@ function TestModal({ rule, onClose }: { rule: Rule; onClose: () => void }) {
         <div className="flex-1 overflow-y-auto p-6">
           <label
             htmlFor="test-modal-tags"
-            className="mb-1 block text-xs font-medium text-[var(--text)]"
+            className="mb-1 block text-[length:var(--t-xs)] font-medium text-[var(--n-11)]"
           >
             Sample tags (JSON object: pipelineId -&gt; {'{value, confidence, label}'})
           </label>
@@ -967,47 +967,49 @@ function TestModal({ rule, onClose }: { rule: Rule; onClose: () => void }) {
             value={tags}
             onChange={(e) => setTags(e.target.value)}
             rows={6}
-            className="mb-3 w-full rounded border border-[var(--border)] bg-[var(--surface)] px-3 py-2 font-mono text-xs text-[var(--text)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent)]"
+            className="mb-3 w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-3 py-2 font-mono text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none focus-visible:ring-1 focus-visible:ring-[var(--accent-9)]"
             placeholder='{"sentiment": {"value": "negative", "confidence": 0.9}}'
           />
-          {error && <p className="mb-2 text-xs text-red-500">{error}</p>}
+          {error && (
+            <p className="mb-2 text-[length:var(--t-xs)] text-[var(--error-11)]">{error}</p>
+          )}
           {result && (
-            <div className="mt-2 rounded border border-[var(--border)] bg-[var(--surface)] p-3 text-xs">
+            <div className="mt-2 rounded border border-[var(--n-4)] bg-[var(--n-2)] p-3 text-[length:var(--t-xs)]">
               <p
-                className={`mb-2 font-semibold ${result.conditionsMatched ? 'text-green-500' : 'text-[var(--text-muted)]'}`}
+                className={`mb-2 font-semibold ${result.conditionsMatched ? 'text-[var(--success-11)]' : 'text-[var(--n-8)]'}`}
               >
                 Conditions: {result.conditionsMatched ? 'MATCHED' : 'did not match'}
               </p>
               <div className="mb-2">
-                <p className="mb-1 font-medium text-[var(--text)]">Actions that would fire:</p>
+                <p className="mb-1 font-medium text-[var(--n-11)]">Actions that would fire:</p>
                 {result.actions.map((a, i) => (
                   <div
                     key={i}
-                    className={`mb-1 flex items-start gap-2 ${a.wouldFire ? 'text-[var(--text)]' : 'text-[var(--text-muted)] line-through'}`}
+                    className={`mb-1 flex items-start gap-2 ${a.wouldFire ? 'text-[var(--n-11)]' : 'text-[var(--n-8)] line-through'}`}
                   >
                     <span>{a.wouldFire ? '✓' : '–'}</span>
                     <span>{a.description}</span>
-                    {a.error && <span className="text-red-400">({a.error})</span>}
+                    {a.error && <span className="text-[var(--error-11)]">({a.error})</span>}
                   </div>
                 ))}
               </div>
               <details className="mt-2">
-                <summary className="cursor-pointer text-[var(--text-muted)] hover:text-[var(--text)]">
+                <summary className="cursor-pointer text-[var(--n-8)] hover:text-[var(--n-11)]">
                   Condition trace
                 </summary>
-                <pre className="mt-1 overflow-x-auto rounded bg-[var(--bg)] p-2 text-[10px] text-[var(--text-muted)]">
+                <pre className="mt-1 overflow-x-auto rounded bg-[var(--bg)] p-2 text-[10px] text-[var(--n-8)]">
                   {JSON.stringify(result.conditionTrace, null, 2)}
                 </pre>
               </details>
             </div>
           )}
         </div>
-        <div className="flex justify-end border-t border-[var(--border)] px-6 py-4">
+        <div className="flex justify-end border-t border-[var(--n-4)] px-6 py-4">
           <button
             type="button"
             onClick={runTest}
             disabled={loading}
-            className="rounded bg-orange-500 px-4 py-1.5 text-xs font-medium text-white hover:bg-orange-600 disabled:opacity-40"
+            className="rounded bg-[var(--accent-9)] px-4 py-1.5 text-[length:var(--t-xs)] font-medium text-white hover:bg-[var(--accent-10)] disabled:opacity-40"
           >
             {loading ? 'Running...' : 'Run test'}
           </button>
@@ -1078,8 +1080,8 @@ export function Rules() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-semibold text-[var(--text)]">Rules</h2>
-          <p className="text-xs text-[var(--text-muted)]">
+          <h2 className="text-[length:var(--t-lg)] font-semibold text-[var(--n-11)]">Rules</h2>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
             Conditional automation — WHEN pipeline tags match, THEN fire actions.
           </p>
         </div>
@@ -1090,7 +1092,7 @@ export function Rules() {
             setEditingRule(null);
             setBuilderOpen(true);
           }}
-          className="rounded-lg bg-orange-500 px-3 py-1.5 text-sm font-medium text-white hover:bg-orange-600"
+          className="rounded-lg bg-[var(--accent-9)] px-3 py-1.5 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
         >
           + New rule
         </button>
@@ -1098,30 +1100,34 @@ export function Rules() {
 
       {/* Stats strip */}
       <div className="flex gap-4">
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-center">
-          <p className="text-xl font-bold text-[var(--text)]">{rules.length}</p>
-          <p className="text-xs text-[var(--text-muted)]">Total</p>
+        <div className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 text-center shadow-[var(--shadow-1)]">
+          <p className="text-[length:var(--t-xl)] font-bold tabular-nums text-[var(--n-12)]">
+            {rules.length}
+          </p>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">Total</p>
         </div>
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-center">
-          <p className="text-xl font-bold text-orange-500">{active.length}</p>
-          <p className="text-xs text-[var(--text-muted)]">Active</p>
+        <div className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 text-center shadow-[var(--shadow-1)]">
+          <p className="text-[length:var(--t-xl)] font-bold tabular-nums text-[var(--accent-11)]">
+            {active.length}
+          </p>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">Active</p>
         </div>
-        <div className="rounded-lg border border-[var(--border)] bg-[var(--surface)] px-4 py-3 text-center">
-          <p className="text-xl font-bold text-[var(--text)]">
+        <div className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 text-center shadow-[var(--shadow-1)]">
+          <p className="text-[length:var(--t-xl)] font-bold tabular-nums text-[var(--n-12)]">
             {rules.reduce((sum, r) => sum + (r.fireCount ?? 0), 0)}
           </p>
-          <p className="text-xs text-[var(--text-muted)]">Total fires</p>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">Total fires</p>
         </div>
       </div>
 
       {/* Loading / error */}
       {isLoading && (
-        <div className="flex items-center justify-center py-12 text-sm text-[var(--text-muted)]">
+        <div className="flex items-center justify-center py-12 text-[length:var(--t-sm)] text-[var(--n-8)]">
           Loading rules...
         </div>
       )}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50/10 p-4 text-sm text-red-500">
+        <div className="rounded-lg border border-red-200 bg-red-50/10 p-4 text-[length:var(--t-sm)] text-[var(--error-11)]">
           Failed to load rules.
         </div>
       )}
@@ -1129,7 +1135,7 @@ export function Rules() {
       {/* Active rules */}
       {!isLoading && active.length > 0 && (
         <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+          <h3 className="mb-2 text-[length:var(--t-xs)] font-semibold uppercase tracking-wider text-[var(--n-8)]">
             Active
           </h3>
           <div className="flex flex-col gap-2">
@@ -1151,7 +1157,7 @@ export function Rules() {
       {/* Inactive rules */}
       {!isLoading && inactive.length > 0 && (
         <section>
-          <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-[var(--text-muted)]">
+          <h3 className="mb-2 text-[length:var(--t-xs)] font-semibold uppercase tracking-wider text-[var(--n-8)]">
             Disabled
           </h3>
           <div className="flex flex-col gap-2">
@@ -1173,17 +1179,17 @@ export function Rules() {
       {/* Empty state */}
       {!isLoading && rules.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <div className="rounded-full border border-[var(--border)] bg-[var(--surface)] p-4 text-2xl">
+          <div className="rounded-full border border-[var(--n-4)] bg-[var(--n-2)] p-4 text-2xl">
             R
           </div>
-          <h3 className="text-sm font-medium text-[var(--text)]">No rules yet</h3>
-          <p className="max-w-xs text-xs text-[var(--text-muted)]">
+          <h3 className="text-[length:var(--t-sm)] font-medium text-[var(--n-11)]">No rules yet</h3>
+          <p className="max-w-xs text-[length:var(--t-xs)] text-[var(--n-8)]">
             Create your first rule to automate actions when pipeline tags match conditions.
           </p>
           <button
             type="button"
             onClick={() => setBuilderOpen(true)}
-            className="rounded-lg bg-orange-500 px-4 py-2 text-sm font-medium text-white hover:bg-orange-600"
+            className="rounded-lg bg-[var(--accent-9)] px-4 py-2 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
           >
             Create first rule
           </button>
