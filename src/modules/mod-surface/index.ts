@@ -129,8 +129,9 @@ async function buildTemplateMap(tags: Tag[]): Promise<Map<string, Tag>> {
 
   for (const t of tags) {
     const pid = t.pipelineId;
-    if (HARDCODED_AS_TEMPLATE[pid]) {
-      map.set(HARDCODED_AS_TEMPLATE[pid]!, t);
+    const hardcoded = HARDCODED_AS_TEMPLATE[pid];
+    if (hardcoded) {
+      map.set(hardcoded, t);
       // Keep the raw hardcoded id too in case a caller checks for it.
       map.set(pid, t);
     } else if (pid.startsWith('pi_')) {
@@ -408,6 +409,12 @@ export async function recomputeForPost(postId: string): Promise<void> {
   const sub = context.subredditName;
   if (!sub) return;
 
+  // Tag.targetId already carries the `t3_` prefix (Devvit's post.id is
+  // prefixed). Strip it before re-wrapping so we don't end up with
+  // `t3_t3_…` IDs that 404 against Reddit.
+  const bareId = postId.startsWith('t3_') ? postId.slice(3) : postId;
+  const fullId = `t3_${bareId}` as `t3_${string}`;
+
   // Resolve instance IDs → templateIds once. Without this catalogue-
   // installed pipelines (pi_<nanoid>) would silently fall through every
   // findByTemplate check, leaving the flair / reports / sticky comment
@@ -420,7 +427,7 @@ export async function recomputeForPost(postId: string): Promise<void> {
     try {
       await reddit.setPostFlair({
         subredditName: sub,
-        postId: `t3_${postId}` as `t3_${string}`,
+        postId: fullId,
         text: flair.text,
         backgroundColor: flair.backgroundColor,
         textColor: flair.textColor,
@@ -453,7 +460,7 @@ export async function recomputeForPost(postId: string): Promise<void> {
           if (alreadySet.has(reason)) continue;
           try {
             if (!post) {
-              post = await reddit.getPostById(`t3_${postId}` as `t3_${string}`);
+              post = await reddit.getPostById(fullId);
             }
             await reddit.report(post, { reason: reason.slice(0, 100) });
             await redis.zAdd(reportsKey(postId), { score: Date.now(), member: reason });
@@ -478,33 +485,22 @@ export async function recomputeForPost(postId: string): Promise<void> {
     }
   }
 
-  // 3. Sticky distinguished analysis comment, once per post
-  if (shouldComment(tags, byTemplate)) {
-    try {
-      const already = await redis.get(commentKey(postId));
-      if (!already) {
-        const body = renderCommentBody(tags);
-        const comment = await reddit.submitComment({
-          id: `t3_${postId}` as `t3_${string}`,
-          text: body,
-        });
-        // distinguish() with sticky=true so the comment pins to the top
-        // and shows the green [M] badge.
-        try {
-          await comment.distinguish(true);
-        } catch (err) {
-          // Some Devvit versions of distinguish are no-ops; safe to ignore.
-          log.warn('mod-surface: distinguish failed (non-fatal)', { err: String(err) });
-        }
-        await redis.set(commentKey(postId), '1');
-        await redis.expire(commentKey(postId), COMMENT_SENTINEL_TTL_SEC);
-        log.info('mod-surface: analysis comment posted', { postId, commentId: comment.id });
-      }
-    } catch (err) {
-      log.warn('mod-surface: submitComment failed (non-fatal)', {
-        postId,
-        err: String(err),
-      });
-    }
-  }
+  // 3. Sticky distinguished analysis comment — DISABLED.
+  //
+  // Devvit only allows submitComment when the app runs as the user
+  // (scope: 'user'), which would break our mod-only actions (ban,
+  // remove, modmail) that require scope: 'moderator'. The asUser
+  // permission for SUBMIT_COMMENT is documented but "not currently in
+  // use" per the schema. With the auto-reports surface (above) carrying
+  // every signal as its own queue line, the sticky comment was a
+  // nice-to-have rather than load-bearing — disabling it stops the
+  // recurring 403 noise in the logs.
+  //
+  // To re-enable in the future: change reddit scope to 'user' AND
+  // re-wire all mod actions (ban/remove/modmail) to either run via a
+  // dedicated mod account or accept loss of those features.
+  void shouldComment;
+  void renderCommentBody;
+  void commentKey;
+  void COMMENT_SENTINEL_TTL_SEC;
 }

@@ -7,6 +7,7 @@
  * activity feed with deep links back to the actual Reddit posts.
  */
 
+import { navigateTo } from '@devvit/web/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -755,7 +756,10 @@ function Posts({
         <RuleFiringsPanel onOpenRules={onOpenRules} />
         <PriorityQueuePanel
           onOpenPost={(_postId, url) => {
-            window.open(url, '_blank', 'noopener,noreferrer');
+            // Devvit iframes sandbox `window.open` — must use Devvit's
+            // navigateTo which postMessages the parent window. Falls back
+            // to a no-op rather than throwing if the URL is malformed.
+            if (url) navigateTo(url);
           }}
         />
       </div>
