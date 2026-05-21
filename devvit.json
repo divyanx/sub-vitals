@@ -10,6 +10,7 @@
         "api.openai.com",
         "generativelanguage.googleapis.com",
         "openrouter.ai",
+        "*.openrouter.ai",
         "studio.redlattice.app"
       ]
     },
