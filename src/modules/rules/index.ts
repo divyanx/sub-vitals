@@ -20,6 +20,7 @@ import {
   reorderRules,
   saveRule,
 } from '@shared/rules-storage.js';
+import { getRuleTemplate, RULE_TEMPLATES } from '@shared/rules-templates.js';
 import type { Action, ConditionTree, Rule, RuleContext, RuleTrigger } from '@shared/rules-types.js';
 import type { RedLatticeModule } from '@shared/types.js';
 import type { Hono } from 'hono';
@@ -161,6 +162,48 @@ export const rulesModule: RedLatticeModule = {
   },
 
   apiRoutes(app: Hono): void {
+    // ── GET /api/rules/templates ────────────────────────────────────────────
+    // Catalogue of pre-built rule templates the mod can install with one click.
+    // No mod gate — read-only metadata. Templates carry no installation state.
+    app.get('/api/rules/templates', (c) => {
+      return c.json({ count: RULE_TEMPLATES.length, templates: RULE_TEMPLATES });
+    });
+
+    // ── POST /api/rules/install-template ────────────────────────────────────
+    // Clone a template into a real Rule. Installed disabled-by-default so the
+    // mod can review + tweak (especially webhook URLs) before activating.
+    app.post('/api/rules/install-template', async (c) => {
+      if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+      const body = (await c.req.json().catch(() => null)) as {
+        templateId?: string;
+        enabled?: boolean;
+        name?: string;
+      } | null;
+      const templateId = body?.templateId;
+      if (!templateId) return c.json({ error: 'templateId required' }, 400);
+
+      const tpl = getRuleTemplate(templateId);
+      if (!tpl) return c.json({ error: 'unknown template' }, 404);
+
+      const now = Date.now();
+      const rule: Rule = {
+        id: newRuleId(),
+        name: body?.name?.trim() || tpl.name,
+        description: tpl.description,
+        enabled: body?.enabled ?? false,
+        trigger: tpl.trigger,
+        conditions: tpl.conditions,
+        actions: tpl.actions as Action[],
+        createdAt: now,
+        updatedAt: now,
+        fireCount: 0,
+      };
+      await saveRule(rule);
+      await appendToOrder(rule.id);
+      log.info('rules: installed from template', { templateId, ruleId: rule.id });
+      return c.json({ rule, fromTemplate: templateId }, 201);
+    });
+
     // ── GET /api/rules ──────────────────────────────────────────────────────
     app.get('/api/rules', async (c) => {
       if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);

@@ -3,7 +3,8 @@
  */
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
+import type { RuleCategory, RuleTemplate } from '../../shared/rules-templates.js';
 import type {
   Action,
   ConditionField,
@@ -62,6 +63,28 @@ async function toggleRule(id: string): Promise<{ rule: Rule }> {
   return res.json() as Promise<{ rule: Rule }>;
 }
 
+async function fetchRuleTemplates(): Promise<{ count: number; templates: RuleTemplate[] }> {
+  const res = await fetch('/api/rules/templates');
+  if (!res.ok) throw new Error('Failed to fetch rule templates');
+  return res.json() as Promise<{ count: number; templates: RuleTemplate[] }>;
+}
+
+async function installRuleTemplate(
+  templateId: string,
+  opts?: { enabled?: boolean; name?: string },
+): Promise<{ rule: Rule; fromTemplate: string }> {
+  const res = await fetch('/api/rules/install-template', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ templateId, ...(opts ?? {}) }),
+  });
+  if (!res.ok) {
+    const err = (await res.json().catch(() => ({}))) as { error?: string };
+    throw new Error(err.error ?? 'Failed to install template');
+  }
+  return res.json() as Promise<{ rule: Rule; fromTemplate: string }>;
+}
+
 async function testRuleApi(
   id: string,
   ctx: { sampleTags?: RuleContext['allTags']; postId?: string },
@@ -76,27 +99,97 @@ async function testRuleApi(
 }
 
 // ---------------------------------------------------------------------------
-// Trigger badge
-// ---------------------------------------------------------------------------
-
-const TRIGGER_LABELS: Record<RuleTrigger, string> = {
-  'on-tag-write': 'Tag write',
-  'on-post-create': 'Post create',
-  'on-comment-create': 'Comment create',
-  'on-status-change': 'Status change',
-};
-
-function TriggerBadge({ trigger }: { trigger: RuleTrigger }) {
-  return (
-    <span className="inline-flex items-center rounded-full border border-[var(--n-4)] px-2 py-0.5 text-[length:var(--t-xs)] font-medium text-[var(--n-8)]">
-      {TRIGGER_LABELS[trigger]}
-    </span>
-  );
-}
-
-// ---------------------------------------------------------------------------
 // Rule row
 // ---------------------------------------------------------------------------
+
+/**
+ * Render the rule as a compact horizontal flow chip:
+ *   [trigger] → [conditions] → [actions]
+ * This turns the JSON shape into something a mod can read in 2 seconds.
+ */
+function summarizeConditions(tree: ConditionTree): string {
+  if (tree.op === 'condition') {
+    const v =
+      typeof tree.value === 'boolean'
+        ? String(tree.value)
+        : typeof tree.value === 'number'
+          ? String(tree.value)
+          : `"${tree.value}"`;
+    return `${tree.pipelineId}.${tree.field} ${tree.operator} ${v}`;
+  }
+  const sep = tree.op === 'and' ? ' & ' : ' | ';
+  return tree.children.map(summarizeConditions).join(sep);
+}
+
+function summarizeAction(action: Action): string {
+  switch (action.type) {
+    case 'remove-post':
+      return action.spam ? 'remove (spam)' : 'remove';
+    case 'remove-comment':
+      return action.spam ? 'remove cmt (spam)' : 'remove cmt';
+    case 'send-modmail':
+      return 'modmail';
+    case 'set-status':
+      return `→ ${action.status}`;
+    case 'lock-post':
+      return 'lock';
+    case 'distinguish-comment':
+      return 'distinguish';
+    case 'approve':
+      return 'approve';
+    case 'escalate':
+      return `escalate (${action.severity})`;
+    case 'webhook':
+      return 'webhook';
+    case 'tag-post':
+      return `tag ${action.instanceId}`;
+    case 'ban-author':
+      return action.durationDays ? `ban ${action.durationDays}d` : 'permaban';
+    case 'ban-if-repeat':
+      return `ban-if ${action.threshold}/${action.windowDays}d`;
+    case 'audit-only':
+      return 'audit';
+    default:
+      return 'action';
+  }
+}
+
+function RuleFlow({ rule }: { rule: Rule }) {
+  const conditionSummary = summarizeConditions(rule.conditions);
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 text-[length:var(--t-xs)]">
+      <span className="rounded-[var(--r-1)] bg-[var(--n-3)] px-2 py-0.5 font-mono text-[var(--n-9)]">
+        {rule.trigger}
+      </span>
+      <span className="text-[var(--n-7)]" aria-hidden="true">
+        →
+      </span>
+      <span
+        className="max-w-[420px] truncate rounded-[var(--r-1)] bg-[var(--n-3)] px-2 py-0.5 font-mono text-[var(--n-11)]"
+        title={conditionSummary}
+      >
+        {conditionSummary}
+      </span>
+      <span className="text-[var(--n-7)]" aria-hidden="true">
+        →
+      </span>
+      {rule.actions.length === 0 ? (
+        <span className="rounded-[var(--r-1)] bg-[var(--n-3)] px-2 py-0.5 italic text-[var(--n-8)]">
+          no actions
+        </span>
+      ) : (
+        rule.actions.map((a, i) => (
+          <span
+            key={i}
+            className="rounded-[var(--r-1)] bg-[var(--accent-3)] px-2 py-0.5 font-mono text-[var(--accent-11)]"
+          >
+            {summarizeAction(a)}
+          </span>
+        ))
+      )}
+    </div>
+  );
+}
 
 function RuleRow({
   rule,
@@ -116,7 +209,7 @@ function RuleRow({
   return (
     <div
       data-testid={`rule-row-${rule.id}`}
-      className="flex items-center gap-4 rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 transition hover:border-[var(--accent-9)] shadow-[var(--shadow-1)]"
+      className="flex flex-col gap-3 rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] px-4 py-3 transition hover:border-[var(--accent-9)] shadow-[var(--shadow-1)] sm:flex-row sm:items-center"
     >
       {/* Enabled toggle */}
       <button
@@ -130,17 +223,18 @@ function RuleRow({
         />
       </button>
 
-      {/* Name + trigger */}
+      {/* Name + flow */}
       <div className="min-w-0 flex-1">
         <p className="truncate text-[length:var(--t-sm)] font-medium text-[var(--n-12)]">
           {rule.name}
         </p>
         {rule.description && (
-          <p className="truncate text-[length:var(--t-xs)] text-[var(--n-8)]">{rule.description}</p>
+          <p className="mb-1.5 truncate text-[length:var(--t-xs)] text-[var(--n-8)]">
+            {rule.description}
+          </p>
         )}
+        <RuleFlow rule={rule} />
       </div>
-
-      <TriggerBadge trigger={rule.trigger} />
 
       {/* Stats */}
       <div className="hidden text-right sm:block">
@@ -1033,6 +1127,187 @@ function TestModal({ rule, onClose }: { rule: Rule; onClose: () => void }) {
 // Main Rules tab
 // ---------------------------------------------------------------------------
 
+/**
+ * Rule templates catalogue modal. Browse a curated set of pre-built rules
+ * (safety, triage, engagement, enforcement, integrations) and install one
+ * with a single click. Installed disabled-by-default so mods can review +
+ * tweak (especially webhook URLs) before activating.
+ */
+function TemplatePicker({ onClose }: { onClose: () => void }) {
+  const qc = useQueryClient();
+  const { data, isLoading, error } = useQuery({
+    queryKey: ['rule-templates'],
+    queryFn: fetchRuleTemplates,
+  });
+  const [filter, setFilter] = useState<RuleCategory | 'all'>('all');
+  const [installingId, setInstallingId] = useState<string | null>(null);
+  const [justInstalled, setJustInstalled] = useState<string | null>(null);
+
+  const installMut = useMutation({
+    mutationFn: (templateId: string) => installRuleTemplate(templateId, { enabled: false }),
+    onMutate: (templateId) => setInstallingId(templateId),
+    onSuccess: (_data, templateId) => {
+      setInstallingId(null);
+      setJustInstalled(templateId);
+      void qc.invalidateQueries({ queryKey: ['rules'] });
+      setTimeout(() => setJustInstalled(null), 2500);
+    },
+    onError: () => setInstallingId(null),
+  });
+
+  const templates = data?.templates ?? [];
+  const filtered = useMemo(
+    () => (filter === 'all' ? templates : templates.filter((t) => t.category === filter)),
+    [templates, filter],
+  );
+
+  const categories: { id: RuleCategory | 'all'; label: string }[] = [
+    { id: 'all', label: 'All' },
+    { id: 'safety', label: 'Safety' },
+    { id: 'triage', label: 'Triage' },
+    { id: 'engagement', label: 'Engagement' },
+    { id: 'enforcement', label: 'Enforcement' },
+    { id: 'integration', label: 'Integrations' },
+  ];
+
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Browse rule templates"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+    >
+      <div className="flex max-h-[85vh] w-full max-w-4xl flex-col rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] shadow-[var(--shadow-3)]">
+        <div className="flex items-center justify-between border-b border-[var(--n-4)] px-5 py-4">
+          <div>
+            <h3 className="text-[length:var(--t-lg)] font-semibold text-[var(--n-12)]">
+              Browse rule templates
+            </h3>
+            <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+              Pre-built automations. Installed disabled by default — review + enable when you're
+              ready.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="rounded-[var(--r-1)] px-2 py-1 text-[var(--n-9)] hover:bg-[var(--n-3)] hover:text-[var(--n-12)]"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Category filter */}
+        <div className="flex flex-wrap gap-1.5 border-b border-[var(--n-4)] px-5 py-3">
+          {categories.map((c) => (
+            <button
+              key={c.id}
+              type="button"
+              aria-pressed={filter === c.id}
+              onClick={() => setFilter(c.id)}
+              className={`rounded-[var(--r-1)] px-3 py-1 text-[length:var(--t-xs)] transition ${
+                filter === c.id
+                  ? 'bg-[var(--accent-3)] text-[var(--accent-11)]'
+                  : 'bg-[var(--n-2)] text-[var(--n-9)] hover:bg-[var(--n-3)] hover:text-[var(--n-11)]'
+              }`}
+            >
+              {c.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Body */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          {isLoading && (
+            <p className="text-[length:var(--t-sm)] text-[var(--n-8)]">Loading catalogue…</p>
+          )}
+          {error && (
+            <p className="text-[length:var(--t-sm)] text-[var(--error-11)]">
+              Could not load templates.
+            </p>
+          )}
+          {!isLoading && !error && filtered.length === 0 && (
+            <p className="text-[length:var(--t-sm)] text-[var(--n-8)]">
+              No templates in this category.
+            </p>
+          )}
+
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+            {filtered.map((t) => {
+              const busy = installingId === t.templateId;
+              const done = justInstalled === t.templateId;
+              return (
+                <div
+                  key={t.templateId}
+                  className="flex flex-col gap-2 rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-4"
+                >
+                  <div className="flex items-start gap-2">
+                    <span role="img" aria-label={t.category} className="text-[length:var(--t-lg)]">
+                      {t.iconEmoji}
+                    </span>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium text-[var(--n-12)]">{t.name}</p>
+                      <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">{t.whatHappens}</p>
+                    </div>
+                    <span className="shrink-0 rounded-full bg-[var(--n-3)] px-2 py-0.5 text-[length:var(--t-xs)] uppercase tracking-wider text-[var(--n-8)]">
+                      {t.category}
+                    </span>
+                  </div>
+
+                  {/* Mini flow preview */}
+                  <RuleFlow
+                    rule={{
+                      id: '',
+                      name: t.name,
+                      enabled: false,
+                      trigger: t.trigger,
+                      conditions: t.conditions,
+                      actions: t.actions,
+                      createdAt: 0,
+                      updatedAt: 0,
+                      fireCount: 0,
+                    }}
+                  />
+
+                  <div className="flex items-center justify-between pt-1">
+                    <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">{t.description}</p>
+                    <button
+                      type="button"
+                      disabled={busy || done}
+                      onClick={() => installMut.mutate(t.templateId)}
+                      className={`shrink-0 rounded-[var(--r-2)] px-3 py-1 text-[length:var(--t-xs)] font-medium transition ${
+                        done
+                          ? 'bg-[var(--success-3)] text-[var(--success-11)]'
+                          : busy
+                            ? 'bg-[var(--n-3)] text-[var(--n-8)]'
+                            : 'bg-[var(--accent-9)] text-white hover:bg-[var(--accent-10)]'
+                      }`}
+                    >
+                      {done ? '✓ Installed' : busy ? 'Installing…' : '+ Install'}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="border-t border-[var(--n-4)] px-5 py-3 text-[length:var(--t-xs)] text-[var(--n-8)]">
+          Templates install in <span className="text-[var(--n-11)]">disabled</span> state — toggle
+          them on from the main Rules list once you've reviewed the actions.
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function Rules() {
   const qc = useQueryClient();
 
@@ -1042,6 +1317,7 @@ export function Rules() {
   });
 
   const [builderOpen, setBuilderOpen] = useState(false);
+  const [templatesOpen, setTemplatesOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<Rule | null>(null);
   const [testingRule, setTestingRule] = useState<Rule | null>(null);
 
@@ -1095,17 +1371,27 @@ export function Rules() {
             Conditional automation — WHEN pipeline tags match, THEN fire actions.
           </p>
         </div>
-        <button
-          type="button"
-          data-testid="new-rule-button"
-          onClick={() => {
-            setEditingRule(null);
-            setBuilderOpen(true);
-          }}
-          className="rounded-[var(--r-2)] bg-[var(--accent-9)] px-3 py-1.5 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
-        >
-          + New rule
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            data-testid="browse-templates-button"
+            onClick={() => setTemplatesOpen(true)}
+            className="rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-3 py-1.5 text-[length:var(--t-sm)] font-medium text-[var(--n-11)] hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
+          >
+            📚 Browse templates
+          </button>
+          <button
+            type="button"
+            data-testid="new-rule-button"
+            onClick={() => {
+              setEditingRule(null);
+              setBuilderOpen(true);
+            }}
+            className="rounded-[var(--r-2)] bg-[var(--accent-9)] px-3 py-1.5 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
+          >
+            + New rule
+          </button>
+        </div>
       </div>
 
       {/* Stats strip */}
@@ -1230,6 +1516,7 @@ export function Rules() {
         />
       )}
       {testingRule && <TestModal rule={testingRule} onClose={() => setTestingRule(null)} />}
+      {templatesOpen && <TemplatePicker onClose={() => setTemplatesOpen(false)} />}
     </div>
   );
 }
