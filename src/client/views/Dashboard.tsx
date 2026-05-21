@@ -75,7 +75,7 @@ const ContentBrowserLazy = lazy(() =>
   import('./ContentBrowser.tsx').then((m) => ({ default: m.ContentBrowser })),
 );
 
-type Tab = 'posts' | 'pipelines' | 'catalogue' | 'rules' | 'settings';
+type Tab = 'posts' | 'pipelines' | 'rules' | 'settings';
 
 /** Sections under the Settings ▾ dropdown */
 type SettingsSection =
@@ -110,6 +110,12 @@ export function Dashboard({
   );
   const [activeInstance, setActiveInstance] = useState<string | undefined>(initialInstance);
   const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
+  // Catalogue is now a modal instead of a primary tab. We lift its state
+  // here so Posts + Pipelines + the URL-redirect from ?tab=catalogue can
+  // all trigger it from one place.
+  const [catalogueOpen, setCatalogueOpen] = useState(false);
+  const openCatalogue = useCallback(() => setCatalogueOpen(true), []);
+  const closeCatalogue = useCallback(() => setCatalogueOpen(false), []);
   const [cmdOpen, setCmdOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const badges = useNavBadges();
@@ -152,10 +158,17 @@ export function Dashboard({
     if (!rawTab) return;
 
     // Already canonical — sync sub-state
+    // Backward compat: ?tab=catalogue links pre-2026-05-21 now redirect
+    // to Pipelines + auto-open the catalogue modal. Shared bookmarks
+    // shouldn't 404.
+    if (rawTab === 'catalogue') {
+      setTabState('pipelines');
+      setCatalogueOpen(true);
+      return;
+    }
     if (
       rawTab === 'posts' ||
       rawTab === 'pipelines' ||
-      rawTab === 'catalogue' ||
       rawTab === 'rules' ||
       rawTab === 'settings'
     ) {
@@ -292,7 +305,7 @@ export function Dashboard({
       },
       'g c': (e: KeyboardEvent) => {
         e.preventDefault();
-        setTab('catalogue');
+        openCatalogue();
       },
       'g r': (e: KeyboardEvent) => {
         e.preventDefault();
@@ -304,7 +317,7 @@ export function Dashboard({
       },
     });
     return () => unsub();
-  }, [setTab]);
+  }, [setTab, openCatalogue]);
 
   // ── Command palette commands ───────────────────────────────────────────────
   const commands: Command[] = useMemo(
@@ -324,11 +337,11 @@ export function Dashboard({
         action: () => setTab('pipelines'),
       },
       {
-        id: 'tab-catalogue',
-        label: 'Catalogue',
+        id: 'open-catalogue',
+        label: 'Browse template catalogue',
         group: 'Navigation',
         shortcut: ['g', 'c'],
-        action: () => setTab('catalogue'),
+        action: openCatalogue,
       },
       {
         id: 'tab-rules',
@@ -387,7 +400,7 @@ export function Dashboard({
         action: () => setShortcutsOpen(true),
       },
     ],
-    [setTab, navigateToSettings],
+    [setTab, navigateToSettings, openCatalogue],
   );
 
   return (
@@ -410,7 +423,7 @@ export function Dashboard({
                 onSetDriver={setActiveDriver}
                 onOpenPipelines={() => navigateToPipelines()}
                 onNavigateToPipeline={(id) => navigateToPipelines(id)}
-                onOpenCatalogue={() => setTab('catalogue')}
+                onOpenCatalogue={openCatalogue}
                 onOpenRules={() => setTab('rules')}
               />
             )}
@@ -421,10 +434,9 @@ export function Dashboard({
                   setActiveInstance(id);
                   navigateToPipelines(id);
                 }}
-                onOpenCatalogue={() => setTab('catalogue')}
+                onOpenCatalogue={openCatalogue}
               />
             )}
-            {tab === 'catalogue' && <CatalogueTab onInstalled={(id) => navigateToPipelines(id)} />}
             {tab === 'rules' && <RulesLazy />}
             {tab === 'settings' && (
               <SettingsPane section={settingsSection} onSection={navigateToSettings} />
@@ -435,6 +447,16 @@ export function Dashboard({
 
       <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} commands={commands} />
       <ShortcutsModal open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <CatalogueModal
+        open={catalogueOpen}
+        onClose={closeCatalogue}
+        onInstalled={(id) => {
+          closeCatalogue();
+          setTab('pipelines');
+          setActiveInstance(id);
+          navigateToPipelines(id);
+        }}
+      />
       <CopilotPanel
         currentTab={tab}
         {...(activeInstance ? { currentInstanceId: activeInstance } : {})}
@@ -486,11 +508,13 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
   );
 }
 
-// Primary tabs — 4 always-visible + Settings dropdown
+// Primary tabs — 3 always-visible + Settings dropdown. (Catalogue
+// retired as a primary tab on 2026-05-21 to match the Rules pattern:
+// browse templates is a button inside the Pipelines tab that opens a
+// modal, keeping nav lean.)
 const PRIMARY_TABS: { id: Tab; label: string }[] = [
   { id: 'posts', label: 'Posts' },
   { id: 'pipelines', label: 'Pipelines' },
-  { id: 'catalogue', label: 'Catalogue' },
   { id: 'rules', label: 'Rules' },
 ];
 
@@ -707,7 +731,7 @@ function Posts({
             body="Install a pipeline to start seeing insights here."
             cta={
               <Button variant="primary" size="md" onClick={onOpenCatalogue}>
-                Browse catalogue
+                📚 Browse templates
               </Button>
             }
           />
@@ -912,7 +936,7 @@ function PipelinesTab({
           onClick={onOpenCatalogue}
           data-testid="new-pipeline-button"
         >
-          + Install from catalogue
+          📚 Browse templates
         </Button>
       </div>
 
@@ -922,10 +946,10 @@ function PipelinesTab({
         <EmptyState
           icon="🔧"
           title="No pipelines installed"
-          body="Install templates from the Catalogue tab to start analysing your subreddit."
+          body="Browse the catalogue to install your first pipeline and start analysing posts."
           cta={
             <Button variant="primary" size="md" onClick={onOpenCatalogue}>
-              Go to Catalogue
+              📚 Browse templates
             </Button>
           }
         />
@@ -1125,6 +1149,64 @@ function PipelineKindView({
       Analytics view for &ldquo;{pipelineRecord.name}&rdquo; ({kind}) will render here once data is
       available.
     </EmptyHint>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// CatalogueModal — wraps CatalogueTab in a full-screen modal so the same
+// catalogue surface can be opened from anywhere (Posts CTA, Pipelines
+// header button, "g c" shortcut, ?tab=catalogue legacy URL). The Catalogue
+// was retired as a primary tab on 2026-05-21 to match the Rules pattern.
+// ---------------------------------------------------------------------------
+
+function CatalogueModal({
+  open,
+  onClose,
+  onInstalled,
+}: {
+  open: boolean;
+  onClose: () => void;
+  onInstalled: (instanceId: string) => void;
+}) {
+  if (!open) return null;
+  return (
+    <div
+      role="dialog"
+      aria-modal="true"
+      aria-label="Pipeline catalogue"
+      className="fixed inset-0 z-50 flex items-stretch justify-center bg-black/50 p-3 sm:p-6"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      onKeyDown={(e) => {
+        if (e.key === 'Escape') onClose();
+      }}
+    >
+      <div className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] shadow-[var(--shadow-3)]">
+        <div className="flex items-center justify-between border-b border-[var(--n-4)] px-5 py-4">
+          <div>
+            <h3 className="text-[length:var(--t-lg)] font-semibold text-[var(--n-12)]">
+              Pipeline catalogue
+            </h3>
+            <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+              Install pipelines to start analysing posts. Each install creates an instance you can
+              tune later.
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close"
+            onClick={onClose}
+            className="rounded-[var(--r-1)] px-2 py-1 text-[var(--n-9)] hover:bg-[var(--n-3)] hover:text-[var(--n-12)]"
+          >
+            ✕
+          </button>
+        </div>
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4">
+          <CatalogueTab onInstalled={onInstalled} />
+        </div>
+      </div>
+    </div>
   );
 }
 

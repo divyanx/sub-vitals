@@ -30,7 +30,9 @@ const LEGACY_TAB_MAP: Record<string, Tab> = {
   // Old configure sub-sections that are now primary tabs
   rules: 'rules',
   pipelines: 'pipelines',
-  catalogue: 'catalogue',
+  // Catalogue is no longer a primary tab — landing on Pipelines will
+  // auto-open the catalogue modal via Dashboard's URL handler.
+  catalogue: 'pipelines',
   // Old configure → Settings
   configure: 'settings',
   settings: 'settings',
