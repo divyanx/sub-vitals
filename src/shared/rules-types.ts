@@ -40,6 +40,26 @@ export type Action =
   | { type: 'approve' }
   | { type: 'escalate'; severity: 'low' | 'medium' | 'high' | 'critical' }
   | { type: 'webhook'; url: string; method?: 'POST' | 'PUT' }
+  /**
+   * Direct ban. Use sparingly — prefer `ban-if-repeat` so first offenders
+   * aren't punished for a single misfire.
+   */
+  | { type: 'ban-author'; reason: string; message?: string; durationDays?: number }
+  /**
+   * Conditional ban: only fires when the author has accumulated at least
+   * `threshold` matching tags from `pipelineId` within `windowDays`. Each
+   * call also records the current tag against the author's counter, so this
+   * action is meant to be the LAST step in a spam/fraud rule's action list.
+   */
+  | {
+      type: 'ban-if-repeat';
+      pipelineId: string;
+      threshold: number;
+      windowDays: number;
+      reason: string;
+      message?: string;
+      durationDays?: number;
+    }
   | { type: 'audit-only'; note: string };
 
 export interface Rule {

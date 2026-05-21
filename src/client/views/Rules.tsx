@@ -416,6 +416,8 @@ const ACTION_TYPES: { value: Action['type']; label: string }[] = [
   { value: 'escalate', label: 'Escalate' },
   { value: 'webhook', label: 'Webhook' },
   { value: 'tag-post', label: 'Tag post' },
+  { value: 'ban-author', label: 'Ban author' },
+  { value: 'ban-if-repeat', label: 'Ban author if repeat offender' },
 ];
 
 function ActionEditor({
@@ -442,6 +444,14 @@ function ActionEditor({
       escalate: { type: 'escalate', severity: 'medium' },
       webhook: { type: 'webhook', url: 'https://', method: 'POST' },
       'tag-post': { type: 'tag-post', instanceId: '', value: '' },
+      'ban-author': { type: 'ban-author', reason: 'Violation of community rules' },
+      'ban-if-repeat': {
+        type: 'ban-if-repeat',
+        pipelineId: '',
+        threshold: 3,
+        windowDays: 30,
+        reason: 'Repeat offender',
+      },
     };
     onChange(defaults[type]);
   };

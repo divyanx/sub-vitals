@@ -101,6 +101,11 @@ export const K = {
   /** STRING: JSON-encoded CopilotConversation */
   copilotConvo: (userId: string, convoId: string) => `rl:copilot:c:${userId}:${convoId}`,
 
+  // rules-engine — per-author offender counter (ZSET, score = ts, member = targetId).
+  // Used by the `ban-if-repeat` action to count rolling-window flags per author per pipeline.
+  offenderTimeline: (pipelineId: string, username: string) =>
+    `rl:offender:${pipelineId}:${username.toLowerCase()}`,
+
   // llm auto-fallback
   /** Per-model daily error counter (HASH, 48h TTL). Key = date string, field = slug. */
   llmErrorDay: (date: string) => `bp:llm:errors:${date}`,

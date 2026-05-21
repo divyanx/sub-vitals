@@ -7,9 +7,10 @@
  * firingRules({trigger, ctx})    — returns enabled rules whose conditions evaluate true
  */
 
-import { reddit } from '@devvit/web/server';
+import { context, reddit, redis } from '@devvit/web/server';
 import type { AuditAction } from '../modules/audit-log/index.js';
 import { recordAudit } from '../modules/audit-log/index.js';
+import { K } from './keys.js';
 import { log } from './log.js';
 import { incrementFireCount, listEnabledRules, recordRuleError } from './rules-storage.js';
 import type {
@@ -272,9 +273,115 @@ async function executeAction(action: Action, ctx: RuleContext): Promise<void> {
       break;
     }
 
+    case 'ban-author': {
+      const author = await resolveAuthor(ctx);
+      const sub = context.subredditName;
+      if (!author || !sub) return;
+      try {
+        await reddit.banUser({
+          username: author,
+          subredditName: sub,
+          reason: action.reason.slice(0, 100),
+          ...(action.message ? { message: action.message.slice(0, 1000) } : {}),
+          ...(action.durationDays ? { duration: action.durationDays } : {}),
+          note: `RedLattice rule ${ctx.tag?.pipelineId ?? ''}`.slice(0, 250),
+        });
+        await recordAudit('rule-audit' satisfies AuditAction, postId ?? commentId ?? null, {
+          action: 'ban-author',
+          username: author,
+          reason: action.reason,
+          durationDays: action.durationDays ?? null,
+        });
+      } catch (err) {
+        // Most common failure: author already banned, or insufficient mod scope.
+        log.warn('rules-engine: ban-author failed', { author, err: String(err) });
+        throw err;
+      }
+      break;
+    }
+
+    case 'ban-if-repeat': {
+      const author = await resolveAuthor(ctx);
+      const sub = context.subredditName;
+      const targetId = ctx.tag?.targetId ?? postId ?? commentId;
+      if (!author || !sub || !targetId) return;
+
+      const key = K.offenderTimeline(action.pipelineId, author);
+      const now = Date.now();
+      const windowStart = now - action.windowDays * 24 * 60 * 60 * 1000;
+
+      // Record this offense, then count within the window.
+      await redis.zAdd(key, { score: now, member: targetId });
+      // Trim entries older than the window so the set doesn't grow unbounded.
+      await redis.zRemRangeByScore(key, 0, windowStart - 1);
+      const count = await redis.zCard(key);
+
+      if (count < action.threshold) {
+        log.info('rules-engine: ban-if-repeat below threshold', {
+          author,
+          pipelineId: action.pipelineId,
+          count,
+          threshold: action.threshold,
+        });
+        await recordAudit('rule-audit' satisfies AuditAction, postId ?? commentId ?? null, {
+          action: 'ban-if-repeat:count',
+          username: author,
+          count,
+          threshold: action.threshold,
+        });
+        return;
+      }
+
+      try {
+        await reddit.banUser({
+          username: author,
+          subredditName: sub,
+          reason: action.reason.slice(0, 100),
+          ...(action.message ? { message: action.message.slice(0, 1000) } : {}),
+          ...(action.durationDays ? { duration: action.durationDays } : {}),
+          note: `RedLattice repeat ${action.pipelineId} (${count} in ${action.windowDays}d)`.slice(
+            0,
+            250,
+          ),
+        });
+        await recordAudit('rule-audit' satisfies AuditAction, postId ?? commentId ?? null, {
+          action: 'ban-if-repeat:banned',
+          username: author,
+          count,
+          threshold: action.threshold,
+          pipelineId: action.pipelineId,
+        });
+      } catch (err) {
+        log.warn('rules-engine: ban-if-repeat ban failed', { author, err: String(err) });
+        throw err;
+      }
+      break;
+    }
+
     default:
       break;
   }
+}
+
+/**
+ * Best-effort author lookup. Rule context carries postId/commentId but not
+ * authorName; we resolve it from Reddit on demand. Cheap because the post is
+ * cached for the duration of this trigger.
+ */
+async function resolveAuthor(ctx: RuleContext): Promise<string | null> {
+  try {
+    if (ctx.commentId) {
+      const c = await reddit.getCommentById(`t1_${ctx.commentId}` as `t1_${string}`);
+      return c.authorName ?? null;
+    }
+    if (ctx.postId) {
+      const p = await reddit.getPostById(`t3_${ctx.postId}` as `t3_${string}`);
+      return p.authorName ?? null;
+    }
+  } catch (err) {
+    log.warn('rules-engine: resolveAuthor failed', { err: String(err) });
+  }
+  return null;
 }
 
 /** Describe what an action would do (for dry-run output). */
@@ -302,6 +409,10 @@ function describeAction(action: Action): string {
       return `Tag post via pipeline "${action.instanceId}" with value "${action.value}"`;
     case 'audit-only':
       return `Audit-only: ${action.note}`;
+    case 'ban-author':
+      return `Ban author${action.durationDays ? ` for ${action.durationDays}d` : ' permanently'} — "${action.reason}"`;
+    case 'ban-if-repeat':
+      return `Ban author if ${action.pipelineId} fires ${action.threshold}+ times in ${action.windowDays}d`;
     default:
       return 'Unknown action';
   }
