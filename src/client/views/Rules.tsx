@@ -679,7 +679,7 @@ function RuleBuilderModal({
       }}
     >
       <div
-        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-xl border border-[var(--n-4)] bg-[var(--n-1)] shadow-xl"
+        className="flex max-h-[90vh] w-full max-w-2xl flex-col overflow-hidden rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] shadow-[var(--shadow-3)]"
         data-testid="rule-builder-modal"
       >
         {/* Header */}
@@ -796,7 +796,7 @@ function RuleBuilderModal({
                 ).map((t) => (
                   <label
                     key={t.value}
-                    className={`flex cursor-pointer flex-col rounded-lg border p-3 transition ${
+                    className={`flex cursor-pointer flex-col rounded-[var(--r-2)] border p-3 transition ${
                       state.trigger === t.value
                         ? 'border-[var(--accent-9)] bg-[var(--accent-3)]'
                         : 'border-[var(--n-4)] hover:border-[var(--accent-9)]'
@@ -942,7 +942,7 @@ function TestModal({ rule, onClose }: { rule: Rule; onClose: () => void }) {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-xl border border-[var(--n-4)] bg-[var(--n-1)] shadow-xl">
+      <div className="flex max-h-[90vh] w-full max-w-lg flex-col overflow-hidden rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] shadow-[var(--shadow-3)]">
         <div className="flex items-center justify-between border-b border-[var(--n-4)] px-6 py-4">
           <h2 className="text-[length:var(--t-base)] font-semibold text-[var(--n-11)]">
             Test: {rule.name}
@@ -997,7 +997,7 @@ function TestModal({ rule, onClose }: { rule: Rule; onClose: () => void }) {
                 <summary className="cursor-pointer text-[var(--n-8)] hover:text-[var(--n-11)]">
                   Condition trace
                 </summary>
-                <pre className="mt-1 overflow-x-auto rounded bg-[var(--bg)] p-2 text-[10px] text-[var(--n-8)]">
+                <pre className="mt-1 overflow-x-auto rounded-[var(--r-1)] bg-[var(--n-3)] p-2 text-[10px] text-[var(--n-8)]">
                   {JSON.stringify(result.conditionTrace, null, 2)}
                 </pre>
               </details>
@@ -1009,7 +1009,7 @@ function TestModal({ rule, onClose }: { rule: Rule; onClose: () => void }) {
             type="button"
             onClick={runTest}
             disabled={loading}
-            className="rounded bg-[var(--accent-9)] px-4 py-1.5 text-[length:var(--t-xs)] font-medium text-white hover:bg-[var(--accent-10)] disabled:opacity-40"
+            className="rounded-[var(--r-2)] bg-[var(--accent-9)] px-4 py-1.5 text-[length:var(--t-xs)] font-medium text-white hover:bg-[var(--accent-10)] disabled:opacity-40"
           >
             {loading ? 'Running...' : 'Run test'}
           </button>
@@ -1092,7 +1092,7 @@ export function Rules() {
             setEditingRule(null);
             setBuilderOpen(true);
           }}
-          className="rounded-lg bg-[var(--accent-9)] px-3 py-1.5 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
+          className="rounded-[var(--r-2)] bg-[var(--accent-9)] px-3 py-1.5 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
         >
           + New rule
         </button>
@@ -1127,7 +1127,7 @@ export function Rules() {
         </div>
       )}
       {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50/10 p-4 text-[length:var(--t-sm)] text-[var(--error-11)]">
+        <div className="rounded-[var(--r-3)] border border-[var(--error-9)] bg-[var(--error-3)] p-4 text-[length:var(--t-sm)] text-[var(--error-11)]">
           Failed to load rules.
         </div>
       )}
@@ -1179,7 +1179,7 @@ export function Rules() {
       {/* Empty state */}
       {!isLoading && rules.length === 0 && (
         <div className="flex flex-col items-center justify-center gap-3 py-16 text-center">
-          <div className="rounded-full border border-[var(--n-4)] bg-[var(--n-2)] p-4 text-2xl">
+          <div className="rounded-full border border-[var(--n-4)] bg-[var(--n-2)] p-4 text-[length:var(--t-2xl)]">
             R
           </div>
           <h3 className="text-[length:var(--t-sm)] font-medium text-[var(--n-11)]">No rules yet</h3>
@@ -1189,7 +1189,7 @@ export function Rules() {
           <button
             type="button"
             onClick={() => setBuilderOpen(true)}
-            className="rounded-lg bg-[var(--accent-9)] px-4 py-2 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
+            className="rounded-[var(--r-2)] bg-[var(--accent-9)] px-4 py-2 text-[length:var(--t-sm)] font-medium text-white hover:bg-[var(--accent-10)]"
           >
             Create first rule
           </button>

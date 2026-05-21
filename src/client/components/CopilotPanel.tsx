@@ -69,7 +69,7 @@ export function CopilotPanel(props: CopilotPanelProps) {
         aria-expanded={open}
         onClick={() => setOpen((v) => !v)}
         data-testid="copilot-fab"
-        className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-orange-500 text-white shadow-lg hover:bg-orange-400 focus:outline-none focus:ring-2 focus:ring-orange-300 flex items-center justify-center text-xl"
+        className="fixed bottom-5 right-5 z-40 h-12 w-12 rounded-full bg-[var(--accent-9)] text-white shadow-[var(--shadow-2)] hover:bg-[var(--accent-10)] focus:outline-none focus:ring-2 focus:ring-[var(--accent-9)] flex items-center justify-center text-xl"
       >
         <span aria-hidden>✨</span>
       </button>
@@ -80,18 +80,20 @@ export function CopilotPanel(props: CopilotPanelProps) {
           role="dialog"
           aria-label="RedLattice Copilot"
           data-testid="copilot-panel"
-          className="fixed inset-y-0 right-0 z-50 w-full md:w-[420px] bg-[var(--surface)] border-l border-[var(--border)] flex flex-col shadow-2xl"
+          className="fixed inset-y-0 right-0 z-50 w-full md:w-[420px] bg-[var(--n-2)] border-l border-[var(--n-4)] flex flex-col shadow-[var(--shadow-3)]"
         >
-          <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
+          <header className="flex items-center justify-between px-4 py-3 border-b border-[var(--n-4)]">
             <div className="flex items-center gap-2">
               <span aria-hidden>✨</span>
-              <h2 className="text-sm font-semibold text-[var(--text)]">Copilot</h2>
+              <h2 className="text-[length:var(--t-sm)] font-semibold text-[var(--n-12)]">
+                Copilot
+              </h2>
             </div>
             <div className="flex items-center gap-2">
               <button
                 type="button"
                 onClick={chat.startNew}
-                className="text-xs text-[var(--text-muted)] hover:text-[var(--text)] px-2 py-1 rounded"
+                className="text-[length:var(--t-xs)] text-[var(--n-8)] hover:text-[var(--n-11)] px-2 py-1 rounded-[var(--r-1)]"
                 data-testid="copilot-new"
               >
                 New
@@ -101,7 +103,7 @@ export function CopilotPanel(props: CopilotPanelProps) {
                 aria-label="Close Copilot"
                 onClick={() => setOpen(false)}
                 data-testid="copilot-close"
-                className="text-[var(--text-muted)] hover:text-[var(--text)] text-lg leading-none px-2"
+                className="text-[var(--n-8)] hover:text-[var(--n-11)] text-lg leading-none px-2"
               >
                 ×
               </button>
@@ -122,18 +124,18 @@ export function CopilotPanel(props: CopilotPanelProps) {
               />
             ))}
             {chat.isSending && (
-              <div className="text-xs text-[var(--text-muted)] italic animate-pulse">
+              <div className="text-[length:var(--t-xs)] text-[var(--n-8)] italic animate-pulse">
                 Copilot is thinking…
               </div>
             )}
             {chat.error && (
-              <div className="text-xs text-red-400" role="alert">
+              <div className="text-[length:var(--t-xs)] text-[var(--error-11)]" role="alert">
                 {chat.error}
               </div>
             )}
           </div>
 
-          <footer className="border-t border-[var(--border)] p-3">
+          <footer className="border-t border-[var(--n-4)] p-3">
             <textarea
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
@@ -142,7 +144,7 @@ export function CopilotPanel(props: CopilotPanelProps) {
               placeholder="Ask anything. Cmd-Enter to send."
               aria-label="Message Copilot"
               data-testid="copilot-input"
-              className="w-full resize-none rounded bg-[var(--input-bg)] border border-[var(--border)] px-2 py-1.5 text-sm text-[var(--text)] focus:outline-none focus:ring-1 focus:ring-orange-400"
+              className="w-full resize-none rounded-[var(--r-2)] bg-[var(--n-3)] border border-[var(--n-4)] px-2 py-1.5 text-[length:var(--t-sm)] text-[var(--n-11)] focus:outline-none focus:ring-1 focus:ring-[var(--accent-9)]"
             />
             <div className="flex justify-end mt-2">
               <button
@@ -150,7 +152,7 @@ export function CopilotPanel(props: CopilotPanelProps) {
                 onClick={onSubmit}
                 disabled={!draft.trim() || chat.isSending}
                 data-testid="copilot-send"
-                className="text-xs px-3 py-1.5 rounded bg-orange-500 text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-orange-400"
+                className="text-[length:var(--t-xs)] px-3 py-1.5 rounded-[var(--r-2)] bg-[var(--accent-9)] text-white disabled:opacity-40 disabled:cursor-not-allowed hover:bg-[var(--accent-10)]"
               >
                 Send
               </button>
@@ -164,8 +166,8 @@ export function CopilotPanel(props: CopilotPanelProps) {
 
 function EmptyState() {
   return (
-    <div className="text-xs text-[var(--text-muted)] space-y-2 px-1">
-      <p className="font-medium text-[var(--text)]">Try one of these:</p>
+    <div className="text-[length:var(--t-xs)] text-[var(--n-8)] space-y-2 px-1">
+      <p className="font-medium text-[var(--n-11)]">Try one of these:</p>
       <ul className="list-disc list-inside space-y-1">
         <li>“Show me posts flagged as bug in the last 7 days”</li>
         <li>“Which pipelines are installed?”</li>
@@ -188,8 +190,8 @@ function MessageBubble(props: {
       data-testid={`copilot-msg-${message.role}`}
     >
       <div
-        className={`max-w-[88%] rounded-lg px-3 py-2 text-sm whitespace-pre-wrap ${
-          isUser ? 'bg-orange-500/20 text-[var(--text)]' : 'bg-[var(--input-bg)] text-[var(--text)]'
+        className={`max-w-[88%] rounded-[var(--r-2)] px-3 py-2 text-[length:var(--t-sm)] whitespace-pre-wrap ${
+          isUser ? 'bg-[var(--accent-3)] text-[var(--n-11)]' : 'bg-[var(--n-3)] text-[var(--n-11)]'
         }`}
       >
         {message.content}
@@ -213,7 +215,7 @@ function ToolCallCard(props: { toolCall: CopilotToolCallWire; onConfirm: () => P
   if (dismissed) {
     return (
       <div
-        className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-muted)]"
+        className="rounded-[var(--r-1)] border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-8)]"
         data-testid="copilot-tool-dismissed"
       >
         ⊘ {toolCall.name} — cancelled
@@ -225,7 +227,7 @@ function ToolCallCard(props: { toolCall: CopilotToolCallWire; onConfirm: () => P
   if (toolCall.preview === undefined && toolCall.committed === undefined) {
     return (
       <div
-        className="rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-xs text-[var(--text-muted)]"
+        className="rounded-[var(--r-1)] border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-8)]"
         data-testid="copilot-tool-read"
       >
         🔍 {toolCall.name}
@@ -241,10 +243,10 @@ function ToolCallCard(props: { toolCall: CopilotToolCallWire; onConfirm: () => P
   if (committed) {
     return (
       <div
-        className={`rounded border px-2 py-1 text-xs ${
+        className={`rounded-[var(--r-1)] border px-2 py-1 text-[length:var(--t-xs)] ${
           committed.ok
-            ? 'border-emerald-700 bg-emerald-900/30 text-emerald-200'
-            : 'border-red-700 bg-red-900/30 text-red-200'
+            ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
+            : 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]'
         }`}
         data-testid="copilot-tool-committed"
       >
@@ -257,7 +259,7 @@ function ToolCallCard(props: { toolCall: CopilotToolCallWire; onConfirm: () => P
   if (preview && preview.ok === false) {
     return (
       <div
-        className="rounded border border-red-700 bg-red-900/30 px-2 py-1 text-xs text-red-200"
+        className="rounded-[var(--r-1)] border border-[var(--error-9)] bg-[var(--error-3)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--error-11)]"
         data-testid="copilot-tool-preview-error"
       >
         ⚠ {toolCall.name} — {preview.error ?? 'preview failed'}
@@ -267,14 +269,12 @@ function ToolCallCard(props: { toolCall: CopilotToolCallWire; onConfirm: () => P
 
   return (
     <div
-      className="rounded border border-orange-500/60 bg-orange-500/10 px-2 py-2 text-xs text-[var(--text)] space-y-2"
+      className="rounded-[var(--r-2)] border border-[var(--accent-9)] bg-[var(--accent-3)] px-2 py-2 text-[length:var(--t-xs)] text-[var(--n-11)] space-y-2"
       data-testid="copilot-tool-confirm"
     >
       <div>
         <span className="font-medium">⚙ {toolCall.name}</span>
-        <div className="mt-0.5 text-[var(--text-muted)]">
-          {preview?.summary ?? 'Confirm to apply.'}
-        </div>
+        <div className="mt-0.5 text-[var(--n-8)]">{preview?.summary ?? 'Confirm to apply.'}</div>
       </div>
       <div className="flex gap-2">
         <button
@@ -289,7 +289,7 @@ function ToolCallCard(props: { toolCall: CopilotToolCallWire; onConfirm: () => P
             }
           }}
           data-testid="copilot-confirm"
-          className="text-xs px-2 py-1 rounded bg-orange-500 text-white disabled:opacity-50 hover:bg-orange-400"
+          className="text-[length:var(--t-xs)] px-2 py-1 rounded-[var(--r-1)] bg-[var(--accent-9)] text-white disabled:opacity-50 hover:bg-[var(--accent-10)]"
         >
           {busy ? 'Working…' : 'Confirm'}
         </button>
@@ -297,7 +297,7 @@ function ToolCallCard(props: { toolCall: CopilotToolCallWire; onConfirm: () => P
           type="button"
           disabled={busy}
           onClick={() => setDismissed(true)}
-          className="text-xs px-2 py-1 rounded border border-[var(--border)] text-[var(--text-muted)] hover:text-[var(--text)]"
+          className="text-[length:var(--t-xs)] px-2 py-1 rounded-[var(--r-1)] border border-[var(--n-4)] text-[var(--n-8)] hover:text-[var(--n-11)]"
           data-testid="copilot-cancel"
         >
           Cancel
