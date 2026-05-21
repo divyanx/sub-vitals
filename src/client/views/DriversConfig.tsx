@@ -819,9 +819,7 @@ function DriverTreeRow({
                   </label>
                 </div>
                 <div>
-                  <span className="mb-0.5 block text-xs font-medium text-[var(--n-8)]">
-                    Color
-                  </span>
+                  <span className="mb-0.5 block text-xs font-medium text-[var(--n-8)]">Color</span>
                   <div className="mt-1 flex items-center gap-2">
                     <ColorPickerPopover
                       value={row.color}
@@ -1151,9 +1149,7 @@ function TemplateCard({
       data-testid={`template-card-${template.id}`}
     >
       <h4 className="mb-1 text-sm font-semibold text-[var(--n-11)]">{template.name}</h4>
-      <p className="mb-3 grow text-xs text-[var(--n-8)] leading-relaxed">
-        {template.description}
-      </p>
+      <p className="mb-3 grow text-xs text-[var(--n-8)] leading-relaxed">{template.description}</p>
       <div className="mb-3 flex items-center gap-3 text-xs text-[var(--n-8)]">
         <span>{template.driverCount} drivers</span>
         <span>·</span>
@@ -1250,9 +1246,7 @@ function TaxonomyTemplatesSection({
         >
           <div>
             <span className="text-sm font-semibold text-[var(--n-11)]">Templates</span>
-            <span className="ml-2 text-xs text-[var(--n-8)]">
-              Start with a pre-built taxonomy
-            </span>
+            <span className="ml-2 text-xs text-[var(--n-8)]">Start with a pre-built taxonomy</span>
           </div>
           <span
             className={`text-xs text-[var(--n-8)] transition-transform ${open ? 'rotate-180' : ''}`}

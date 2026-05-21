@@ -350,7 +350,9 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
             {item.driverId ? (
               <>
                 <span>·</span>
-                <span className="text-[var(--accent-11)]">{formatDriverPath(item.driverId, taxonomy)}</span>
+                <span className="text-[var(--accent-11)]">
+                  {formatDriverPath(item.driverId, taxonomy)}
+                </span>
               </>
             ) : null}
             <SentimentChip label={item.sentimentLabel} />
@@ -391,7 +393,9 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
                 >
                   <div className="mb-1 flex items-center gap-2 text-xs text-[var(--n-8)]">
                     <span
-                      className={c.isAgent ? 'text-[var(--accent-11)] font-medium' : 'text-[var(--n-11)]'}
+                      className={
+                        c.isAgent ? 'text-[var(--accent-11)] font-medium' : 'text-[var(--n-11)]'
+                      }
                     >
                       u/{c.authorName}
                     </span>
@@ -422,8 +426,12 @@ function RespondDrawer({ item, taxonomy, onClose }: RespondDrawerProps) {
                 className="w-full resize-none rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-3 py-2 text-sm text-[var(--n-11)] placeholder:text-[var(--n-6)] focus:border-[var(--accent-9)] focus:outline-none"
                 aria-label="Reply text"
               />
-              {draftError ? <p className="mt-1 text-xs text-[var(--error-11)]">{draftError}</p> : null}
-              {submitError ? <p className="mt-1 text-xs text-[var(--error-11)]">{submitError}</p> : null}
+              {draftError ? (
+                <p className="mt-1 text-xs text-[var(--error-11)]">{draftError}</p>
+              ) : null}
+              {submitError ? (
+                <p className="mt-1 text-xs text-[var(--error-11)]">{submitError}</p>
+              ) : null}
               <div className="mt-2 flex gap-2">
                 <button
                   type="button"
