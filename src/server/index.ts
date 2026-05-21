@@ -39,6 +39,7 @@ import {
 } from '@modules/crisis-detection/index.js';
 import { dashboardOrchestratorModule } from '@modules/dashboard-orchestrator/index.js';
 import { dataLabModule } from '@modules/data-lab/index.js';
+import { genericPipelineRunnerModule } from '@modules/generic-pipeline-runner/index.js';
 import { impostorDetectionModule } from '@modules/impostor-detection/index.js';
 import { rulesModule } from '@modules/rules/index.js';
 import { handleSentimentTrailMenu, sentimentModule } from '@modules/sentiment/index.js';
@@ -148,6 +149,10 @@ import { z } from 'zod';
 // ---------------------------------------------------------------------------
 
 registerModule(agentVerificationModule);
+// Executes ANY catalogue-installed / scratch pipeline instance on its
+// configured trigger. Skips templates owned by a hardcoded module to avoid
+// double-tagging.
+registerModule(genericPipelineRunnerModule);
 registerModule(contactDriversModule);
 registerModule(sentimentModule);
 registerModule(dashboardOrchestratorModule);
@@ -822,7 +827,10 @@ const pipelineOverridesPutSchema = z.object({
   enabled: z.boolean().optional(),
 });
 
-const VALID_PIPELINE_IDS = new Set([
+// Hardcoded-module pipeline IDs. These store their overrides in the legacy
+// pipeline-overrides keyspace. Catalogue-installed instances (pi_*) store
+// their config inside the PipelineInstance record itself.
+const HARDCODED_PIPELINE_IDS = new Set([
   'contact-drivers',
   'sentiment',
   'impostor',
@@ -832,23 +840,71 @@ const VALID_PIPELINE_IDS = new Set([
 ]);
 
 /**
- * GET /api/pipelines/builtin/:id — returns merged config (defaults + Redis overrides)
+ * Resolve a pipeline id to its effective config, whether it's a hardcoded
+ * module (legacy overrides table) or a catalogue/scratch instance (pi_*).
+ * Returns null if the id matches nothing.
+ */
+async function resolvePipelineConfig(id: string): Promise<{
+  systemPrompt: string;
+  userPrompt: string;
+  outputSchema?: string;
+  labels?: string[] | undefined;
+  trigger?: string;
+  enabled?: boolean;
+  source: 'hardcoded' | 'instance';
+} | null> {
+  if (HARDCODED_PIPELINE_IDS.has(id)) {
+    const overrides = await getEffectiveOverrides(id);
+    return {
+      systemPrompt: overrides.systemPrompt ?? '',
+      userPrompt: overrides.userPrompt ?? '{{post.body}}',
+      source: 'hardcoded',
+    };
+  }
+  const inst = await getInstance(id);
+  if (!inst) return null;
+  return {
+    systemPrompt: inst.config.systemPrompt,
+    userPrompt: inst.config.userPrompt,
+    outputSchema: inst.config.outputSchema,
+    labels: inst.config.labels,
+    trigger: inst.config.trigger,
+    enabled: inst.enabled,
+    source: 'instance',
+  };
+}
+
+/**
+ * GET /api/pipelines/builtin/:id — returns merged config for either a
+ * hardcoded module or a catalogue-installed / scratch instance.
  */
 app.get('/api/pipelines/builtin/:id', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const id = c.req.param('id');
-  if (!VALID_PIPELINE_IDS.has(id)) return c.json({ error: 'unknown pipeline id' }, 404);
-  const overrides = await getEffectiveOverrides(id);
-  return c.json({ id, overrides });
+  const cfg = await resolvePipelineConfig(id);
+  if (!cfg) return c.json({ error: 'unknown pipeline id' }, 404);
+  // Keep the legacy `overrides` envelope so the existing client code
+  // continues to read `data.overrides.systemPrompt` / `userPrompt` etc.
+  return c.json({
+    id,
+    overrides: {
+      systemPrompt: cfg.systemPrompt,
+      userPrompt: cfg.userPrompt,
+      ...(cfg.outputSchema ? { outputSchema: cfg.outputSchema } : {}),
+      ...(cfg.labels ? { labels: cfg.labels } : {}),
+      ...(cfg.trigger ? { trigger: cfg.trigger } : {}),
+      ...(cfg.enabled !== undefined ? { enabled: cfg.enabled } : {}),
+    },
+  });
 });
 
 /**
- * PUT /api/pipelines/builtin/:id — save overrides
+ * PUT /api/pipelines/builtin/:id — save overrides for either a hardcoded
+ * module or a catalogue-installed instance.
  */
 app.put('/api/pipelines/builtin/:id', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const id = c.req.param('id');
-  if (!VALID_PIPELINE_IDS.has(id)) return c.json({ error: 'unknown pipeline id' }, 404);
 
   let rawBody: unknown;
   try {
@@ -861,17 +917,42 @@ app.put('/api/pipelines/builtin/:id', async (c) => {
   if (!parsed.success)
     return c.json({ error: 'validation failed', issues: parsed.error.issues }, 400);
 
-  const merged = await saveOverrides(id, parsed.data as Partial<PipelineOverrides>);
-  return c.json({ id, overrides: merged });
+  if (HARDCODED_PIPELINE_IDS.has(id)) {
+    const merged = await saveOverrides(id, parsed.data as Partial<PipelineOverrides>);
+    return c.json({ id, overrides: merged });
+  }
+
+  // Instance path: patch the instance's config in place.
+  const inst = await getInstance(id);
+  if (!inst) return c.json({ error: 'unknown pipeline id' }, 404);
+  const next: typeof inst.config = { ...inst.config };
+  if (parsed.data.systemPrompt !== undefined) next.systemPrompt = parsed.data.systemPrompt;
+  if (parsed.data.userPrompt !== undefined) next.userPrompt = parsed.data.userPrompt;
+  const enabled = parsed.data.enabled ?? inst.enabled;
+  const patched = await patchInstance(id, { config: next, enabled });
+  if (!patched) return c.json({ error: 'patch failed' }, 500);
+  return c.json({
+    id,
+    overrides: {
+      systemPrompt: patched.config.systemPrompt,
+      userPrompt: patched.config.userPrompt,
+      outputSchema: patched.config.outputSchema,
+      labels: patched.config.labels,
+      trigger: patched.config.trigger,
+      enabled: patched.enabled,
+    },
+  });
 });
 
 /**
- * POST /api/pipelines/builtin/:id/test — run pipeline once without persisting
+ * POST /api/pipelines/builtin/:id/test — run any pipeline once without
+ * persisting. Works for hardcoded modules and installed instances.
  */
 app.post('/api/pipelines/builtin/:id/test', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const id = c.req.param('id');
-  if (!VALID_PIPELINE_IDS.has(id)) return c.json({ error: 'unknown pipeline id' }, 404);
+  const cfg = await resolvePipelineConfig(id);
+  if (!cfg) return c.json({ error: 'unknown pipeline id' }, 404);
 
   let rawBody: unknown;
   try {
@@ -883,13 +964,14 @@ app.post('/api/pipelines/builtin/:id/test', async (c) => {
   const parsed = bodySchema.safeParse(rawBody);
   if (!parsed.success) return c.json({ error: 'sampleInput required' }, 400);
 
-  const overrides = await getEffectiveOverrides(id);
   const systemPrompt =
-    overrides.systemPrompt ??
+    cfg.systemPrompt ||
     `You are a RedLattice pipeline running ${id}. Analyze the input and respond concisely.`;
-  const userPromptTemplate = overrides.userPrompt ?? '{{post.body}}';
-
-  const prompt = userPromptTemplate.replace('{{post.body}}', parsed.data.sampleInput);
+  const userPromptTemplate = cfg.userPrompt || '{{post.body}}';
+  const prompt = userPromptTemplate
+    .replace(/\{\{\s*post\.title\s*\}\}/g, '')
+    .replace(/\{\{\s*post\.body\s*\}\}/g, parsed.data.sampleInput)
+    .replace(/\{\{\s*comment\.body\s*\}\}/g, parsed.data.sampleInput);
 
   const testSchema = z.object({ output: z.string(), label: z.string().optional() });
   const result = await llmObject({

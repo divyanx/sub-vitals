@@ -227,15 +227,45 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
     defaultConfig: {
       trigger: 'post-create',
       systemPrompt:
-        'You are a spam detection model. Given a Reddit post, decide whether it is spam. Spam indicators include: promotional codes, affiliate links, repetitive text, off-topic advertising. Respond with true (spam) or false (not spam).',
-      userPrompt: 'Post title: {{post.title}}\nPost body: {{post.body}}\n\nSpam:',
+        'You are a strict spam classifier for a brand subreddit. Output value=true (spam) ONLY when the post is clearly spam. Spam includes any of: crypto/NFT/airdrop giveaways, "free X" lures, promo or discount codes, affiliate or shortened links, pump-and-dump tickers, MLM recruitment, sexual or adult-services solicitation, "I made $X working from home" testimonials, repeated copy-paste content, or off-topic advertising for unrelated products. Customer support questions, complaints, refund requests, bug reports, and feature suggestions are NEVER spam even if they mention prices or brand names. Provide a one-sentence reasoning.',
+      userPrompt:
+        'Post title: {{post.title}}\nPost body: {{post.body}}\n\nClassify whether this post is spam.',
       outputSchema: 'boolean',
     },
     configurable: ['systemPrompt', 'userPrompt', 'threshold'],
     moduleKey: 'spam-detector',
-    logic: 'Regex pre-filter → LLM judge',
+    logic: 'LLM judge with explicit spam patterns',
     example: {
-      input: 'Use code SONOS20 for 20% off at bestbuy.com!!',
+      input: 'Free Bitcoin giveaway! DM me to claim 0.1 BTC, limited spots',
+      output: 'true',
+    },
+  },
+
+  // -------------------------------------------------------------------------
+  // 8b. Fraud detector  (NEW)
+  // -------------------------------------------------------------------------
+  {
+    id: 'fraud-detector',
+    name: 'Fraud detector',
+    shortDescription: 'Flags posts that look like scams targeting community members.',
+    description:
+      'Catches social-engineering scams, phishing, fake support impersonation, and account-takeover bait. Distinct from spam (commercial junk) — fraud is intent to defraud or harm specific users.',
+    category: 'flagging',
+    kind: 'boolean',
+    iconEmoji: '🚨',
+    defaultConfig: {
+      trigger: 'post-create',
+      systemPrompt:
+        'You are a fraud and scam classifier for a brand subreddit. Output value=true (fraud) ONLY for posts that try to defraud or harm users. Fraud includes: fake "official support" DMs ("DM me your password and I will fix it"), phishing links pretending to be the brand login, requests for credentials/2FA codes/seed phrases, wire-transfer or gift-card payment demands, fake refund forms collecting payment info, account-recovery social-engineering ("send me a screenshot of your ID"), impersonation of brand employees asking for money, romance/investment scams, and tech-support scareware. Normal customer complaints, legitimate questions, and even angry posts are NOT fraud. Provide a one-sentence reasoning.',
+      userPrompt:
+        'Post title: {{post.title}}\nPost body: {{post.body}}\n\nClassify whether this post is a fraud or scam attempt.',
+      outputSchema: 'boolean',
+    },
+    configurable: ['systemPrompt', 'userPrompt', 'threshold'],
+    moduleKey: 'fraud-detector',
+    logic: 'LLM judge with explicit scam patterns',
+    example: {
+      input: 'OFFICIAL Sonos support — DM me your account password and I will issue your refund',
       output: 'true',
     },
   },
