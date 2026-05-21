@@ -278,14 +278,12 @@ async function getProvider() {
     | undefined;
   if (!apiKey) return null;
   const { model } = await getEffectiveModel();
+  // OpenAI direct — see comment in shared/llm.ts. openrouter.ai pending
+  // Reddit approval; api.openai.com is in devvit.json from day one.
   const provider = createOpenAICompatible({
-    name: 'openrouter',
+    name: 'openai-direct',
     apiKey,
-    baseURL: 'https://openrouter.ai/api/v1',
-    headers: {
-      'HTTP-Referer': 'https://github.com/devvit/redlattice',
-      'X-Title': 'RedLattice/Copilot',
-    },
+    baseURL: 'https://api.openai.com/v1',
   });
   return { handle: provider(model || DEFAULT_MODEL), model: model || DEFAULT_MODEL };
 }

@@ -243,17 +243,19 @@ export async function llmObject<S extends ZodTypeAny>(args: {
     return { ok: false, reason: 'rate-limited' };
   }
 
-  // Build provider + model handle
-  const openrouter = createOpenAICompatible({
-    name: 'openrouter',
+  // Build provider + model handle.
+  // NOTE: pointing at api.openai.com directly (Devvit's outbound HTTP gate
+  // is rejecting openrouter.ai despite the devvit.json entry — pending
+  // api@reddit.com approval). The OpenRouter key still works against the
+  // OpenAI-compatible interface for OpenAI's own models when the model
+  // slug is unprefixed (gpt-5-mini etc); for other providers you need
+  // an OpenAI key. See `docs/ADR-08-openai-direct.md` (to be written).
+  const provider = createOpenAICompatible({
+    name: 'openai-direct',
     apiKey: cfg.apiKey,
-    baseURL: 'https://openrouter.ai/api/v1',
-    headers: {
-      'HTTP-Referer': 'https://github.com/devvit/redlattice',
-      'X-Title': 'RedLattice',
-    },
+    baseURL: 'https://api.openai.com/v1',
   });
-  const modelHandle = openrouter(cfg.model);
+  const modelHandle = provider(cfg.model);
 
   const ac = new AbortController();
   const timer = setTimeout(() => ac.abort('timeout'), TIMEOUT_MS);
