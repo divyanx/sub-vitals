@@ -22,6 +22,7 @@
 
 import { context, reddit, redis } from '@devvit/web/server';
 import { log } from '@shared/log.js';
+import { listInstances } from '@shared/pipeline-instances.js';
 import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import { getTagsForTarget } from '@shared/tags.js';
 import type { Tag } from '@shared/types.js';
@@ -97,40 +98,97 @@ function valueLabel(v: string | number | boolean): string {
 }
 
 /**
+ * Build a map: templateId → tag for the current post.
+ *
+ * Tags carry the *instance* id (e.g. `pi_e678565a27984d568c75` for
+ * catalogue-installed pipelines, or `pi_spam-detector` for pre-installed,
+ * or the bare hardcoded module id like `sentiment`). To answer "did the
+ * spam-detector fire?" we need to map back to the underlying template.
+ *
+ * Path 1: bare hardcoded ids — pipelineId IS the templateId equivalent.
+ * Path 2: pi_<templateId> form (pre-installed instances) — strip prefix.
+ * Path 3: pi_<nanoid> form (catalogue installs) — look up via the
+ *         PipelineInstance list and use its templateId field.
+ *
+ * Returns a Map so we can do constant-time lookups in buildFlair / etc.
+ */
+async function buildTemplateMap(tags: Tag[]): Promise<Map<string, Tag>> {
+  // Hardcoded module IDs are also valid "template names" for our purposes.
+  const HARDCODED_AS_TEMPLATE: Record<string, string> = {
+    sentiment: 'sentiment-scorer',
+    'contact-drivers': 'intent-classifier',
+    impostor: 'impostor-flagger',
+    crisis: 'volume-spike-detector',
+    themes: 'topic-clusterer',
+    'agent-metrics': 'team-response-tracker',
+  };
+
+  // First pass: anything with a known shape resolves without a DB read.
+  const map = new Map<string, Tag>();
+  const unresolved: Tag[] = [];
+
+  for (const t of tags) {
+    const pid = t.pipelineId;
+    if (HARDCODED_AS_TEMPLATE[pid]) {
+      map.set(HARDCODED_AS_TEMPLATE[pid]!, t);
+      // Keep the raw hardcoded id too in case a caller checks for it.
+      map.set(pid, t);
+    } else if (pid.startsWith('pi_')) {
+      const rest = pid.slice('pi_'.length);
+      // Pre-installed instances look like pi_<templateId> (kebab-case).
+      // Catalogue installs look like pi_<nanoid> (alphanumeric, no
+      // hyphens, fixed length-ish).
+      if (rest.includes('-')) {
+        map.set(rest, t);
+      } else {
+        unresolved.push(t);
+      }
+    }
+  }
+
+  // Second pass: catalogue installs need a DB lookup. Skip the round-trip
+  // when nothing is unresolved.
+  if (unresolved.length > 0) {
+    try {
+      const instances = await listInstances();
+      const idToTemplate = new Map(instances.map((i) => [i.id, i.templateId]));
+      for (const t of unresolved) {
+        const tpl = idToTemplate.get(t.pipelineId);
+        if (tpl) map.set(tpl, t);
+      }
+    } catch (err) {
+      log.warn('mod-surface: instance lookup failed (non-fatal)', { err: String(err) });
+    }
+  }
+
+  return map;
+}
+
+/**
  * Build a single composite flair chip. Priority: fraud > spam > impostor
  * > intent+sentiment > sentiment alone. Returns null when there are no
  * tags worth showing (caller should leave existing flair alone).
  */
-function buildFlair(tags: Tag[]): FlairChoice | null {
-  // Catalogue instance IDs use pi_<templateId> for preinstalled. We also
-  // need to scan custom installed instances by templateId match against
-  // pipelineId — but tags carry the *instance* id, not template id. So we
-  // search both well-known instance ids AND legacy ids.
-  const findByEither = (templateId: string, hardcodedId?: string): Tag | undefined =>
-    tags.find(
-      (t) =>
-        t.pipelineId === `pi_${templateId}` ||
-        t.pipelineId === templateId ||
-        (hardcodedId !== undefined && t.pipelineId === hardcodedId),
-    );
+function buildFlair(byTemplate: Map<string, Tag>): FlairChoice | null {
+  const find = (templateId: string): Tag | undefined => byTemplate.get(templateId);
 
-  const fraud = findByEither('fraud-detector');
+  const fraud = find('fraud-detector');
   if (fraud && (fraud.value === true || fraud.value === 'true')) {
     return { text: '🚨 fraud', backgroundColor: '#7a0e0e', textColor: 'light' };
   }
 
-  const spam = findByEither('spam-detector');
+  const spam = find('spam-detector');
   if (spam && (spam.value === true || spam.value === 'true')) {
     return { text: '🚨 spam', backgroundColor: '#5b1717', textColor: 'light' };
   }
 
-  const impostor = findByEither('impostor-flagger', 'impostor');
+  const impostor = find('impostor-flagger');
   if (impostor && (impostor.value === true || impostor.value === 'true')) {
     return { text: '🎭 impostor', backgroundColor: '#8a4500', textColor: 'light' };
   }
 
-  const intent = findByEither('intent-classifier', 'contact-drivers');
-  const sentiment = findByEither('sentiment-scorer', 'sentiment');
+  const intent = find('intent-classifier');
+  const sentiment = find('sentiment-scorer');
 
   if (intent || sentiment) {
     // Keep the flair single-chip clean: intent + sentiment-emoji only.
@@ -174,32 +232,26 @@ function buildFlair(tags: Tag[]): FlairChoice | null {
  * Reasons MUST start with "RedLattice:" so mods can scan the queue and
  * tell our reports apart from user reports at a glance.
  */
-function buildReports(tags: Tag[]): string[] {
-  const findByEither = (templateId: string, hardcodedId?: string): Tag | undefined =>
-    tags.find(
-      (t) =>
-        t.pipelineId === `pi_${templateId}` ||
-        t.pipelineId === templateId ||
-        (hardcodedId !== undefined && t.pipelineId === hardcodedId),
-    );
+function buildReports(byTemplate: Map<string, Tag>): string[] {
+  const find = (templateId: string): Tag | undefined => byTemplate.get(templateId);
 
   const reports: string[] = [];
 
   // Safety flags — each gets its own line so the queue shows the
   // specific violation rather than a generic "flagged" badge.
-  const spam = findByEither('spam-detector');
+  const spam = find('spam-detector');
   if (spam && (spam.value === true || spam.value === 'true')) {
     reports.push(formatReport('🚨 Spam detector fired', spam));
   }
-  const fraud = findByEither('fraud-detector');
+  const fraud = find('fraud-detector');
   if (fraud && (fraud.value === true || fraud.value === 'true')) {
     reports.push(formatReport('🚨 Fraud / scam detected', fraud));
   }
-  const impostor = findByEither('impostor-flagger', 'impostor');
+  const impostor = find('impostor-flagger');
   if (impostor && (impostor.value === true || impostor.value === 'true')) {
     reports.push(formatReport('🎭 Possible brand impostor', impostor));
   }
-  const pii = findByEither('pii-detector');
+  const pii = find('pii-detector');
   if (pii && (pii.value === true || pii.value === 'true')) {
     reports.push(formatReport('🔒 PII detected (phone/email/SSN/etc)', pii));
   }
@@ -207,8 +259,8 @@ function buildReports(tags: Tag[]): string[] {
   // Intent + sentiment — combined into a single line. They almost always
   // co-occur and splitting them adds noise. Skip when sentiment is the
   // only signal (one line of "Sentiment: neutral" isn't worth queue space).
-  const intent = findByEither('intent-classifier', 'contact-drivers');
-  const sentiment = findByEither('sentiment-scorer', 'sentiment');
+  const intent = find('intent-classifier');
+  const sentiment = find('sentiment-scorer');
   if (intent) {
     const intentValue = valueLabel(intent.value);
     const intentIcon = INTENT_ICON[intentValue] ?? '•';
@@ -246,23 +298,17 @@ function formatReport(label: string, tag: Tag): string {
  * Threshold of 2 (not 1) keeps us from auto-commenting on posts where
  * only sentiment landed; one tag isn't worth the noise.
  */
-function shouldComment(tags: Tag[]): boolean {
-  const findByEither = (templateId: string, hardcodedId?: string): Tag | undefined =>
-    tags.find(
-      (t) =>
-        t.pipelineId === `pi_${templateId}` ||
-        t.pipelineId === templateId ||
-        (hardcodedId !== undefined && t.pipelineId === hardcodedId),
-    );
+function shouldComment(tags: Tag[], byTemplate: Map<string, Tag>): boolean {
+  const find = (templateId: string): Tag | undefined => byTemplate.get(templateId);
 
   // Any single high-signal tag → comment.
-  const spam = findByEither('spam-detector');
+  const spam = find('spam-detector');
   if (spam && (spam.value === true || spam.value === 'true')) return true;
-  const fraud = findByEither('fraud-detector');
+  const fraud = find('fraud-detector');
   if (fraud && (fraud.value === true || fraud.value === 'true')) return true;
-  const pii = findByEither('pii-detector');
+  const pii = find('pii-detector');
   if (pii && (pii.value === true || pii.value === 'true')) return true;
-  const impostor = findByEither('impostor-flagger', 'impostor');
+  const impostor = find('impostor-flagger');
   if (impostor && (impostor.value === true || impostor.value === 'true')) return true;
 
   // Otherwise: post when at least two pipelines have produced anything.
@@ -362,8 +408,14 @@ export async function recomputeForPost(postId: string): Promise<void> {
   const sub = context.subredditName;
   if (!sub) return;
 
+  // Resolve instance IDs → templateIds once. Without this catalogue-
+  // installed pipelines (pi_<nanoid>) would silently fall through every
+  // findByTemplate check, leaving the flair / reports / sticky comment
+  // empty even though tags were written.
+  const byTemplate = await buildTemplateMap(tags);
+
   // 1. Update flair
-  const flair = buildFlair(tags);
+  const flair = buildFlair(byTemplate);
   if (flair) {
     try {
       await reddit.setPostFlair({
@@ -390,7 +442,7 @@ export async function recomputeForPost(postId: string): Promise<void> {
   //    (defaults true; mods can flip off if they don't want bot reports).
   //    Idempotency: ZSET of reasons already submitted for this post.
   if (await isAutoReportsEnabled()) {
-    const reports = buildReports(tags);
+    const reports = buildReports(byTemplate);
     if (reports.length > 0) {
       try {
         const alreadyMembers = await redis.zRange(reportsKey(postId), 0, -1, { by: 'rank' });
@@ -427,7 +479,7 @@ export async function recomputeForPost(postId: string): Promise<void> {
   }
 
   // 3. Sticky distinguished analysis comment, once per post
-  if (shouldComment(tags)) {
+  if (shouldComment(tags, byTemplate)) {
     try {
       const already = await redis.get(commentKey(postId));
       if (!already) {

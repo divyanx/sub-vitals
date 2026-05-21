@@ -2,7 +2,7 @@
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
   "name": "redlattuce",
   "permissions": {
-    "reddit": { "enable": true, "scope": "moderator", "asUser": [] },
+    "reddit": { "enable": true, "scope": "moderator", "asUser": ["SUBMIT_COMMENT"] },
     "redis": true,
     "http": {
       "enable": true,
