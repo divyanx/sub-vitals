@@ -352,7 +352,10 @@ function buildGraph(pipelines: PipelineInstance[], rules: Rule[]): BuiltGraph {
     const ruleNode = nodes.find((n) => n.id === `rule:${r.id}`);
     if (!ruleNode) continue;
     const baseY = ruleNode.position.y;
-    r.actions.forEach((a, i) => {
+    // Defensive: a malformed legacy rule could have actions=null/undefined
+    // and crash the whole graph render with "is not iterable".
+    const ruleActions = Array.isArray(r.actions) ? r.actions : [];
+    ruleActions.forEach((a, i) => {
       const visual = ACTION_VISUAL[a.type] ?? {
         emoji: '•',
         label: () => a.type,

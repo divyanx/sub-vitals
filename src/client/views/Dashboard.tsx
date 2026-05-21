@@ -2799,10 +2799,20 @@ function Overview({
             <SkeletonList />
           ) : recentQ.isError ? (
             <ErrorMsg msg="Couldn't load recent posts." retry={() => recentQ.refetch()} />
-          ) : recentQ.data.items.length === 0 ? (
-            <EmptyHint>No posts yet — submit something in the subreddit to see it here.</EmptyHint>
           ) : (
-            <ActivityTicker items={recentQ.data.items.slice(0, 20)} />
+            (() => {
+              // Guard against API shapes where `items` is missing/null —
+              // some endpoints return an envelope and forgetting to check
+              // this used to throw "items is undefined" or "not iterable".
+              const items = Array.isArray(recentQ.data?.items) ? recentQ.data.items : [];
+              return items.length === 0 ? (
+                <EmptyHint>
+                  No posts yet — submit something in the subreddit to see it here.
+                </EmptyHint>
+              ) : (
+                <ActivityTicker items={items.slice(0, 20)} />
+              );
+            })()
           )}
         </aside>
       </div>
