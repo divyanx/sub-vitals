@@ -2999,11 +2999,15 @@ function DriverBadge({
   taxonomy: TaxonomyNode[];
 }) {
   const label = formatDriverPath(id, taxonomy);
+  // Use design tokens (--n-10 / --accent-11) instead of dark-mode-only
+  // Tailwind hardcoded shades (violet-300 / blue-300). Those rendered
+  // as pale purple/blue on light mode — barely visible against a
+  // white card.
   const color =
     taggedBy === 'ai'
-      ? 'text-violet-300'
+      ? 'text-[var(--accent-11)]'
       : taggedBy === 'auto'
-        ? 'text-blue-300'
+        ? 'text-[var(--n-11)]'
         : 'text-[var(--text-muted)]';
   return (
     <span className={`font-medium ${color}`} title={`ID: ${id}`}>
