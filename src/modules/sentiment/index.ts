@@ -301,12 +301,17 @@ async function persistScore(args: {
   }
 
   // Mirror into unified tag storage so Insights tab can render dynamically.
+  // Re-use the `confidence` slot to carry the polarity score (-1..+1).
+  // The rules-engine exposes this via `field: 'confidence'`, so seeded
+  // rules like "Auto-escalate critical bugs" — which check
+  // `sentiment.confidence lt -0.5` — can match strongly-negative posts.
+  // Without this the field was always undefined and the rule never fired.
   void recordTag({
     pipelineId: 'sentiment',
     targetType: args.contentType,
     targetId: args.contentId,
     value: args.label,
-    confidence: undefined,
+    confidence: args.score,
     by: args.scoredBy,
     createdAt: record.scoredAt,
   });
