@@ -7,7 +7,6 @@
  * activity feed with deep links back to the actual Reddit posts.
  */
 
-import { navigateTo } from '@devvit/web/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -67,7 +66,6 @@ import { Onboarding } from './Onboarding.tsx';
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
 const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
 const LabLazy = lazy(() => import('./Lab.tsx').then((m) => ({ default: m.Lab })));
-const FlowGraphLazy = lazy(() => import('./FlowGraph.tsx').then((m) => ({ default: m.FlowGraph })));
 const SentimentChartLazy = lazy(() =>
   import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
 );
@@ -87,8 +85,7 @@ type SettingsSection =
   | 'webhooks'
   | 'audit'
   | 'export'
-  | 'lab'
-  | 'flow';
+  | 'lab';
 
 export interface DashboardProps {
   initialTab?: Tab;
@@ -106,9 +103,21 @@ export function Dashboard({
   initialDriver,
 }: DashboardProps) {
   const [tab, setTabState] = useState<Tab>(initialTab);
-  const [settingsSection, setSettingsSection] = useState<SettingsSection>(
-    (initialSection as SettingsSection) ?? 'brand',
-  );
+  const [settingsSection, setSettingsSection] = useState<SettingsSection>(() => {
+    const valid: SettingsSection[] = [
+      'brand',
+      'team',
+      'thresholds',
+      'ai',
+      'webhooks',
+      'audit',
+      'export',
+      'lab',
+    ];
+    return valid.includes(initialSection as SettingsSection)
+      ? (initialSection as SettingsSection)
+      : 'brand';
+  });
   const [activeInstance, setActiveInstance] = useState<string | undefined>(initialInstance);
   const [activeDriver, setActiveDriver] = useState<string | undefined>(initialDriver);
   // Catalogue is now a modal instead of a primary tab. We lift its state
@@ -525,7 +534,6 @@ const SETTINGS_SECTIONS: { id: SettingsSection; label: string }[] = [
   { id: 'thresholds', label: 'Thresholds' },
   { id: 'ai', label: 'AI' },
   { id: 'webhooks', label: 'Webhooks' },
-  { id: 'flow', label: 'Flow graph' },
   { id: 'audit', label: 'Audit log' },
   { id: 'export', label: 'Export' },
   { id: 'lab', label: 'Lab' },
@@ -756,10 +764,11 @@ function Posts({
         <RuleFiringsPanel onOpenRules={onOpenRules} />
         <PriorityQueuePanel
           onOpenPost={(_postId, url) => {
-            // Devvit iframes sandbox `window.open` — must use Devvit's
-            // navigateTo which postMessages the parent window. Falls back
-            // to a no-op rather than throwing if the URL is malformed.
-            if (url) navigateTo(url);
+            // `window.open(url, '_blank')` works inside Devvit's iframe;
+            // `window.open` itself is sandboxed without the target arg.
+            // `<a target="_blank">` would be cleaner, but the panel calls
+            // back to us with the url so we use the equivalent here.
+            if (url) window.open(url, '_blank', 'noopener,noreferrer');
           }}
         />
       </div>
@@ -1557,7 +1566,6 @@ function SettingsPane({
           {section === 'audit' && <Audit />}
           {section === 'export' && <ExportTab />}
           {section === 'lab' && <LabLazy />}
-          {section === 'flow' && <FlowGraphLazy />}
         </Suspense>
       </div>
     </div>
@@ -2273,12 +2281,14 @@ function KpiTile({
     </>
   );
 
+  // h-full + flex column keeps every tile the same height inside its
+  // grid cell — varying sub/delta lengths shouldn't make rows jagged.
   if (onClick) {
     return (
-      <article aria-label={`${label}: ${value}`}>
+      <article aria-label={`${label}: ${value}`} className="h-full">
         <button
           type="button"
-          className="block w-full cursor-pointer rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-3.5 text-left shadow-[var(--shadow-1)] transition hover:bg-[var(--n-3)]"
+          className="flex h-full w-full cursor-pointer flex-col rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-3.5 text-left shadow-[var(--shadow-1)] transition hover:bg-[var(--n-3)]"
           onClick={onClick}
           aria-label={`${label}: ${value}. Click for details.`}
         >
@@ -2288,7 +2298,7 @@ function KpiTile({
     );
   }
   return (
-    <Card padding="sm" aria-label={`${label}: ${value}`}>
+    <Card padding="sm" aria-label={`${label}: ${value}`} className="flex h-full flex-col">
       {inner}
     </Card>
   );
@@ -2827,16 +2837,15 @@ function ActivityTicker({ items }: { items: RecentPost[] }) {
     <ul className="max-h-[min(70vh,640px)] divide-y divide-[var(--border)] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       {items.map((p) => (
         <li key={p.postId} className="px-3 py-2.5">
-          <button
-            type="button"
-            onClick={() => {
-              if (p.url) navigateTo(p.url);
-            }}
+          <a
+            href={p.url}
+            target="_blank"
+            rel="noopener noreferrer"
             className="block w-full truncate text-left text-xs font-medium text-[var(--text)] hover:text-orange-300 hover:underline"
             title={p.title}
           >
             {p.title || '(no title)'}
-          </button>
+          </a>
           <div className="mt-1 flex flex-wrap items-center gap-1.5 text-[10px] text-[var(--text-muted)]">
             <span>{relativeTime(p.createdAt)}</span>
             {p.driverId ? (
@@ -3787,14 +3796,23 @@ function Themes() {
                 <p className="mt-2 text-sm text-[var(--text-muted)]">{t.summary}</p>
                 {t.samplePostIds.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-1 text-xs">
-                    {t.samplePostIds.slice(0, 4).map((pid) => (
-                      <span
-                        key={pid}
-                        className="rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 text-[var(--text-muted)]"
-                      >
-                        {pid}
-                      </span>
-                    ))}
+                    {t.samplePostIds.slice(0, 4).map((pid) => {
+                      // Sample post IDs carry the t3_ prefix already
+                      // (Devvit's fullname format). Drop it for the
+                      // user-facing URL.
+                      const bare = pid.startsWith('t3_') ? pid.slice(3) : pid;
+                      return (
+                        <a
+                          key={pid}
+                          href={`https://www.reddit.com/comments/${bare}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 font-mono text-[var(--text-muted)] hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
+                        >
+                          {pid}
+                        </a>
+                      );
+                    })}
                   </div>
                 ) : null}
               </li>

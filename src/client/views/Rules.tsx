@@ -738,6 +738,91 @@ function ActionEditor({
           />
         </div>
       )}
+      {action.type === 'ban-author' && (
+        <div className="space-y-1.5">
+          <input
+            type="text"
+            aria-label="Ban reason"
+            placeholder="Reason (shown in mod log)"
+            value={action.reason}
+            onChange={(e) => onChange({ ...action, reason: e.target.value })}
+            className="w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
+          />
+          <div className="flex gap-2">
+            <input
+              type="number"
+              aria-label="Duration days (empty = permanent)"
+              placeholder="Days (empty = perm)"
+              value={action.durationDays ?? ''}
+              onChange={(e) => {
+                const v = e.target.value === '' ? undefined : Number(e.target.value);
+                const next = { ...action } as Extract<Action, { type: 'ban-author' }>;
+                if (v === undefined) delete next.durationDays;
+                else next.durationDays = v;
+                onChange(next);
+              }}
+              className="w-40 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
+            />
+            <input
+              type="text"
+              aria-label="Message to user (optional)"
+              placeholder="Message to user (optional)"
+              value={action.message ?? ''}
+              onChange={(e) => {
+                const next = { ...action } as Extract<Action, { type: 'ban-author' }>;
+                if (!e.target.value) delete next.message;
+                else next.message = e.target.value;
+                onChange(next);
+              }}
+              className="flex-1 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
+            />
+          </div>
+        </div>
+      )}
+      {action.type === 'ban-if-repeat' && (
+        <div className="space-y-1.5">
+          <div className="flex gap-2">
+            <input
+              type="text"
+              aria-label="Pipeline to track"
+              placeholder="pipeline id (e.g. spam-detector)"
+              value={action.pipelineId}
+              onChange={(e) => onChange({ ...action, pipelineId: e.target.value })}
+              className="flex-1 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
+            />
+            <input
+              type="number"
+              aria-label="Threshold"
+              placeholder="N"
+              min={1}
+              value={action.threshold}
+              onChange={(e) => onChange({ ...action, threshold: Number(e.target.value) || 1 })}
+              className="w-16 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
+            />
+            <input
+              type="number"
+              aria-label="Window days"
+              placeholder="days"
+              min={1}
+              value={action.windowDays}
+              onChange={(e) => onChange({ ...action, windowDays: Number(e.target.value) || 1 })}
+              className="w-20 rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
+            />
+          </div>
+          <input
+            type="text"
+            aria-label="Ban reason"
+            placeholder="Reason (shown in mod log)"
+            value={action.reason}
+            onChange={(e) => onChange({ ...action, reason: e.target.value })}
+            className="w-full rounded border border-[var(--n-4)] bg-[var(--n-2)] px-2 py-1 text-[length:var(--t-xs)] text-[var(--n-11)] focus:outline-none"
+          />
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+            Bans when author hits {action.threshold} matching tags in {action.windowDays} days.
+            Leave duration empty in their {`{durationDays}`} field for permanent.
+          </p>
+        </div>
+      )}
     </div>
   );
 }

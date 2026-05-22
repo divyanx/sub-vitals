@@ -72,6 +72,21 @@ const actionSchema = z.discriminatedUnion('type', [
     url: z.string().url(),
     method: z.enum(['POST', 'PUT']).optional(),
   }),
+  z.object({
+    type: z.literal('ban-author'),
+    reason: z.string().min(1).max(100),
+    message: z.string().max(1000).optional(),
+    durationDays: z.number().int().positive().max(999).optional(),
+  }),
+  z.object({
+    type: z.literal('ban-if-repeat'),
+    pipelineId: z.string().min(1).max(80),
+    threshold: z.number().int().positive().max(100),
+    windowDays: z.number().int().positive().max(365),
+    reason: z.string().min(1).max(100),
+    message: z.string().max(1000).optional(),
+    durationDays: z.number().int().positive().max(999).optional(),
+  }),
   z.object({ type: z.literal('audit-only'), note: z.string().max(500) }),
 ]);
 
