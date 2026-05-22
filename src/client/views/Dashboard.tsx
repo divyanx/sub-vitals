@@ -477,13 +477,15 @@ export function Dashboard({
 
 function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
   return (
-    <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-4 backdrop-blur">
+    <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-3 backdrop-blur">
       <div className="mx-auto flex max-w-6xl items-center gap-3">
-        <span className="block h-3 w-3 rounded-full bg-[var(--accent-9)]" />
-        <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattice</h1>
-        <Badge variant="neutral" className="ml-2">
-          analytics
-        </Badge>
+        <span className="block h-3 w-3 shrink-0 rounded-full bg-[var(--accent-9)]" />
+        <div className="min-w-0 leading-tight">
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattice</h1>
+          <p className="hidden text-[length:var(--t-xs)] text-[var(--text-muted)] sm:block">
+            Customer experience mod cockpit for brand subreddits
+          </p>
+        </div>
 
         <div className="ml-auto flex items-center gap-2">
           {/* ⌘K command palette trigger */}
