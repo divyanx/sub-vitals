@@ -457,27 +457,39 @@ export async function recomputeForPost(postId: string): Promise<void> {
   // 2. Auto-reports — one line per signal in the native Reported queue.
   //    Gated behind the per-installation `auto-reports-enabled` setting
   //    (defaults true; mods can flip off if they don't want bot reports).
-  //    Idempotency: ZSET of reasons already submitted for this post.
+  //
+  //    Idempotency: use zAdd's return value as an atomic check-and-set.
+  //    A naive read-then-check-then-add has a race window where N
+  //    parallel recomputes (one per tag-write) all see an empty set
+  //    and all decide to submit — net effect was 4 duplicate "spam"
+  //    lines per post. zAdd returns the count of NEW members; 0 means
+  //    "already there, skip the report".
   if (await isAutoReportsEnabled()) {
     const reports = buildReports(byTemplate);
     if (reports.length > 0) {
       try {
-        const alreadyMembers = await redis.zRange(reportsKey(postId), 0, -1, { by: 'rank' });
-        const alreadySet = new Set(alreadyMembers.map((m) => m.member));
-
         let post: Awaited<ReturnType<typeof reddit.getPostById>> | null = null;
+        let anyNew = false;
         for (const reason of reports) {
-          if (alreadySet.has(reason)) continue;
+          // Atomic claim: zAdd returns 1 if newly added, 0 if it was
+          // already in the set. Only the winning recompute proceeds.
+          const added = await redis.zAdd(reportsKey(postId), {
+            score: Date.now(),
+            member: reason,
+          });
+          if (added === 0) continue;
+          anyNew = true;
           try {
             if (!post) {
               post = await reddit.getPostById(fullId);
             }
             await reddit.report(post, { reason: reason.slice(0, 100) });
-            await redis.zAdd(reportsKey(postId), { score: Date.now(), member: reason });
             log.info('mod-surface: report added', { postId, reason });
           } catch (err) {
-            // Most common: insufficient mod scope, or Reddit rate-limited
-            // our reports. Don't blow up the loop.
+            // Rollback the claim so a later recompute can retry the
+            // submit (otherwise a transient API hiccup silently loses
+            // this report forever).
+            await redis.zRem(reportsKey(postId), [reason]).catch(() => {});
             log.warn('mod-surface: report failed (non-fatal)', {
               postId,
               reason,
@@ -485,8 +497,7 @@ export async function recomputeForPost(postId: string): Promise<void> {
             });
           }
         }
-        // Refresh TTL after any successful write.
-        if (reports.some((r) => !alreadySet.has(r))) {
+        if (anyNew) {
           await redis.expire(reportsKey(postId), REPORTS_SENTINEL_TTL_SEC);
         }
       } catch (err) {

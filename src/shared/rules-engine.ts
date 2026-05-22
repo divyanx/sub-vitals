@@ -516,6 +516,56 @@ export async function firingRules(opts: {
 }
 
 /**
+ * Hardcoded-module pipelineId → templateId aliases. Mirrors the same
+ * table in mod-surface (audit by grepping `recordTag.*pipelineId:` in
+ * src/modules/). Keep in sync — any missing entry here means rules
+ * referencing that template silently never fire.
+ */
+const HARDCODED_TO_TEMPLATE: Record<string, string> = {
+  sentiment: 'sentiment-scorer',
+  intent: 'intent-classifier',
+  'contact-drivers': 'intent-classifier',
+  impostor: 'impostor-flagger',
+  crisis: 'volume-spike-detector',
+  themes: 'topic-clusterer',
+  'agent-metrics': 'team-response-tracker',
+};
+
+/**
+ * Resolve every templateId-equivalent identity for a tag's pipelineId.
+ * Returns the set of additional names rules can use to match the tag.
+ *
+ * Resolution paths:
+ *   - bare hardcoded id (sentiment, intent, …) → known table mapping
+ *   - pi_<templateId> form (pre-installed instances) → strip prefix
+ *   - pi_<nanoid> form (catalogue installs) → DB lookup via pipeline-instances
+ */
+async function resolveTemplateAliases(pipelineId: string): Promise<string[]> {
+  const aliases: string[] = [];
+  if (HARDCODED_TO_TEMPLATE[pipelineId]) {
+    aliases.push(HARDCODED_TO_TEMPLATE[pipelineId]!);
+    return aliases;
+  }
+  if (pipelineId.startsWith('pi_')) {
+    const rest = pipelineId.slice('pi_'.length);
+    if (rest.includes('-')) {
+      // Pre-installed convention: pi_<templateId>
+      aliases.push(rest);
+      return aliases;
+    }
+    // Catalogue install (random nanoid) — needs a DB lookup.
+    try {
+      const { getInstance } = await import('./pipeline-instances.js');
+      const inst = await getInstance(pipelineId);
+      if (inst?.templateId) aliases.push(inst.templateId);
+    } catch (err) {
+      log.warn('rules-engine: alias lookup failed (non-fatal)', { pipelineId, err: String(err) });
+    }
+  }
+  return aliases;
+}
+
+/**
  * Hook called by the tag system after a tag is written.
  * Fans out to all matching on-tag-write rules with failure isolation.
  */
@@ -533,6 +583,19 @@ export async function onTagWrite(tag: {
       ...(typeof tag.value === 'string' ? { label: tag.value } : {}),
     };
 
+    // Tags carry the *instance* id (pi_<nanoid> for catalogue installs,
+    // 'sentiment' / 'intent' etc. for hardcoded modules, pi_<templateId>
+    // for pre-installed instances). Rule conditions reference the
+    // *templateId* (e.g. 'spam-detector'). Without aliasing, a rule
+    // condition `pipelineId='spam-detector'` would never match a tag
+    // stored under `pi_e678565a27984d568c75` — auto-remove and
+    // ban-if-repeat would silently never fire on catalogue installs.
+    const templateAliases = await resolveTemplateAliases(tag.pipelineId);
+    const allTags: RuleContext['allTags'] = { [tag.pipelineId]: tagEntry };
+    for (const alias of templateAliases) {
+      allTags[alias] = tagEntry;
+    }
+
     const ctx: RuleContext = {
       tag: {
         pipelineId: tag.pipelineId,
@@ -542,7 +605,7 @@ export async function onTagWrite(tag: {
         targetId: tag.targetId,
         targetType: tag.targetType,
       },
-      allTags: { [tag.pipelineId]: tagEntry },
+      allTags,
       ...(tag.targetType === 'post' ? { postId: tag.targetId } : { commentId: tag.targetId }),
     };
 
