@@ -4418,10 +4418,10 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                 role="switch"
                 aria-checked={enabled}
                 onClick={() => setEnabled((e) => !e)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${enabled ? 'bg-[var(--accent-9)]' : 'bg-[var(--n-5)]'}`}
+                className={`relative inline-block h-6 w-11 rounded-full transition-colors ${enabled ? 'bg-[var(--accent-9)]' : 'bg-[var(--n-5)]'}`}
               >
                 <span
-                  className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${enabled ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
+                  className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-[left,right] ${enabled ? 'right-0.5 left-auto' : 'left-0.5 right-auto'}`}
                 />
               </button>
             </label>

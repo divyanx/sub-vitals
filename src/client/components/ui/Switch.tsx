@@ -21,9 +21,7 @@ export function Switch({ checked, onChange, label, disabled = false, id }: Switc
         disabled={disabled}
         onClick={() => onChange(!checked)}
         className={[
-          'relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full',
-          // No border-2 — it was subtracting from the inner content area
-          // and pushing the knob flush against / past the right edge.
+          'relative inline-block h-6 w-11 shrink-0 cursor-pointer rounded-full',
           'transition-colors duration-[var(--dur-fast)] ease-[var(--ease)]',
           'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)] focus-visible:ring-offset-2 focus-visible:ring-offset-[var(--n-0)]',
           'disabled:opacity-50 disabled:cursor-not-allowed',
@@ -33,11 +31,13 @@ export function Switch({ checked, onChange, label, disabled = false, id }: Switc
         <span
           aria-hidden="true"
           className={[
-            // h-5 w-5 knob inside h-6 w-11 pill = 2px symmetric padding
-            // on every side when checked / unchecked. Geometry exact.
-            'pointer-events-none inline-block h-5 w-5 rounded-full bg-white shadow',
-            'transition-transform duration-[var(--dur-fast)] ease-[var(--ease)]',
-            checked ? 'translate-x-[22px]' : 'translate-x-0.5',
+            // Absolute-positioned knob anchored to the pill edges via
+            // `left` / `right`. Avoids the translate-x arbitrary-value
+            // path that was reportedly bleeding past the right edge.
+            //   pill 44, knob 20, 2px padding → left:2 OFF, right:2 ON
+            'pointer-events-none absolute top-0.5 h-5 w-5 rounded-full bg-white shadow',
+            'transition-[left,right] duration-[var(--dur-fast)] ease-[var(--ease)]',
+            checked ? 'right-0.5 left-auto' : 'left-0.5 right-auto',
           ].join(' ')}
         />
       </button>
