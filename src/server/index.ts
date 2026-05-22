@@ -973,7 +973,10 @@ app.post('/api/pipelines/builtin/:id/test', async (c) => {
     .replace(/\{\{\s*post\.body\s*\}\}/g, parsed.data.sampleInput)
     .replace(/\{\{\s*comment\.body\s*\}\}/g, parsed.data.sampleInput);
 
-  const testSchema = z.object({ output: z.string(), label: z.string().optional() });
+  // .nullable() not .optional() — OpenAI's strict structured-output mode
+  // rejects properties missing from `required`, which is what .optional()
+  // produces. The model returns null when it has nothing to say.
+  const testSchema = z.object({ output: z.string(), label: z.string().nullable() });
   const result = await llmObject({
     name: `pipeline-test-${id}`,
     schema: testSchema,
@@ -983,7 +986,7 @@ app.post('/api/pipelines/builtin/:id/test', async (c) => {
   });
 
   if (!result.ok) {
-    return c.json({ error: 'llm-unavailable', reason: result.reason }, 503);
+    return c.json({ error: result.reason ?? 'llm-unavailable', reason: result.reason }, 503);
   }
 
   return c.json({
@@ -1122,7 +1125,9 @@ app.post('/api/pipelines/custom/:id/test', async (c) => {
   if (!parsed.success) return c.json({ error: 'sampleInput required' }, 400);
 
   const prompt = pipeline.userPrompt.replace('{{post.body}}', parsed.data.sampleInput);
-  const testSchema = z.object({ output: z.string(), label: z.string().optional() });
+  // .nullable() not .optional() — see comment in the /builtin/:id/test
+  // endpoint above. OpenAI strict mode rejects optional properties.
+  const testSchema = z.object({ output: z.string(), label: z.string().nullable() });
   const result = await llmObject({
     name: `custom-pipeline-test-${id}`,
     schema: testSchema,
@@ -1132,7 +1137,7 @@ app.post('/api/pipelines/custom/:id/test', async (c) => {
   });
 
   if (!result.ok) {
-    return c.json({ error: 'llm-unavailable', reason: result.reason }, 503);
+    return c.json({ error: result.reason ?? 'llm-unavailable', reason: result.reason }, 503);
   }
 
   return c.json({
@@ -1440,10 +1445,13 @@ app.post('/api/pipelines/instances/:id/test', async (c) => {
 
   // Generic free-form output schema — the test playground doesn't enforce the
   // pipeline's structured schema; we want to surface whatever the AI returned.
+  // .nullable() not .optional() — OpenAI's strict structured-output mode
+  // rejects properties missing from `required`. Model returns null when
+  // it has nothing to say.
   const testSchema = z.object({
     output: z.string().describe('Primary structured result for this pipeline.'),
-    confidence: z.number().min(0).max(1).optional(),
-    reasoning: z.string().optional(),
+    confidence: z.number().min(0).max(1).nullable(),
+    reasoning: z.string().nullable(),
   });
 
   const result = await llmObject({
@@ -1456,7 +1464,7 @@ app.post('/api/pipelines/instances/:id/test', async (c) => {
   });
 
   if (!result.ok) {
-    return c.json({ error: 'ai-unavailable', reason: result.reason }, 503);
+    return c.json({ error: result.reason ?? 'ai-unavailable', reason: result.reason }, 503);
   }
   return c.json({
     instanceId: id,
