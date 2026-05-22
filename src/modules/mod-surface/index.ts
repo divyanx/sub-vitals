@@ -55,7 +55,14 @@ async function isAutoReportsEnabled(): Promise<boolean> {
 // Lock + sentinel keys
 // ---------------------------------------------------------------------------
 
-const FLAIR_LOCK_TTL_SEC = 2;
+// Coalesces the burst of recomputes from N pipelines all writing tags
+// within a few ms of each other. Too long and late-arriving tags
+// (e.g. fraud at T+3s) get skipped entirely — their report never lands.
+// Too short and we hit Reddit's flair API N times back-to-back.
+// 1s threads the needle: parallel pipelines that finish in the same
+// tick share a single recompute, while a tag arriving 1s+ later gets
+// its own pass.
+const FLAIR_LOCK_TTL_SEC = 1;
 const COMMENT_SENTINEL_TTL_SEC = 60 * 60 * 24 * 7; // 7 days — re-comment if a stale post is re-flagged later
 const REPORTS_SENTINEL_TTL_SEC = 60 * 60 * 24 * 30; // 30 days — match Reddit's report retention
 
@@ -114,12 +121,22 @@ function valueLabel(v: string | number | boolean): string {
  */
 async function buildTemplateMap(tags: Tag[]): Promise<Map<string, Tag>> {
   // Hardcoded module IDs are also valid "template names" for our purposes.
+  // IMPORTANT: include EVERY raw pipelineId that hardcoded modules pass to
+  // recordTag. Missing aliases here = silent invisibility in mod-surface.
+  // Audit by grepping `recordTag.*pipelineId:` in src/modules/.
   const HARDCODED_AS_TEMPLATE: Record<string, string> = {
+    // sentiment module → 'sentiment'
     sentiment: 'sentiment-scorer',
+    // contact-drivers module → 'intent' (NOT 'contact-drivers')
+    intent: 'intent-classifier',
     'contact-drivers': 'intent-classifier',
+    // impostor-detection module
     impostor: 'impostor-flagger',
+    // crisis-detection module
     crisis: 'volume-spike-detector',
+    // theme-clustering module
     themes: 'topic-clusterer',
+    // agent-metrics module
     'agent-metrics': 'team-response-tracker',
   };
 
