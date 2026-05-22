@@ -260,10 +260,10 @@ function RuleRow({
         type="button"
         aria-label={rule.enabled ? 'Disable rule' : 'Enable rule'}
         onClick={() => onToggle(rule.id)}
-        className={`relative h-5 w-9 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)] ${rule.enabled ? 'bg-[var(--accent-9)]' : 'bg-[var(--n-5)]'}`}
+        className={`relative h-6 w-11 flex-shrink-0 cursor-pointer rounded-full transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent-9)] ${rule.enabled ? 'bg-[var(--accent-9)]' : 'bg-[var(--n-5)]'}`}
       >
         <span
-          className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${rule.enabled ? 'translate-x-4' : 'translate-x-0.5'}`}
+          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${rule.enabled ? 'translate-x-[22px]' : 'translate-x-0.5'}`}
         />
       </button>
 
