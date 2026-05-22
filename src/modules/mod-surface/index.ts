@@ -55,18 +55,9 @@ async function isAutoReportsEnabled(): Promise<boolean> {
 // Lock + sentinel keys
 // ---------------------------------------------------------------------------
 
-// Coalesces the burst of recomputes from N pipelines all writing tags
-// within a few ms of each other. Too long and late-arriving tags
-// (e.g. fraud at T+3s) get skipped entirely — their report never lands.
-// Too short and we hit Reddit's flair API N times back-to-back.
-// 1s threads the needle: parallel pipelines that finish in the same
-// tick share a single recompute, while a tag arriving 1s+ later gets
-// its own pass.
-const FLAIR_LOCK_TTL_SEC = 1;
 const COMMENT_SENTINEL_TTL_SEC = 60 * 60 * 24 * 7; // 7 days — re-comment if a stale post is re-flagged later
 const REPORTS_SENTINEL_TTL_SEC = 60 * 60 * 24 * 30; // 30 days — match Reddit's report retention
 
-const lockKey = (postId: string) => `rl:modsurf:lock:${postId}`;
 const reportsKey = (postId: string) => `rl:modsurf:reports:${postId}`;
 const commentKey = (postId: string) => `rl:modsurf:comment:${postId}`;
 
@@ -407,18 +398,20 @@ function renderCommentBody(tags: Tag[]): string {
  * lock coalesces the rapid fire from 4-5 pipelines.
  */
 export async function recomputeForPost(postId: string): Promise<void> {
-  // Skip if a recompute is already in flight for this post.
-  // setIfNotExists is unavailable in this Devvit Redis snapshot, so we
-  // approximate with: get existing -> bail if present, else set with TTL.
-  try {
-    const existing = await redis.get(lockKey(postId));
-    if (existing) return;
-    await redis.set(lockKey(postId), '1');
-    await redis.expire(lockKey(postId), FLAIR_LOCK_TTL_SEC);
-  } catch (err) {
-    // Locking is best-effort; carry on if Redis hiccups.
-    log.warn('mod-surface: lock failed (non-fatal)', { err: String(err) });
-  }
+  // Lock removed (2026-05-22). The previous lock-and-bail model meant
+  // each tag-write got exactly ONE chance to fire a recompute — if the
+  // lock was held by an earlier tag's recompute (the typical case for
+  // pipelines that all finish within 100-300ms of each other), the
+  // later tag's report never landed. Concretely: fraud's tag arrived
+  // 96ms after spam's; spam held the lock; fraud's recompute bailed;
+  // fraud report never written.
+  //
+  // Without the lock, each tag-write fires its own recompute. The
+  // reports ZSET dedupes per-reason (won't add duplicates) and
+  // setPostFlair is idempotent (same text overwrites same text). Cost
+  // is N redundant Reddit API calls per post-create burst (N = number
+  // of pipelines that produce tags ~= 4-5), which is fine and well
+  // under per-installation rate limits.
 
   const tags = await getTagsForTarget('post', postId);
   if (tags.length === 0) return;

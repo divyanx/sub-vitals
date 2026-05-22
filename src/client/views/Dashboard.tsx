@@ -2396,12 +2396,18 @@ const HOURS_0_23 = [
 ] as const;
 
 function HeatmapCell({ count, max, label }: { count: number; max: number; label: string }) {
+  // Don't use `bg-orange-500/${opacity}` — Tailwind only emits classes it
+  // sees at build time, so a runtime-computed value produces no class
+  // and every cell renders transparent (the bug that made the heatmap
+  // look empty). Inline style is the right call here.
   const intensity = max > 0 ? count / max : 0;
-  // interpolate from neutral-900 (background) toward orange-500 using opacity
-  const opacity = Math.round(intensity * 100);
+  // Floor to 0.06 so cells with at least one post are still visible
+  // against the card background even at low density.
+  const alpha = count > 0 ? 0.06 + intensity * 0.94 : 0;
   return (
     <div
-      className={`h-4 w-full rounded-[2px] border border-[var(--border)]/40 bg-orange-500/${opacity}`}
+      className="h-4 w-full rounded-[2px] border border-[var(--border)]/40"
+      style={{ backgroundColor: `rgba(255, 69, 0, ${alpha.toFixed(2)})` }}
       title={label}
     />
   );
