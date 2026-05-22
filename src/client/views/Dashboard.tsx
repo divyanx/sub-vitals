@@ -2651,7 +2651,10 @@ function Overview({
       </section>
 
       {/* ── Main content: sparklines + heatmap (left) + ticker (right) ───── */}
-      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[1fr_320px]">
+      {/* items-stretch keeps both columns the same height so the ticker
+          doesn't dangle below the heatmap. min-h-0 on the aside lets the
+          inner ul actually constrain itself to that height. */}
+      <div className="grid grid-cols-1 items-stretch gap-6 lg:grid-cols-[1fr_320px]">
         <div className="min-w-0 space-y-6">
           {/* ── Per-driver sparklines ───────────────────────────────────── */}
           <section aria-label="Intent volume sparklines">
@@ -2807,7 +2810,7 @@ function Overview({
         </div>
 
         {/* ── Activity ticker (sidebar on lg+) ─────────────────────────── */}
-        <aside aria-label="Recent activity">
+        <aside aria-label="Recent activity" className="flex min-h-0 flex-col">
           <h2 className="mb-3 text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
             Recent activity
           </h2>
@@ -2837,10 +2840,11 @@ function Overview({
 }
 
 function ActivityTicker({ items }: { items: RecentPost[] }) {
-  // Cap visible height + scroll inside instead of growing the page.
-  // 70vh on tall viewports, with a sensible mobile floor.
+  // Fills the aside; aside is a flex column constrained by its grid cell
+  // height so the ticker can never extend past the left column. Falls
+  // back to a max cap on small viewports where the grid is stacked.
   return (
-    <ul className="max-h-[min(70vh,640px)] divide-y divide-[var(--border)] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
+    <ul className="max-h-[min(70vh,640px)] min-h-0 flex-1 divide-y divide-[var(--border)] overflow-y-auto rounded-lg border border-[var(--border)] bg-[var(--surface)]">
       {items.map((p) => (
         <li key={p.postId} className="px-3 py-2.5">
           <a
