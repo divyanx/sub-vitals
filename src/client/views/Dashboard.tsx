@@ -1086,6 +1086,118 @@ function InstanceDetailView({
   );
 }
 
+/**
+ * Per-instance view for boolean pipelines (spam-detector, fraud-detector,
+ * pii-detector, impostor-flagger when installed standalone). Shows the
+ * true/false distribution as a pair of stat cards + a drilldown list of
+ * the recent posts the pipeline tagged true.
+ *
+ * For boolean pipelines the "true" cohort is the only one mods care
+ * about — false-tagged posts are the silent majority. We surface those
+ * inline rather than hide everything behind a click.
+ */
+function BooleanInstanceView({ instance }: { instance: PipelineInstance }) {
+  const distQ = useQuery({
+    queryKey: ['tag-distribution', instance.id, 'bool', 30],
+    queryFn: () => api.tags.distribution(instance.id, ['true', 'false'], 30),
+    staleTime: 30_000,
+  });
+  const truePostsQ = useQuery({
+    queryKey: ['tag-posts', instance.id, 'true'],
+    queryFn: () => api.tags.posts(instance.id, 'true', 50),
+    staleTime: 30_000,
+  });
+
+  const dist = distQ.data?.distribution ?? [];
+  const trueEntry = dist.find((d) => d.value === 'true');
+  const falseEntry = dist.find((d) => d.value === 'false');
+  const trueCount = trueEntry?.count ?? 0;
+  const falseCount = falseEntry?.count ?? 0;
+  const total = trueCount + falseCount;
+  const truePct = total === 0 ? 0 : Math.round((trueCount / total) * 100);
+
+  const truePosts = truePostsQ.data?.posts ?? [];
+
+  return (
+    <div className="space-y-5">
+      {/* Stat row */}
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <Card padding="md" className="flex flex-col">
+          <p className="text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
+            Tagged true
+          </p>
+          <p className="mt-2 text-[length:var(--t-2xl)] font-semibold tabular-nums text-[var(--error-11)]">
+            {trueCount}
+          </p>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">last 30 days</p>
+        </Card>
+        <Card padding="md" className="flex flex-col">
+          <p className="text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
+            Tagged false
+          </p>
+          <p className="mt-2 text-[length:var(--t-2xl)] font-semibold tabular-nums text-[var(--n-11)]">
+            {falseCount}
+          </p>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">last 30 days</p>
+        </Card>
+        <Card padding="md" className="flex flex-col">
+          <p className="text-[length:var(--t-xs)] uppercase tracking-widest text-[var(--n-8)]">
+            Hit rate
+          </p>
+          <p className="mt-2 text-[length:var(--t-2xl)] font-semibold tabular-nums text-[var(--n-11)]">
+            {truePct}%
+          </p>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+            of {total} {total === 1 ? 'post' : 'posts'} scored
+          </p>
+        </Card>
+      </div>
+
+      {/* True-tagged posts drilldown */}
+      <section>
+        <h3 className="mb-3 text-[length:var(--t-sm)] font-semibold text-[var(--n-11)]">
+          Recently flagged
+        </h3>
+        {truePostsQ.isPending ? (
+          <SkeletonList rows={4} />
+        ) : truePostsQ.isError ? (
+          <ErrorMsg msg="Couldn't load flagged posts." retry={() => truePostsQ.refetch()} />
+        ) : truePosts.length === 0 ? (
+          <UIEmptyState
+            icon="🛡️"
+            title="No posts have been flagged yet"
+            body={`${instance.name} hasn't tagged any posts as true in the last 30 days. Either nothing matched or the pipeline hasn't run on any posts since you installed it.`}
+          />
+        ) : (
+          <ul className="divide-y divide-[var(--n-4)] overflow-hidden rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)]">
+            {truePosts.map((p) => {
+              const bareId = p.postId.startsWith('t3_') ? p.postId.slice(3) : p.postId;
+              return (
+                <li key={p.postId} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <a
+                      href={p.url || `https://www.reddit.com/comments/${bareId}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="block truncate text-[length:var(--t-sm)] font-medium text-[var(--n-12)] hover:text-[var(--accent-11)] hover:underline"
+                      title={p.title}
+                    >
+                      {p.title || '(no title)'}
+                    </a>
+                    <p className="mt-0.5 text-[length:var(--t-xs)] text-[var(--n-8)]">
+                      u/{p.authorName ?? 'unknown'} · {relativeTime(p.createdAt)}
+                    </p>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
+    </div>
+  );
+}
+
 function PipelineKindView({
   instance,
   template,
@@ -1150,11 +1262,7 @@ function PipelineKindView({
     if (instance.templateId === 'volume-spike-detector') {
       return <Incidents />;
     }
-    return (
-      <EmptyHint>
-        Boolean pipeline output for &ldquo;{pipelineRecord.name}&rdquo; will appear here.
-      </EmptyHint>
-    );
+    return <BooleanInstanceView instance={instance} />;
   }
   // scalar / unknown
   return (
