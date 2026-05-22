@@ -438,7 +438,7 @@ function DeleteConfirmModal({
           Remove <span className="font-medium text-[var(--n-11)]">&ldquo;{label}&rdquo;</span> from
           the taxonomy. Posts already tagged with this driver retain their tag.
           {hasChildren ? (
-            <span className="mt-2 block text-amber-300">
+            <span className="mt-2 block text-[var(--warn-11)]">
               Warning: this driver has children. They will become root drivers.
             </span>
           ) : null}
@@ -1519,7 +1519,7 @@ export function TaxonomyConfigSection({
             type="button"
             onClick={() => switchMode('json')}
             data-testid="taxonomy-json-toggle"
-            className={`rounded-md px-3 py-1 text-xs font-medium transition ${mode === 'json' ? 'bg-orange-600/30 text-orange-200' : 'text-[var(--n-8)] hover:text-[var(--n-11)]'}`}
+            className={`rounded-md px-3 py-1 text-xs font-medium transition ${mode === 'json' ? 'bg-[var(--accent-3)] text-[var(--accent-11)]' : 'text-[var(--n-8)] hover:text-[var(--n-11)]'}`}
           >
             JSON
           </button>
@@ -1618,7 +1618,7 @@ export function TaxonomyConfigSection({
               type="button"
               onClick={addRoot}
               data-testid="taxonomy-add-driver"
-              className="mt-4 text-xs text-[var(--n-8)] underline-offset-2 hover:text-orange-300 hover:underline"
+              className="mt-4 text-xs text-[var(--n-8)] underline-offset-2 hover:text-[var(--accent-11)] hover:underline"
             >
               + Add root driver
             </button>
@@ -1643,7 +1643,7 @@ export function TaxonomyConfigSection({
           data-testid="taxonomy-json-editor"
         />
         {jsonError ? (
-          <div className="mt-2 rounded border border-amber-800 bg-amber-950/40 px-3 py-2 text-xs text-amber-200">
+          <div className="mt-2 rounded border border-[var(--warn-9)] bg-[var(--warn-3)] px-3 py-2 text-xs text-[var(--warn-11)]">
             JSON parse error: {jsonError}
           </div>
         ) : null}
@@ -1778,7 +1778,7 @@ export function RoutingConfigSection({
                     <button
                       type="button"
                       onClick={() => removeRow(r._uid)}
-                      className="text-[var(--n-8)] hover:text-rose-400"
+                      className="text-[var(--n-8)] hover:text-[var(--error-11)]"
                     >
                       &times;
                     </button>
@@ -1792,7 +1792,7 @@ export function RoutingConfigSection({
       <button
         type="button"
         onClick={addRow}
-        className="mt-3 text-xs text-[var(--n-8)] underline-offset-2 hover:text-orange-300 hover:underline"
+        className="mt-3 text-xs text-[var(--n-8)] underline-offset-2 hover:text-[var(--accent-11)] hover:underline"
       >
         + Add rule
       </button>

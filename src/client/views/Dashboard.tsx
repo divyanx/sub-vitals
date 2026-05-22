@@ -1800,7 +1800,7 @@ function Inbox() {
   return (
     <section className="space-y-5">
       {actionError ? (
-        <div className="flex items-center justify-between rounded-lg border border-rose-800 bg-rose-950/40 px-3 py-2 text-sm text-rose-200">
+        <div className="flex items-center justify-between rounded-lg border border-[var(--error-9)] bg-[var(--error-3)] px-3 py-2 text-sm text-[var(--error-11)]">
           <span>{actionError}</span>
           <button
             type="button"
@@ -1840,7 +1840,7 @@ function Inbox() {
               onClick={() => setStatusFilter(s.id)}
               className={`rounded-full border px-3 py-1 transition ${
                 statusFilter === s.id
-                  ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+                  ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
                   : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
@@ -1855,9 +1855,9 @@ function Inbox() {
         <div
           role="toolbar"
           aria-label="Bulk actions"
-          className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border border-orange-700 bg-[var(--bg)]/95 px-4 py-2.5 text-sm backdrop-blur"
+          className="sticky top-0 z-10 flex flex-wrap items-center gap-3 rounded-lg border border-[var(--accent-9)] bg-[var(--bg)]/95 px-4 py-2.5 text-sm backdrop-blur"
         >
-          <span className="font-medium text-orange-200">{selected.size} selected</span>
+          <span className="font-medium text-[var(--accent-11)]">{selected.size} selected</span>
           <span className="text-[var(--text-muted)]">·</span>
           <select
             value={bulkStatus}
@@ -1875,7 +1875,7 @@ function Inbox() {
             type="button"
             onClick={applyBulk}
             disabled={bulkBusy}
-            className="rounded-md border border-emerald-700 bg-emerald-900/40 px-3 py-1 text-xs text-emerald-200 transition hover:bg-emerald-900/70 disabled:opacity-50"
+            className="rounded-md border border-[var(--success-9)] bg-[var(--success-3)] px-3 py-1 text-xs text-[var(--success-11)] transition hover:bg-[var(--success-3)] disabled:opacity-50"
           >
             {bulkBusy ? 'Updating…' : 'Apply'}
           </button>
@@ -1890,7 +1890,7 @@ function Inbox() {
       ) : null}
 
       {bulkToast ? (
-        <div className="rounded-lg border border-emerald-800 bg-emerald-950/40 px-3 py-2 text-sm text-emerald-200">
+        <div className="rounded-lg border border-[var(--success-9)] bg-[var(--success-3)] px-3 py-2 text-sm text-[var(--success-11)]">
           {bulkToast}
         </div>
       ) : null}
@@ -1910,7 +1910,7 @@ function Inbox() {
                 href="https://developers.reddit.com/docs/devvit"
                 target="_top"
                 rel="noopener noreferrer"
-                className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-xs font-medium text-orange-300 transition hover:bg-orange-600/40"
+                className="rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] px-4 py-2 text-xs font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-3)]"
               >
                 View seeder script docs →
               </a>
@@ -1942,7 +1942,7 @@ function Inbox() {
                 key={p.postId}
                 className={`rounded-lg border bg-[var(--surface)] p-4 transition ${
                   selected.has(p.postId)
-                    ? 'border-orange-600/60'
+                    ? 'border-[var(--accent-9)]/60'
                     : 'border-[var(--border)] hover:border-[var(--border)]'
                 }`}
               >
@@ -1956,7 +1956,7 @@ function Inbox() {
                       onChange={() => toggleOne(p.postId)}
                       className="h-3.5 w-3.5 accent-orange-500"
                     />
-                    <span className="text-xs font-medium text-orange-300">#{idx + 1}</span>
+                    <span className="text-xs font-medium text-[var(--accent-11)]">#{idx + 1}</span>
                     <PriorityPill priority={p.priority} />
                   </div>
                   <div className="min-w-0 flex-1">
@@ -2014,7 +2014,7 @@ function Inbox() {
                         <button
                           type="button"
                           onClick={() => mutate(p.postId, 'resolved')}
-                          className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
+                          className="rounded-full border border-[var(--success-9)] bg-[var(--success-3)] px-2 py-0.5 text-[var(--success-11)] transition hover:bg-[var(--success-3)]"
                         >
                           ✓ Resolve
                         </button>
@@ -2031,7 +2031,7 @@ function Inbox() {
                         <button
                           type="button"
                           onClick={() => mutate(p.postId, 'in-progress')}
-                          className="rounded-full border border-blue-700 bg-blue-900/30 px-2 py-0.5 text-blue-200 transition hover:bg-blue-900/60"
+                          className="rounded-full border border-[var(--n-4)] bg-[var(--n-3)] px-2 py-0.5 text-[var(--n-11)] transition hover:bg-[var(--n-3)]"
                         >
                           Take ownership
                         </button>
@@ -2046,7 +2046,7 @@ function Inbox() {
                       <button
                         type="button"
                         onClick={() => setOpenDraft(openDraft === p.postId ? null : p.postId)}
-                        className="rounded-full border border-violet-700 bg-violet-900/30 px-2 py-0.5 text-violet-200 transition hover:bg-violet-900/60"
+                        className="rounded-full border border-[var(--accent-9)] bg-[var(--accent-3)] px-2 py-0.5 text-[var(--accent-11)] transition hover:bg-[var(--accent-3)]"
                       >
                         {openDraft === p.postId ? 'Hide drafts' : '✨ Draft reply'}
                       </button>
@@ -2054,7 +2054,7 @@ function Inbox() {
                         href={p.url}
                         target="_top"
                         rel="noopener noreferrer"
-                        className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:border-orange-500 hover:text-orange-200"
+                        className="rounded-full border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
                       >
                         ↗ Open on Reddit
                       </a>
@@ -2088,9 +2088,9 @@ function Inbox() {
 function PriorityPill({ priority }: { priority: number }) {
   const tone =
     priority >= 1.0
-      ? 'border-rose-700 bg-rose-900/40 text-rose-200'
+      ? 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]'
       : priority >= 0.5
-        ? 'border-orange-700 bg-orange-900/40 text-orange-200'
+        ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
         : 'border-[var(--border)] bg-[var(--input-bg)] text-[var(--text-muted)]';
   return (
     <span className={`mt-1 rounded-full border px-1.5 py-0.5 text-[10px] tabular-nums ${tone}`}>
@@ -2128,9 +2128,9 @@ function UserHistoryPanel({
               <span
                 className={
                   aggregate.averageScore < -0.1
-                    ? 'text-rose-300'
+                    ? 'text-[var(--error-11)]'
                     : aggregate.averageScore > 0.1
-                      ? 'text-emerald-300'
+                      ? 'text-[var(--success-11)]'
                       : 'text-[var(--text)]'
                 }
               >
@@ -2209,10 +2209,10 @@ function UserHistoryPanel({
 // ---------------------------------------------------------------------------
 
 const TONE_COLOR: Record<string, string> = {
-  empathetic: 'border-emerald-700 bg-emerald-900/30 text-emerald-200',
-  direct: 'border-orange-700 bg-orange-900/30 text-orange-200',
+  empathetic: 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]',
+  direct: 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]',
   concise: 'border-[var(--border)] bg-[var(--surface)] text-[var(--text)]',
-  investigative: 'border-blue-700 bg-blue-900/30 text-blue-200',
+  investigative: 'border-[var(--n-4)] bg-[var(--n-3)] text-[var(--n-11)]',
 };
 
 function DraftReplyPanel({ postId }: { postId: string }) {
@@ -2245,7 +2245,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
     <div className="space-y-3">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="flex items-center gap-2 text-xs text-[var(--text-muted)]">
-          <span className="font-medium text-violet-300">✨ AI draft replies</span>
+          <span className="font-medium text-[var(--accent-11)]">✨ AI draft replies</span>
           {data ? (
             <span className="text-[var(--text-muted)]">
               · {data.candidates.length} candidates · {data.tokensIn + data.tokensOut} tokens · $
@@ -2258,13 +2258,13 @@ function DraftReplyPanel({ postId }: { postId: string }) {
           type="button"
           onClick={generate}
           disabled={loading}
-          className="rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1 text-xs text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+          className="rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] px-3 py-1 text-xs text-[var(--accent-11)] transition hover:bg-[var(--accent-3)] disabled:opacity-50"
         >
           {loading ? 'Generating…' : data ? 'Regenerate' : 'Generate'}
         </button>
       </div>
       {error ? (
-        <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">
+        <div className="rounded-lg border border-[var(--error-9)] bg-[var(--error-3)] p-3 text-sm text-[var(--error-11)]">
           {error}
         </div>
       ) : null}
@@ -2307,7 +2307,7 @@ function DraftReplyPanel({ postId }: { postId: string }) {
                         /* clipboard blocked — user can still select+copy */
                       }
                     }}
-                    className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-[var(--text)] transition hover:border-orange-500 hover:text-orange-200"
+                    className="rounded-md border border-[var(--border)] bg-[var(--input-bg)] px-2 py-1 text-[var(--text)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
                   >
                     {copiedIdx === i ? '✓ Copied' : 'Copy'}
                   </button>
@@ -2959,7 +2959,7 @@ function ActivityTicker({ items }: { items: RecentPost[] }) {
             href={p.url}
             target="_blank"
             rel="noopener noreferrer"
-            className="block w-full truncate text-left text-xs font-medium text-[var(--text)] hover:text-orange-300 hover:underline"
+            className="block w-full truncate text-left text-xs font-medium text-[var(--text)] hover:text-[var(--accent-11)] hover:underline"
             title={p.title}
           >
             {p.title || '(no title)'}
@@ -3158,7 +3158,7 @@ function Drivers({
                 onClick={() => setOpenDriver(openDriver === d.id ? null : d.id)}
                 className={`flex w-full items-center gap-4 rounded-lg border px-3 py-2 text-left transition ${
                   openDriver === d.id
-                    ? 'border-orange-500 bg-[var(--surface)]'
+                    ? 'border-[var(--accent-9)] bg-[var(--surface)]'
                     : 'border-transparent hover:border-[var(--border)] hover:bg-[var(--surface)]'
                 }`}
               >
@@ -3397,12 +3397,12 @@ function ThreadPanel({ postId }: { postId: string }) {
             key={c.commentId}
             className={`rounded-lg border px-3 py-2 ${
               c.isAgent
-                ? 'border-blue-800 bg-blue-950/30'
+                ? 'border-[var(--n-4)] bg-[var(--n-3)]'
                 : 'border-[var(--border)] bg-[var(--surface)]'
             }`}
           >
             <div className="flex flex-wrap items-center gap-2 text-xs text-[var(--text-muted)]">
-              <span className={c.isAgent ? 'font-medium text-blue-300' : 'text-[var(--text)]'}>
+              <span className={c.isAgent ? 'font-medium text-[var(--n-11)]' : 'text-[var(--text)]'}>
                 u/{c.authorName}
               </span>
               {c.isAgent ? <AgentSourceBadge source={c.agentSource} /> : null}
@@ -3665,7 +3665,7 @@ function SentimentPostList({ label }: { label: 'positive' | 'neutral' | 'negativ
                 href={p.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-sm font-medium text-[var(--text)] hover:text-orange-300 hover:underline"
+                className="text-sm font-medium text-[var(--text)] hover:text-[var(--accent-11)] hover:underline"
               >
                 {p.title}
               </a>
@@ -3735,7 +3735,7 @@ function Incidents() {
               onClick={() => setFilter(f)}
               className={`rounded-full border px-3 py-1 transition ${
                 filter === f
-                  ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+                  ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
                   : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
@@ -3763,7 +3763,7 @@ function Incidents() {
             >
               <div className="flex flex-wrap items-baseline justify-between gap-2">
                 <div>
-                  <div className="font-medium text-rose-200">{inc.reason}</div>
+                  <div className="font-medium text-[var(--error-11)]">{inc.reason}</div>
                   <div className="mt-1 text-xs text-[var(--text-muted)]">
                     started{' '}
                     <time dateTime={isoTime(inc.startedAt)} title={absoluteTime(inc.startedAt)}>
@@ -3776,8 +3776,8 @@ function Incidents() {
                   <span
                     className={`rounded-full border px-2 py-0.5 ${
                       inc.status === 'resolved'
-                        ? 'border-emerald-800 bg-emerald-900/30 text-emerald-200'
-                        : 'border-rose-700 bg-rose-900/40 text-rose-200'
+                        ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
+                        : 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]'
                     }`}
                   >
                     {inc.status}
@@ -3786,7 +3786,7 @@ function Incidents() {
                     <button
                       type="button"
                       onClick={() => resolve(inc.id)}
-                      className="rounded-full border border-emerald-700 bg-emerald-900/30 px-2 py-0.5 text-emerald-200 transition hover:bg-emerald-900/60"
+                      className="rounded-full border border-[var(--success-9)] bg-[var(--success-3)] px-2 py-0.5 text-[var(--success-11)] transition hover:bg-[var(--success-3)]"
                     >
                       Resolve
                     </button>
@@ -3856,13 +3856,13 @@ function Themes() {
           type="button"
           onClick={regenerate}
           disabled={regenerating}
-          className="rounded-md border border-violet-700 bg-violet-900/30 px-3 py-1 text-xs text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+          className="rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] px-3 py-1 text-xs text-[var(--accent-11)] transition hover:bg-[var(--accent-3)] disabled:opacity-50"
         >
           {regenerating ? 'Regenerating…' : '✨ Regenerate now'}
         </button>
       </header>
       {error ? (
-        <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-sm text-rose-200">
+        <div className="rounded-lg border border-[var(--error-9)] bg-[var(--error-3)] p-3 text-sm text-[var(--error-11)]">
           {error}
         </div>
       ) : null}
@@ -3880,7 +3880,7 @@ function Themes() {
               type="button"
               onClick={regenerate}
               disabled={regenerating}
-              className="rounded-md border border-violet-700 bg-violet-900/30 px-4 py-2 text-xs font-medium text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+              className="rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] px-4 py-2 text-xs font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-3)] disabled:opacity-50"
             >
               {regenerating ? 'Regenerating…' : '✨ Regenerate now'}
             </button>
@@ -3905,9 +3905,9 @@ function Themes() {
                     <span
                       className={
                         t.avgSentiment < -0.2
-                          ? 'text-rose-300'
+                          ? 'text-[var(--error-11)]'
                           : t.avgSentiment > 0.2
-                            ? 'text-emerald-300'
+                            ? 'text-[var(--success-11)]'
                             : 'text-[var(--text)]'
                       }
                     >
@@ -4006,7 +4006,7 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
           {debugQ.isPending ? (
             <span className="col-span-3 text-[var(--text-muted)]">Loading…</span>
           ) : debugQ.isError ? (
-            <span className="col-span-3 text-rose-400">Failed to load stats.</span>
+            <span className="col-span-3 text-[var(--error-11)]">Failed to load stats.</span>
           ) : (
             <>
               <div className="rounded bg-[var(--input-bg)] px-2 py-1">
@@ -4022,7 +4022,7 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
               <div className="rounded bg-[var(--input-bg)] px-2 py-1">
                 <div className="text-[var(--text-muted)]">Failed</div>
                 <div
-                  className={`font-medium ${(stats.events_failed ?? 0) > 0 ? 'text-rose-400' : 'text-[var(--text)]'}`}
+                  className={`font-medium ${(stats.events_failed ?? 0) > 0 ? 'text-[var(--error-11)]' : 'text-[var(--text)]'}`}
                 >
                   {stats.events_failed ?? '—'}
                 </div>
@@ -4058,7 +4058,7 @@ export function PipelineCard({
         <div>
           <h3 className="text-sm font-semibold text-[var(--text)]">{pipeline.name}</h3>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <span className="flex items-center gap-1 text-xs text-emerald-400">
+            <span className="flex items-center gap-1 text-xs text-[var(--success-11)]">
               <span
                 className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-400"
                 aria-hidden="true"
@@ -4066,7 +4066,7 @@ export function PipelineCard({
               Active
             </span>
             {pipeline.alpha ? (
-              <span className="rounded-full border border-amber-700 bg-amber-950/50 px-2 py-0.5 text-[10px] font-medium text-amber-400">
+              <span className="rounded-full border border-[var(--warn-9)] bg-[var(--warn-3)] px-2 py-0.5 text-[10px] font-medium text-[var(--warn-11)]">
                 alpha
               </span>
             ) : null}
@@ -4077,7 +4077,7 @@ export function PipelineCard({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2.5 py-1 text-xs text-[var(--text)] hover:border-orange-600 hover:text-orange-300"
+              className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2.5 py-1 text-xs text-[var(--text)] hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
               aria-label="Edit taxonomy in Settings"
             >
               Settings →
@@ -4088,7 +4088,7 @@ export function PipelineCard({
             onClick={handleTune}
             aria-label={`Tune ${pipeline.name} pipeline`}
             data-testid={`pipeline-tune-${pipeline.id}`}
-            className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2.5 py-1 text-xs text-[var(--text)] hover:border-violet-600 hover:text-violet-300"
+            className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2.5 py-1 text-xs text-[var(--text)] hover:border-violet-600 hover:text-[var(--accent-11)]"
           >
             Tune →
           </button>
@@ -4137,7 +4137,7 @@ function CustomPipelineCard({
             <span className="rounded-full border border-neutral-600 px-2 py-0.5 text-xs text-[var(--text-muted)]">
               {pipeline.kind}
             </span>
-            <span className="rounded-full border border-emerald-800 bg-emerald-900/30 px-2 py-0.5 text-xs text-emerald-300">
+            <span className="rounded-full border border-[var(--success-9)] bg-[var(--success-3)] px-2 py-0.5 text-xs text-[var(--success-11)]">
               Custom
             </span>
           </div>
@@ -4159,7 +4159,7 @@ function CustomPipelineCard({
             <button
               type="button"
               onClick={onDelete}
-              className="rounded border border-rose-700 bg-rose-900/30 px-2 py-1 text-xs text-rose-200 hover:bg-rose-900/60"
+              className="rounded border border-[var(--error-9)] bg-[var(--error-3)] px-2 py-1 text-xs text-[var(--error-11)] hover:bg-[var(--error-3)]"
             >
               Delete
             </button>
@@ -4168,7 +4168,7 @@ function CustomPipelineCard({
           <button
             type="button"
             onClick={() => setConfirming(true)}
-            className="text-xs text-[var(--text-muted)] underline-offset-2 hover:text-rose-400 hover:underline"
+            className="text-xs text-[var(--text-muted)] underline-offset-2 hover:text-[var(--error-11)] hover:underline"
           >
             Delete
           </button>
@@ -4185,14 +4185,14 @@ export function StubPipelineCard({ onOpen }: { onOpen: () => void }) {
       type="button"
       onClick={onOpen}
       data-testid="pipeline-card-studio-stub"
-      className="flex flex-col items-start rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-5 text-left transition hover:border-orange-600/50 hover:bg-[var(--surface)]"
+      className="flex flex-col items-start rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-5 text-left transition hover:border-[var(--accent-9)]/50 hover:bg-[var(--surface)]"
     >
       <span className="mb-2 text-2xl" aria-hidden="true">
         +
       </span>
       <h3 className="text-sm font-semibold text-[var(--text-muted)]">Custom pipeline</h3>
       <p className="mt-1 text-xs text-[var(--text-muted)]">RedLattice Studio</p>
-      <p className="mt-3 text-xs text-orange-400 underline underline-offset-2">
+      <p className="mt-3 text-xs text-[var(--accent-11)] underline underline-offset-2">
         Build custom pipelines in Studio →
       </p>
     </button>
@@ -4410,7 +4410,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
           <div className="flex items-center gap-3">
             {/* Enabled toggle */}
             <label className="flex cursor-pointer items-center gap-1.5 text-xs">
-              <span className={enabled ? 'text-emerald-400' : 'text-[var(--text-muted)]'}>
+              <span className={enabled ? 'text-[var(--success-11)]' : 'text-[var(--text-muted)]'}>
                 {enabled ? 'Enabled' : 'Disabled'}
               </span>
               <button
@@ -4445,7 +4445,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
               onClick={() => setActiveTab(t.id)}
               className={`-mb-px border-b-2 px-4 py-3 text-xs font-medium transition ${
                 activeTab === t.id
-                  ? 'border-orange-500 text-white'
+                  ? 'border-[var(--accent-9)] text-white'
                   : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
               }`}
             >
@@ -4481,7 +4481,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                       value={systemPrompt}
                       onChange={(e) => setSystemPrompt(e.target.value)}
                       rows={6}
-                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
+                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-[var(--accent-9)]"
                       placeholder="System prompt…"
                       aria-label="System prompt"
                     />
@@ -4495,7 +4495,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                       value={userPrompt}
                       onChange={(e) => setUserPrompt(e.target.value)}
                       rows={6}
-                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
+                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-[var(--accent-9)]"
                       placeholder="User prompt template with {{variables}}…"
                       aria-label="User prompt template"
                     />
@@ -4517,7 +4517,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                               insertVariable(v, userPromptRef, setUserPrompt, userPrompt);
                             }
                           }}
-                          className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 font-mono text-xs text-[var(--text)] hover:border-orange-500 hover:text-orange-300"
+                          className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 font-mono text-xs text-[var(--text)] hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
                         >
                           {v}
                         </button>
@@ -4551,7 +4551,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                                   [def.key]: Number(e.target.value),
                                 }))
                               }
-                              className="w-16 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-right text-xs text-[var(--text)] outline-none focus:border-orange-500"
+                              className="w-16 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-1 text-right text-xs text-[var(--text)] outline-none focus:border-[var(--accent-9)]"
                               aria-label={def.label}
                             />
                           </label>
@@ -4591,7 +4591,7 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                       onChange={(e) => setTestInput(e.target.value)}
                       rows={5}
                       placeholder="Paste sample post or comment text here…"
-                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-orange-500"
+                      className="w-full rounded-md border border-[var(--border)] bg-[var(--surface)] px-3 py-2 text-xs font-mono text-[var(--text)] outline-none focus:border-[var(--accent-9)]"
                       aria-label="Sample input for pipeline test"
                     />
                   </div>
@@ -4599,12 +4599,12 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
                     type="button"
                     onClick={handleTest}
                     disabled={testBusy || testInput.trim().length === 0}
-                    className="rounded-md border border-orange-600 bg-orange-600/20 px-4 py-2 text-xs font-medium text-orange-200 transition hover:bg-orange-600/40 disabled:opacity-50"
+                    className="rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] px-4 py-2 text-xs font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-3)] disabled:opacity-50"
                   >
                     {testBusy ? 'Running…' : 'Run once'}
                   </button>
                   {testError ? (
-                    <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-3 text-xs text-rose-200">
+                    <div className="rounded-lg border border-[var(--error-9)] bg-[var(--error-3)] p-3 text-xs text-[var(--error-11)]">
                       {testError}
                     </div>
                   ) : null}
@@ -4634,19 +4634,19 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
         {/* Footer — Save */}
         <div className="border-t border-[var(--border)] px-5 py-4">
           {saveError ? (
-            <div className="mb-3 rounded-lg border border-rose-800 bg-rose-950/40 p-2 text-xs text-rose-200">
+            <div className="mb-3 rounded-lg border border-[var(--error-9)] bg-[var(--error-3)] p-2 text-xs text-[var(--error-11)]">
               {saveError}
             </div>
           ) : null}
           {saveSuccess ? (
-            <div className="mb-3 rounded-lg border border-emerald-800 bg-emerald-950/40 p-2 text-xs text-emerald-200">
+            <div className="mb-3 rounded-lg border border-[var(--success-9)] bg-[var(--success-3)] p-2 text-xs text-[var(--success-11)]">
               Saved.
             </div>
           ) : null}
           <button
             type="button"
             onClick={handleSave}
-            className="w-full rounded-md border border-orange-600 bg-orange-600/20 py-2 text-sm font-medium text-orange-200 transition hover:bg-orange-600/40"
+            className="w-full rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] py-2 text-sm font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-3)]"
           >
             Save changes
           </button>
@@ -4733,7 +4733,7 @@ function InstallDialog({
             data-testid="install-instance-name"
           />
         </label>
-        {err ? <p className="mb-3 text-xs text-rose-400">{err}</p> : null}
+        {err ? <p className="mb-3 text-xs text-[var(--error-11)]">{err}</p> : null}
         <div className="flex gap-2">
           <button
             type="button"
@@ -4746,7 +4746,7 @@ function InstallDialog({
             type="button"
             onClick={handleInstall}
             disabled={busy}
-            className="flex-1 rounded-md border border-violet-700 bg-violet-900/30 py-1.5 text-xs font-medium text-violet-200 transition hover:bg-violet-900/60 disabled:opacity-50"
+            className="flex-1 rounded-md border border-[var(--accent-9)] bg-[var(--accent-3)] py-1.5 text-xs font-medium text-[var(--accent-11)] transition hover:bg-[var(--accent-3)] disabled:opacity-50"
             data-testid="install-instance-confirm"
           >
             {busy ? 'Installing…' : 'Install'}
@@ -4849,9 +4849,9 @@ function AgentLeaderboard({
                   r.avgSentimentDelta == null
                     ? 'text-[var(--text-muted)]'
                     : r.avgSentimentDelta > 0.05
-                      ? 'text-emerald-300'
+                      ? 'text-[var(--success-11)]'
                       : r.avgSentimentDelta < -0.05
-                        ? 'text-rose-300'
+                        ? 'text-[var(--error-11)]'
                         : 'text-[var(--text)]'
                 }`}
                 title="Avg change in thread sentiment in the 5 comments following the rep's reply"
@@ -4887,7 +4887,7 @@ function AgentList({ agents }: { agents: Agent[] }) {
             href="https://developers.reddit.com/docs/devvit"
             target="_top"
             rel="noopener noreferrer"
-            className="text-xs text-orange-400 underline-offset-2 hover:underline"
+            className="text-xs text-[var(--accent-11)] underline-offset-2 hover:underline"
           >
             View rep verification docs →
           </a>
@@ -4977,7 +4977,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
           <button
             type="button"
             onClick={() => onApply(v.params)}
-            className="hover:text-orange-300 transition"
+            className="hover:text-[var(--accent-11)] transition"
             title={`Apply view: ${v.name}`}
           >
             {v.name}
@@ -4985,7 +4985,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
           <button
             type="button"
             onClick={() => deleteView.mutate(v.id)}
-            className="ml-0.5 rounded-full p-0.5 text-[var(--text-muted)] opacity-0 transition group-hover:opacity-100 hover:text-rose-400"
+            className="ml-0.5 rounded-full p-0.5 text-[var(--text-muted)] opacity-0 transition group-hover:opacity-100 hover:text-[var(--error-11)]"
             aria-label={`Delete view "${v.name}"`}
             title="Delete view"
           >
@@ -5009,7 +5009,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
             onChange={(e) => setNewName(e.target.value)}
             placeholder="View name"
             maxLength={60}
-            className="w-36 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[var(--text)] outline-none focus:border-orange-500"
+            className="w-36 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[var(--text)] outline-none focus:border-[var(--accent-9)]"
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 setSaving(false);
@@ -5020,7 +5020,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
           <button
             type="submit"
             disabled={!newName.trim() || saveView.isPending}
-            className="rounded border border-orange-700 bg-orange-900/30 px-2 py-0.5 text-orange-200 transition hover:bg-orange-900/60 disabled:opacity-50"
+            className="rounded border border-[var(--accent-9)] bg-[var(--accent-3)] px-2 py-0.5 text-[var(--accent-11)] transition hover:bg-[var(--accent-3)] disabled:opacity-50"
           >
             {saveView.isPending ? 'Saving…' : 'Save'}
           </button>
@@ -5039,7 +5039,7 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
         <button
           type="button"
           onClick={() => setSaving(true)}
-          className="rounded-full border border-dashed border-[var(--border)] px-2.5 py-0.5 text-[var(--text-muted)] transition hover:border-orange-600 hover:text-orange-400"
+          className="rounded-full border border-dashed border-[var(--border)] px-2.5 py-0.5 text-[var(--text-muted)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
           title="Save current filters as a view"
         >
           + Save current
@@ -5076,25 +5076,25 @@ function auditActionBadgeStyle(action: AuditAction): string {
     case 'mark-resolved':
     case 'incident-resolve':
     case 'mod-approve':
-      return 'border-emerald-700 bg-emerald-900/40 text-emerald-200';
+      return 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]';
     case 'mark-open':
-      return 'border-amber-700 bg-amber-900/40 text-amber-200';
+      return 'border-[var(--warn-9)] bg-[var(--warn-3)] text-[var(--warn-11)]';
     case 'mark-agent':
     case 'unmark-agent':
     case 'settings-update':
       return 'border-neutral-600 bg-[var(--input-bg)] text-[var(--text)]';
     case 'mod-remove':
     case 'mod-spam':
-      return 'border-rose-700 bg-rose-900/40 text-rose-200';
+      return 'border-[var(--error-9)] bg-[var(--error-3)] text-[var(--error-11)]';
     case 'mod-lock':
     case 'mod-distinguish':
-      return 'border-violet-700 bg-violet-900/40 text-violet-200';
+      return 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]';
     case 'mod-reply':
-      return 'border-sky-700 bg-sky-900/40 text-sky-200';
+      return 'border-[var(--n-4)] bg-[var(--n-3)] text-[var(--n-11)]';
     case 'tag-issue':
     case 'bulk-status':
     case 'theme-regenerate':
-      return 'border-blue-700 bg-blue-900/40 text-blue-200';
+      return 'border-[var(--n-4)] bg-[var(--n-3)] text-[var(--n-11)]';
     default:
       return 'border-neutral-600 bg-[var(--input-bg)] text-[var(--text)]';
   }
@@ -5151,7 +5151,7 @@ function Audit() {
           onClick={() => setActionFilter('')}
           className={`rounded-full border px-2.5 py-0.5 transition ${
             actionFilter === ''
-              ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+              ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
               : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
           }`}
         >
@@ -5165,7 +5165,7 @@ function Audit() {
             onClick={() => setActionFilter(actionFilter === a ? '' : a)}
             className={`rounded-full border px-2.5 py-0.5 transition ${
               actionFilter === a
-                ? 'border-orange-500 bg-orange-500/10 text-orange-200'
+                ? 'border-[var(--accent-9)] bg-[var(--accent-3)] text-[var(--accent-11)]'
                 : 'border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)] hover:text-[var(--text)]'
             }`}
           >
@@ -5188,12 +5188,12 @@ function Audit() {
             }
           }}
           placeholder="username…"
-          className="w-36 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[var(--text)] outline-none focus:border-orange-500"
+          className="w-36 rounded border border-[var(--border)] bg-[var(--surface)] px-2 py-0.5 text-[var(--text)] outline-none focus:border-[var(--accent-9)]"
         />
         <button
           type="button"
           onClick={commitActor}
-          className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:border-orange-500"
+          className="rounded border border-[var(--border)] bg-[var(--input-bg)] px-2 py-0.5 text-[var(--text)] transition hover:border-[var(--accent-9)]"
         >
           Filter
         </button>
@@ -5331,7 +5331,7 @@ function ExportTab() {
             href="/api/export/posts.csv?limit=500"
             target="_top"
             rel="noopener noreferrer"
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-orange-500 hover:text-orange-300"
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
           >
             Download recent 500 posts (CSV)
           </a>
@@ -5339,7 +5339,7 @@ function ExportTab() {
             href="/api/export/posts.csv?limit=1000"
             target="_top"
             rel="noopener noreferrer"
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-orange-500 hover:text-orange-300"
+            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
           >
             Download recent 1000 posts (CSV)
           </a>
@@ -5385,9 +5385,9 @@ function _Card({
 }) {
   const accent =
     tone === 'positive'
-      ? 'text-emerald-400'
+      ? 'text-[var(--success-11)]'
       : tone === 'negative'
-        ? 'text-rose-400'
+        ? 'text-[var(--error-11)]'
         : 'text-[var(--text)]';
   return (
     <article className="rounded-lg border border-[var(--border)] bg-[var(--surface)] p-4">
@@ -5424,7 +5424,7 @@ function EmptyHint({ children }: { children: React.ReactNode }) {
 
 function ErrorMsg({ msg, retry }: { msg: string; retry: () => void }) {
   return (
-    <div className="rounded-lg border border-rose-800 bg-rose-950/40 p-4 text-sm text-rose-200">
+    <div className="rounded-lg border border-[var(--error-9)] bg-[var(--error-3)] p-4 text-sm text-[var(--error-11)]">
       {msg}{' '}
       <button type="button" onClick={retry} className="underline">
         Retry

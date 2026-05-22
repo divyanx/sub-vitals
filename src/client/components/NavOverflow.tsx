@@ -57,7 +57,7 @@ export function NavOverflow({ activeTab, onSelect }: NavOverflowProps) {
         onClick={() => setOpen((o) => !o)}
         className={`-mb-px flex flex-shrink-0 items-center gap-1 border-b-2 px-4 py-3 text-sm font-medium transition ${
           isActive
-            ? 'border-orange-500 text-[var(--text)]'
+            ? 'border-[var(--accent-9)] text-[var(--text)]'
             : 'border-transparent text-[var(--text-muted)] hover:text-[var(--text)]'
         }`}
       >
@@ -85,7 +85,7 @@ export function NavOverflow({ activeTab, onSelect }: NavOverflowProps) {
                   setOpen(false);
                 }}
                 className={`flex w-full items-center justify-between px-4 py-2 text-left text-sm transition hover:bg-[var(--bg)] ${
-                  isItemActive ? 'font-medium text-orange-400' : 'text-[var(--text-muted)]'
+                  isItemActive ? 'font-medium text-[var(--accent-11)]' : 'text-[var(--text-muted)]'
                 }`}
               >
                 {item.label}
