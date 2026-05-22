@@ -33,6 +33,25 @@ import type { Tag } from '@shared/types.js';
 // ---------------------------------------------------------------------------
 
 let reportsEnabledCache: { value: boolean; expiresAt: number } | null = null;
+
+// Cache the instanceId→templateId map so we don't hit Redis for the
+// full instances HASH on every recompute (one per tag-write per post,
+// so ~4× per post — hot path). 60s is long enough to absorb a post-
+// create burst but short enough that newly-installed instances start
+// resolving within a minute.
+let instanceMapCache: { map: Map<string, string>; expiresAt: number } | null = null;
+const INSTANCE_MAP_CACHE_TTL_MS = 60_000;
+
+async function getInstanceMap(): Promise<Map<string, string>> {
+  const now = Date.now();
+  if (instanceMapCache && instanceMapCache.expiresAt > now) {
+    return instanceMapCache.map;
+  }
+  const instances = await listInstances();
+  const map = new Map(instances.map((i) => [i.id, i.templateId]));
+  instanceMapCache = { map, expiresAt: now + INSTANCE_MAP_CACHE_TTL_MS };
+  return map;
+}
 const REPORTS_CACHE_TTL_MS = 60_000;
 
 async function isAutoReportsEnabled(): Promise<boolean> {
@@ -156,11 +175,10 @@ async function buildTemplateMap(tags: Tag[]): Promise<Map<string, Tag>> {
   }
 
   // Second pass: catalogue installs need a DB lookup. Skip the round-trip
-  // when nothing is unresolved.
+  // when nothing is unresolved. Cached in-memory for 60s — hot path.
   if (unresolved.length > 0) {
     try {
-      const instances = await listInstances();
-      const idToTemplate = new Map(instances.map((i) => [i.id, i.templateId]));
+      const idToTemplate = await getInstanceMap();
       for (const t of unresolved) {
         const tpl = idToTemplate.get(t.pipelineId);
         if (tpl) map.set(tpl, t);

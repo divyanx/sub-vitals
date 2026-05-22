@@ -99,6 +99,10 @@
       "weekly-digest": {
         "endpoint": "/internal/scheduler/weekly-digest",
         "cron": "0 9 * * MON"
+      },
+      "retry-sweep": {
+        "endpoint": "/internal/scheduler/retry-sweep",
+        "cron": "*/5 * * * *"
       }
     }
   },

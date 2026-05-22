@@ -33,3 +33,14 @@ export async function processedOnce(
   }
   return false;
 }
+
+/**
+ * Release the claim so the next call to processedOnce(handler, contentId)
+ * will succeed again. Used by retry-queue handlers after a transient
+ * failure — without this the retry would no-op because the original
+ * attempt set the sentinel.
+ */
+export async function clearProcessedSentinel(handler: string, contentId: string): Promise<void> {
+  const key = K.processed(handler, contentId);
+  await redis.del(key).catch(() => {});
+}

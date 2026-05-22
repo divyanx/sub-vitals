@@ -2178,6 +2178,35 @@ app.post('/internal/scheduler/weekly-digest', async (c) => {
 });
 
 // ---------------------------------------------------------------------------
+// Scheduler — retry-sweep
+//
+// Runs every 5 minutes. Drains each known retry-queue job type, replaying
+// items whose backoff has expired. Each handler is idempotent; transient
+// failures get re-queued with the next backoff step (30s → 2m → 8m → 30m
+// → 2h) and dropped after 5 attempts.
+//
+// To add a new job type:
+//   1. Define a payload + handler in the owning module (export it).
+//   2. Add a `drainRetries('your-job-type', handler)` call here.
+//   3. Call `enqueueRetry('your-job-type', payload)` from the failure site.
+// ---------------------------------------------------------------------------
+
+app.post('/internal/scheduler/retry-sweep', async (c) => {
+  log.info('scheduler: retry-sweep fired');
+  const { drainRetries } = await import('@shared/retry-queue.js');
+  const { retryPipelineRun } = await import('@modules/generic-pipeline-runner/index.js');
+
+  // Pipeline LLM retries (spam/fraud/intent etc.)
+  try {
+    await drainRetries('pipeline-run', retryPipelineRun);
+  } catch (err) {
+    log.warn('retry-sweep: pipeline-run drain failed', { err: String(err) });
+  }
+
+  return c.json({ ok: true });
+});
+
+// ---------------------------------------------------------------------------
 // Taxonomy template routes — mod-only.
 // ---------------------------------------------------------------------------
 

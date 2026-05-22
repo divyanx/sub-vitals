@@ -22,10 +22,11 @@
  * after a config tweak is safe.
  */
 
-import { processedOnce } from '@shared/idempotency.js';
+import { clearProcessedSentinel, processedOnce } from '@shared/idempotency.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
-import { listEnabledInstances } from '@shared/pipeline-instances.js';
+import { getInstance, listEnabledInstances } from '@shared/pipeline-instances.js';
+import { enqueueRetry } from '@shared/retry-queue.js';
 import { recordTag } from '@shared/tags.js';
 import type {
   OnCommentCreateRequest,
@@ -195,6 +196,26 @@ async function runInstance(instance: PipelineInstance, ctx: RunCtx): Promise<boo
         templateId: instance.templateId,
         reason: result.reason,
       });
+      // Push to DLQ on TRANSIENT failures so the scheduler can retry
+      // later. Hard failures (no-api-key, cost-cap-exceeded) won't
+      // benefit from retry — only retry when the upstream is likely
+      // to recover on its own.
+      if (
+        result.reason === 'timeout' ||
+        result.reason === 'rate-limited' ||
+        result.reason === 'no-object' ||
+        result.reason === 'error'
+      ) {
+        // Reset the processed-once sentinel BEFORE re-enqueueing so the
+        // retry handler is allowed to re-run. Without this the next
+        // attempt would short-circuit at the idempotency check.
+        await clearProcessedSentinel(handlerKey, ctx.id);
+        await enqueueRetry<RetryPayload>('pipeline-run', {
+          instanceId: instance.id,
+          targetType: ctx.kind,
+          targetId: ctx.id,
+        });
+      }
       return false;
     }
 
@@ -290,3 +311,65 @@ export const genericPipelineRunnerModule: RedLatticeModule = {
     });
   },
 };
+
+// ---------------------------------------------------------------------------
+// Retry queue payload + handler — invoked by the rl-retry-sweep scheduler
+// ---------------------------------------------------------------------------
+
+/**
+ * Payload pushed onto the `pipeline-run` retry queue when a pipeline LLM
+ * call fails transiently (timeout, rate-limit, no-object). The scheduler
+ * sweeps the queue every 5 min and replays one instance against one
+ * target. Re-runs are safe because clearProcessedSentinel() is called
+ * before enqueueing.
+ */
+export interface RetryPayload {
+  instanceId: string;
+  targetType: 'post' | 'comment';
+  targetId: string;
+}
+
+/**
+ * Retry handler — fetches the original content from Reddit, looks up the
+ * instance config, and runs one pipeline pass. Used by the rl-retry-sweep
+ * scheduler. Throws on persistent failure so retry-queue can re-schedule.
+ */
+export async function retryPipelineRun(payload: RetryPayload): Promise<void> {
+  const { reddit } = await import('@devvit/web/server');
+  const instance = await getInstance(payload.instanceId);
+  if (!instance) {
+    // Instance was deleted while job was queued — silently drop.
+    log.info('generic-runner: retry skipped, instance gone', { ...payload });
+    return;
+  }
+  if (!instance.enabled) {
+    log.info('generic-runner: retry skipped, instance disabled', { ...payload });
+    return;
+  }
+
+  if (payload.targetType === 'post') {
+    const fullId = payload.targetId.startsWith('t3_')
+      ? (payload.targetId as `t3_${string}`)
+      : (`t3_${payload.targetId}` as `t3_${string}`);
+    const post = await reddit.getPostById(fullId);
+    await runInstance(instance, {
+      kind: 'post',
+      id: post.id,
+      title: post.title ?? '',
+      body: post.body ?? '',
+      author: post.authorName ?? '',
+    });
+  } else {
+    const fullId = payload.targetId.startsWith('t1_')
+      ? (payload.targetId as `t1_${string}`)
+      : (`t1_${payload.targetId}` as `t1_${string}`);
+    const comment = await reddit.getCommentById(fullId);
+    await runInstance(instance, {
+      kind: 'comment',
+      id: comment.id,
+      body: comment.body ?? '',
+      author: comment.authorName ?? '',
+      postId: comment.postId,
+    });
+  }
+}

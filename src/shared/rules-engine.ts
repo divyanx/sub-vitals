@@ -542,8 +542,9 @@ const HARDCODED_TO_TEMPLATE: Record<string, string> = {
  */
 async function resolveTemplateAliases(pipelineId: string): Promise<string[]> {
   const aliases: string[] = [];
-  if (HARDCODED_TO_TEMPLATE[pipelineId]) {
-    aliases.push(HARDCODED_TO_TEMPLATE[pipelineId]!);
+  const hardcoded = HARDCODED_TO_TEMPLATE[pipelineId];
+  if (hardcoded) {
+    aliases.push(hardcoded);
     return aliases;
   }
   if (pipelineId.startsWith('pi_')) {

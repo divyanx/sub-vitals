@@ -166,12 +166,12 @@ export async function regenerateThemesDetailed(): Promise<RegenerateResult> {
 
   const prompt = [
     `Here are ${validMetas.length} recent negative posts in the ${subredditName} subreddit.`,
-    'Cluster them into at most 8 themes.',
+    'Cluster them into 3-8 distinct themes (more themes is usually better — prefer specific themes over one generic catch-all).',
     'For each theme, give:',
     '  - name: 3-5 word short label',
     '  - summary: one sentence describing the underlying issue',
-    '  - member_post_ids: array of post IDs that belong to this theme',
-    'Skip themes with fewer than 2 posts.',
+    '  - member_post_ids: array of post IDs that belong to this theme (a theme MAY have just 1 post if no other post matches its specific issue)',
+    'Do not put unrelated posts into the same theme just to hit a count. Smaller, focused themes are more useful than a single broad theme.',
     '',
     'Posts:',
     ...postLines,

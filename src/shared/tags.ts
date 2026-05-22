@@ -54,6 +54,12 @@ async function fireModSurfaceOnTag(tag: Tag): Promise<void> {
 }
 
 const TAG_INDEX_CAP = 1000;
+// Per-target tag HASH never expired before — for high-traffic subs that
+// meant unbounded Redis growth (~400 bytes × N pipelines × M posts).
+// 90 days is enough for analytics drilldown; after that aggregated
+// rollups carry the long-term signal and per-post tag details are
+// dropped. Refreshed on every write so active posts stay indexed.
+const TAG_TARGET_TTL_SEC = 90 * 24 * 60 * 60;
 
 /**
  * Write a tag and update the per-pipeline-value index.
@@ -63,6 +69,7 @@ export async function recordTag(tag: Tag): Promise<void> {
   try {
     const key = K.tagTarget(tag.targetType, tag.targetId);
     await redis.hSet(key, { [tag.pipelineId]: JSON.stringify(tag) });
+    await redis.expire(key, TAG_TARGET_TTL_SEC);
     const idxKey = K.tagValueIndex(tag.pipelineId, String(tag.value));
     await redis.zAdd(idxKey, { score: tag.createdAt, member: tag.targetId });
     const count = await redis.zCard(idxKey);
