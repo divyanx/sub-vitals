@@ -160,29 +160,33 @@ async function maybeInsertSeedRules(): Promise<void> {
 }
 
 /**
- * Self-heal: if the rules list is empty (e.g. mod accidentally deleted
- * all rules, or migration cleared the table), re-seed the defaults on
- * every server boot. Different from maybeInsertSeedRules which is gated
- * by a sticky sentinel — this one looks at the actual rules count.
+ * Self-heal: if the rules list is empty (mod accidentally deleted all
+ * rules, or migration cleared the table), re-seed the defaults the
+ * first time the rules API is hit after boot.
  *
- * Runs once per server boot via apiRoutes registration (it's idempotent;
- * concurrent boots will both find no rules and try to seed, but
- * saveRule on identical IDs is fine since seeds randomize their IDs).
+ * Must run INSIDE a request — Devvit Redis throws "No context found"
+ * from module-init / apiRoutes-registration scope. Per-process memoized
+ * so subsequent /api/rules calls don't pay the listRules() cost.
  */
+let ensuredThisBoot = false;
 async function ensureSeededRules(): Promise<void> {
+  if (ensuredThisBoot) return;
   try {
     const existing = await listRules();
-    if (existing.length > 0) return;
-    log.info('rules: list empty on boot, re-seeding defaults');
-    const seeds = buildSeedRules();
-    for (const rule of seeds) {
-      await saveRule(rule);
-      await appendToOrder(rule.id);
+    if (existing.length === 0) {
+      log.info('rules: list empty on first hit, re-seeding defaults');
+      const seeds = buildSeedRules();
+      for (const rule of seeds) {
+        await saveRule(rule);
+        await appendToOrder(rule.id);
+      }
+      await redis.set(SEED_SENTINEL, '1');
+      log.info('rules: re-seeded', { count: seeds.length });
     }
-    await redis.set(SEED_SENTINEL, '1');
-    log.info('rules: re-seeded', { count: seeds.length });
+    ensuredThisBoot = true;
   } catch (err) {
     log.warn('rules: ensureSeededRules failed (non-fatal)', { err: String(err) });
+    // Don't set ensuredThisBoot — retry on next request.
   }
 }
 
@@ -204,12 +208,6 @@ export const rulesModule: RedLatticeModule = {
   },
 
   apiRoutes(app: Hono): void {
-    // Self-heal seed on every server boot: if rules list is empty (mod
-    // cleared, migration wiped, or the sentinel-gated maybeInsertSeedRules
-    // already ran and the rules went away), re-insert the defaults.
-    // Fire-and-forget — boot shouldn't wait for Redis.
-    void ensureSeededRules();
-
     // ── GET /api/rules/templates ────────────────────────────────────────────
     // Catalogue of pre-built rule templates the mod can install with one click.
     // No mod gate — read-only metadata. Templates carry no installation state.
@@ -255,6 +253,9 @@ export const rulesModule: RedLatticeModule = {
     // ── GET /api/rules ──────────────────────────────────────────────────────
     app.get('/api/rules', async (c) => {
       if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+      // Lazy-seed defaults on first hit per server boot. Has to run inside
+      // a request — Devvit Redis throws "No context found" from module-init.
+      await ensureSeededRules();
       const rules = await listRules();
       // Merge stats inline
       const withStats = await Promise.all(
