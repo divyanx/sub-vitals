@@ -2514,12 +2514,24 @@ function HeatmapCell({ count, max, label }: { count: number; max: number; label:
   // Floor to 0.06 so cells with at least one post are still visible
   // against the card background even at low density.
   const alpha = count > 0 ? 0.06 + intensity * 0.94 : 0;
+  // Native title="" tooltips don't render reliably inside Devvit's
+  // webview iframe (QA report 1.1). Custom on-hover overlay so the
+  // count is always reachable.
   return (
     <div
-      className="h-4 w-full rounded-[2px] border border-[var(--border)]/40"
+      className="group relative h-4 w-full rounded-[2px] border border-[var(--border)]/40"
       style={{ backgroundColor: `rgba(255, 69, 0, ${alpha.toFixed(2)})` }}
       title={label}
-    />
+    >
+      {count > 0 ? (
+        <span
+          role="tooltip"
+          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-[var(--r-1)] bg-[var(--n-1)] px-2 py-0.5 text-[10px] text-[var(--n-11)] shadow-[var(--shadow-2)] group-hover:block"
+        >
+          {label}
+        </span>
+      ) : null}
+    </div>
   );
 }
 
@@ -2727,7 +2739,7 @@ function Overview({
               label="Top intent"
               value={kpis.topDriver}
               sub={`${kpis.topDriverCount} post${kpis.topDriverCount === 1 ? '' : 's'}`}
-              onClick={() => navigateTo('insights', { section: 'intent' })}
+              onClick={() => navigateTo('pipelines', { instance: 'pi_intent-classifier' })}
               tooltip={TOOLTIPS.topDriver}
             />
             <KpiTile
@@ -2787,7 +2799,7 @@ function Overview({
                   <button
                     key={node.id}
                     type="button"
-                    onClick={() => navigateTo('insights', { section: 'intent', driver: node.id })}
+                    onClick={() => navigateTo('pipelines', { instance: 'pi_intent-classifier' })}
                     className="group flex flex-col gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-left transition hover:border-[var(--border)] hover:bg-[var(--input-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
                     aria-label={`${node.label}: ${current} posts today. Click to view intent.`}
                   >
@@ -5316,6 +5328,60 @@ function AuditRow({
 // Export — CSV download for warehouse / Sprinklr-style ingestion
 // ---------------------------------------------------------------------------
 
+/**
+ * CsvDownloadButton — fetches the CSV via XHR + creates an in-memory
+ * blob URL + triggers download via a synthetic anchor click.
+ *
+ * The previous implementation used `<a href="/api/..." target="_top">`
+ * which broke inside Devvit's iframe — `target="_top"` navigates the
+ * parent Reddit frame to a RELATIVE URL like `/api/export/posts.csv`,
+ * which Reddit resolves to `https://www.reddit.com/api/export/...`
+ * (404). The blob + anchor approach works inside the sandbox because
+ * the URL is local to the iframe document.
+ */
+function CsvDownloadButton({ limit }: { limit: number }) {
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    setBusy(true);
+    setErr(null);
+    try {
+      const res = await fetch(`/api/export/posts.csv?limit=${limit}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `redlattice-posts-${new Date().toISOString().slice(0, 10)}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      // Browsers leak the blob URL until revoked. Defer a tick so the
+      // download has time to start.
+      setTimeout(() => URL.revokeObjectURL(url), 5_000);
+    } catch (e) {
+      setErr(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-1">
+      <button
+        type="button"
+        onClick={handleDownload}
+        disabled={busy}
+        className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)] disabled:opacity-50"
+      >
+        {busy ? 'Preparing…' : `Download recent ${limit} posts (CSV)`}
+      </button>
+      {err ? <span className="text-xs text-[var(--error-11)]">{err}</span> : null}
+    </div>
+  );
+}
+
 function ExportTab() {
   return (
     <div className="space-y-6">
@@ -5329,22 +5395,8 @@ function ExportTab() {
           most recent posts as CSV. Endpoint is mod-only and same-origin to the dashboard.
         </p>
         <div className="flex flex-wrap gap-3">
-          <a
-            href="/api/export/posts.csv?limit=500"
-            target="_top"
-            rel="noopener noreferrer"
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
-          >
-            Download recent 500 posts (CSV)
-          </a>
-          <a
-            href="/api/export/posts.csv?limit=1000"
-            target="_top"
-            rel="noopener noreferrer"
-            className="rounded-md border border-[var(--border)] bg-[var(--surface)] px-4 py-2 text-sm font-medium text-[var(--text)] transition hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
-          >
-            Download recent 1000 posts (CSV)
-          </a>
+          <CsvDownloadButton limit={500} />
+          <CsvDownloadButton limit={1000} />
         </div>
       </section>
       <section>

@@ -1603,17 +1603,27 @@ export function ContentBrowser() {
         ) : null}
       </div>
 
-      {/* Bulk toast */}
+      {/* Bulk toast — fixed position bottom-right so the user sees it
+          regardless of scroll position. Was previously inline at the
+          top of the table, invisible when scrolling at the bulk
+          toolbar. */}
       {bulkToast ? (
-        <div className="mt-3 rounded-[var(--r-2)] border border-[var(--success-9)] bg-[var(--success-3)] px-3 py-2 text-sm text-[var(--success-11)]">
+        <output
+          aria-live="polite"
+          className="fixed bottom-20 right-6 z-40 block max-w-sm rounded-[var(--r-2)] border border-[var(--success-9)] bg-[var(--success-3)] px-4 py-2 text-sm text-[var(--success-11)] shadow-[var(--shadow-2)]"
+        >
           {bulkToast}
-        </div>
+        </output>
       ) : null}
 
       {/* ------------------------------------------------------------------ */}
       {/* Table */}
       {/* ------------------------------------------------------------------ */}
-      <div className="mt-3 overflow-x-auto">
+      {/* Dropped `overflow-x-auto` wrapper — its overflow:hidden side effect
+          on the y-axis was clipping the per-row ⋯ action menu so clicks
+          appeared to "do nothing" (menu opened but invisible). Page-level
+          horizontal scroll handles narrow viewports just fine. */}
+      <div className="mt-3">
         {contentQ.isPending ? (
           <div className="space-y-2 py-4" aria-busy="true">
             {[0, 1, 2, 3, 4].map((i) => (
