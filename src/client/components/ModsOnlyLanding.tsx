@@ -29,7 +29,15 @@ export function ModsOnlyLanding({ subredditName }: ModsOnlyLandingProps) {
           error page — visual continuity matters. */}
       <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-3 backdrop-blur">
         <div className="mx-auto flex max-w-6xl items-center gap-3">
-          <span className="block h-3 w-3 shrink-0 rounded-full bg-[var(--accent-9)]" />
+          <img
+            src="/logo-64.png"
+            srcSet="/logo-64.png 1x, /logo-256.png 4x"
+            width={28}
+            height={28}
+            alt=""
+            aria-hidden="true"
+            className="block h-7 w-7 shrink-0 rounded-md"
+          />
           <div className="leading-tight">
             <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattice</h1>
             <p className="hidden text-[length:var(--t-xs)] text-[var(--text-muted)] sm:block">
