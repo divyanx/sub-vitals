@@ -14,9 +14,9 @@ The standalone Studio webapp (studio.redlattice.app) exists because:
 
 The Devvit app works completely standalone — Studio is a **strict upgrade**, not a dependency.
 
-## Why is the app called `redlattuce` (typo) on the Devvit directory?
+## Is the app slug `redlattice` or `redlattuce`?
 
-We registered the app name early before settling on the final spelling. Renaming a Devvit app after registration is non-trivial (it invalidates all installations), so we kept the registered ID and rebranded externally. The user-facing brand everywhere is **RedLattice**.
+The registered Devvit app slug is **`redlattice`** — matching the user-facing brand **RedLattice** everywhere. (An earlier registration used the typo `redlattuce`; we re-registered after settling on the final spelling.)
 
 ## What's actually using AI vs heuristics?
 
