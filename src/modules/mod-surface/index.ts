@@ -196,50 +196,50 @@ async function buildTemplateMap(tags: Tag[]): Promise<Map<string, Tag>> {
  * > intent+sentiment > sentiment alone. Returns null when there are no
  * tags worth showing (caller should leave existing flair alone).
  */
+/**
+ * Build the public-facing flair for a post.
+ *
+ * IMPORTANT — privacy posture:
+ *   Reddit post flair is visible to EVERY user who can see the post,
+ *   not just mods. So we only set a flair when there's a community-
+ *   safety reason to warn members (fraud, spam, impostor, PII leak).
+ *
+ *   Mod-only insights — intent classification, sentiment polarity,
+ *   theme cluster membership, brand-mention counts — stay in the
+ *   Reported queue (mod-only), in the Pipelines tab analytics (mod-
+ *   only), or in modmail. They never reach the public flair slot.
+ *
+ *   Wording on safety flair is softened ("likely", "possible",
+ *   "contains personal info") rather than absolute accusations,
+ *   because LLM classifiers aren't infallible and we don't want to
+ *   defame a legitimate user who got a false-positive flag.
+ */
 function buildFlair(byTemplate: Map<string, Tag>): FlairChoice | null {
   const find = (templateId: string): Tag | undefined => byTemplate.get(templateId);
 
   const fraud = find('fraud-detector');
   if (fraud && (fraud.value === true || fraud.value === 'true')) {
-    return { text: '🚨 fraud', backgroundColor: '#7a0e0e', textColor: 'light' };
+    return { text: '🚨 likely fraud', backgroundColor: '#7a0e0e', textColor: 'light' };
   }
 
   const spam = find('spam-detector');
   if (spam && (spam.value === true || spam.value === 'true')) {
-    return { text: '🚨 spam', backgroundColor: '#5b1717', textColor: 'light' };
+    return { text: '🚨 likely spam', backgroundColor: '#5b1717', textColor: 'light' };
   }
 
   const impostor = find('impostor-flagger');
   if (impostor && (impostor.value === true || impostor.value === 'true')) {
-    return { text: '🎭 impostor', backgroundColor: '#8a4500', textColor: 'light' };
+    return { text: '🎭 possible impostor', backgroundColor: '#8a4500', textColor: 'light' };
   }
 
-  const intent = find('intent-classifier');
-  const sentiment = find('sentiment-scorer');
-
-  if (intent || sentiment) {
-    // Keep the flair single-chip clean: intent + sentiment-emoji only.
-    // PII, brand mentions, and other signals get their own report lines
-    // (see buildReports below) instead of being crammed into the flair.
-    const intentValue = intent ? valueLabel(intent.value) : '';
-    const sentimentValue = sentiment ? valueLabel(sentiment.value) : '';
-    const intentIcon = INTENT_ICON[intentValue] ?? '•';
-    const sentimentIcon = SENTIMENT_ICON[sentimentValue] ?? '';
-
-    const parts: string[] = [];
-    if (intent) parts.push(`${intentIcon} ${intentValue}`);
-    if (sentiment) parts.push(sentimentIcon);
-    const text = parts.join(' · ').slice(0, 64);
-
-    const bg =
-      sentimentValue === 'negative'
-        ? '#3d1a1a'
-        : sentimentValue === 'positive'
-          ? '#0e3a22'
-          : '#2a2a2a';
-    return { text, backgroundColor: bg, textColor: 'light' };
+  const pii = find('pii-detector');
+  if (pii && (pii.value === true || pii.value === 'true')) {
+    return { text: '🔒 contains personal info', backgroundColor: '#5a3a00', textColor: 'light' };
   }
 
+  // No safety signal → no flair. Intent + sentiment + cluster + brand
+  // signals are intentionally NOT publicized; mods see them in the
+  // Reported queue and the Pipelines analytics view.
   return null;
 }
 
