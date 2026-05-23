@@ -286,19 +286,25 @@ export function Dashboard({
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────────
   useEffect(() => {
+    // Bail when the user is typing in any editable element. Otherwise
+    // single-letter chords like `g p` / `g i` fire inside Lab post fields
+    // and yank the user away mid-sentence ("the gig is up" → Pipelines).
+    // $mod+k and Escape stay active everywhere — universal accelerators.
+    const isEditable = (e: KeyboardEvent): boolean => {
+      const t = e.target as HTMLElement | null;
+      if (!t) return false;
+      if (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.tagName === 'SELECT') return true;
+      if (t.isContentEditable) return true;
+      return false;
+    };
+
     const unsub = tinykeys(window, {
       '$mod+k': (e: KeyboardEvent) => {
         e.preventDefault();
         setCmdOpen((o) => !o);
       },
       '?': (e: KeyboardEvent) => {
-        const target = e.target as HTMLElement;
-        if (
-          target.tagName === 'INPUT' ||
-          target.tagName === 'TEXTAREA' ||
-          target.tagName === 'SELECT'
-        )
-          return;
+        if (isEditable(e)) return;
         setShortcutsOpen((o) => !o);
       },
       Escape: (_e: KeyboardEvent) => {
@@ -306,22 +312,27 @@ export function Dashboard({
         setShortcutsOpen(false);
       },
       'g p': (e: KeyboardEvent) => {
+        if (isEditable(e)) return;
         e.preventDefault();
         setTab('posts');
       },
       'g i': (e: KeyboardEvent) => {
+        if (isEditable(e)) return;
         e.preventDefault();
         setTab('pipelines');
       },
       'g c': (e: KeyboardEvent) => {
+        if (isEditable(e)) return;
         e.preventDefault();
         openCatalogue();
       },
       'g r': (e: KeyboardEvent) => {
+        if (isEditable(e)) return;
         e.preventDefault();
         setTab('rules');
       },
       'g ,': (e: KeyboardEvent) => {
+        if (isEditable(e)) return;
         e.preventDefault();
         setTab('settings');
       },

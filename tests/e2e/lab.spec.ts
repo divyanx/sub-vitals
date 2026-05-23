@@ -93,4 +93,17 @@ test.describe('Lab tab', () => {
     await page.getByPlaceholder('DELETE').fill('DELETE');
     await expect(page.getByTestId('lab-clear-confirm-btn')).not.toBeDisabled();
   });
+
+  // Regression — typing text in the Lab post form must not trigger the
+  // global `g p` / `g i` / `g r` / `g ,` navigation chord shortcuts.
+  // Before the fix, "gig" mid-sentence would jump to Pipelines.
+  test('typing chord bigrams in post title does NOT navigate away', async ({ page }) => {
+    await openLabTab(page);
+    const title = page.getByLabel('Title');
+    await title.click();
+    await title.pressSequentially('the gig is up, going to ship rules', { delay: 30 });
+    // Still on Lab — URL section param sticks, lab-tab still mounted.
+    await expect(page.getByTestId('lab-tab')).toBeVisible();
+    await expect(title).toHaveValue('the gig is up, going to ship rules');
+  });
 });
