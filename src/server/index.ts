@@ -195,6 +195,36 @@ app.onError((err, c) => {
 app.get('/api/health', (c) => c.json({ ok: true, ts: Date.now() }));
 
 /**
+ * GET /api/me — caller identity + mod status. NOT mod-gated, so the
+ * React shell can render a friendly "mods only" landing for non-mods
+ * instead of letting them see broken loading states from 403'd calls.
+ *
+ * Anonymous viewers (rare in Devvit webviews) get isMod:false. Failure
+ * paths fail closed (isMod:false) so we never accidentally grant
+ * access when something hiccups.
+ */
+app.get('/api/me', async (c) => {
+  try {
+    const { isCurrentUserMod } = await import('@shared/permissions.js');
+    const isMod = await isCurrentUserMod();
+    let username: string | null = null;
+    try {
+      const u = await reddit.getCurrentUser();
+      username = u?.username ?? null;
+    } catch {
+      /* anonymous / context hiccup — leave null */
+    }
+    return c.json({
+      isMod,
+      username,
+      subredditName: context.subredditName ?? null,
+    });
+  } catch {
+    return c.json({ isMod: false, username: null, subredditName: null });
+  }
+});
+
+/**
  * Admin debug — module + LLM + storage state at a glance. Mod-only.
  * Use this when the dashboard looks wrong: confirms what the server thinks
  * the state is, separate from what the UI renders.

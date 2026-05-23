@@ -1,8 +1,22 @@
+import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { ModsOnlyLanding } from './components/ModsOnlyLanding.tsx';
 import { useBrandAccent } from './hooks/useBrandAccent.ts';
 import type { DashboardProps } from './views/Dashboard.tsx';
 import { Dashboard } from './views/Dashboard.tsx';
 import { Pulse } from './views/Pulse.tsx';
+
+interface MeResponse {
+  isMod: boolean;
+  username: string | null;
+  subredditName: string | null;
+}
+
+async function fetchMe(): Promise<MeResponse> {
+  const r = await fetch('/api/me');
+  if (!r.ok) return { isMod: false, username: null, subredditName: null };
+  return (await r.json()) as MeResponse;
+}
 
 type View = 'pulse' | 'dashboard';
 
@@ -128,8 +142,32 @@ export function App() {
   const initial = useMemo(readInitialState, []);
   const [view, setView] = useState<View>(initial.view);
 
+  // Mod-status check — RedLattice is a mod tool; non-mods see a friendly
+  // landing instead of broken loading states. Server still enforces via
+  // requireMod on every endpoint; this is the UX layer.
+  const meQ = useQuery({
+    queryKey: ['me'],
+    queryFn: fetchMe,
+    staleTime: 5 * 60 * 1000, // 5 min — mod status changes rarely
+  });
+
   if (view === 'pulse') {
     return <Pulse onOpenDashboard={() => setView('dashboard')} />;
+  }
+
+  // Show a quiet skeleton during the initial mod-check (sub-second).
+  if (meQ.isPending) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[var(--bg)]">
+        <div className="h-3 w-32 animate-pulse rounded-full bg-[var(--n-4)]" />
+      </div>
+    );
+  }
+
+  // Non-mods get the friendly landing — same chrome as the dashboard
+  // header so it doesn't feel like an error page.
+  if (!meQ.data?.isMod) {
+    return <ModsOnlyLanding subredditName={meQ.data?.subredditName ?? null} />;
   }
 
   const dashProps = initial.view === 'dashboard' ? initial : { initialTab: 'posts' as Tab };
