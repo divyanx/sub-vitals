@@ -16,6 +16,9 @@
     },
     "media": true
   },
+  "marketingAssets": {
+    "icon": "assets/icon-1024.png"
+  },
   "post": {
     "dir": "dist/client",
     "entrypoints": {
