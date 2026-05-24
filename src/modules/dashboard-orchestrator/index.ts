@@ -35,6 +35,15 @@ export const dashboardOrchestratorModule: RedLatticeModule = {
   },
 };
 
+// media-dir-relative path (devvit.json `media.dir` defaults to `assets/`).
+// Note: `splash` is marked @deprecated in @devvit/reddit but still the
+// supported way to set the launch-screen icon in @devvit/web@0.12.x.
+// Future-proof migration is an inline-entrypoint splash; out of scope here.
+const SPLASH_OPTS = {
+  appDisplayName: 'RedLattice',
+  appIconUri: 'icon-1024.png',
+} as const;
+
 async function ensurePinnedDashboard(trigger: 'install' | 'upgrade'): Promise<void> {
   const sub = context.subredditName;
   if (!sub) {
@@ -44,15 +53,27 @@ async function ensurePinnedDashboard(trigger: 'install' | 'upgrade'): Promise<vo
   try {
     const existing = await redis.get(K.pulsePostId());
     if (existing) {
-      log.debug('orchestrator: dashboard post already exists', {
-        trigger,
-        postId: existing,
-      });
+      // Existing install — pinned post is fine, but bring its splash
+      // forward (icon was added in a later version of the app).
+      try {
+        const post = await reddit.getPostById(existing as `t3_${string}`);
+        await post.setSplash(SPLASH_OPTS);
+        log.debug('orchestrator: splash refreshed on existing post', {
+          trigger,
+          postId: existing,
+        });
+      } catch (err) {
+        log.warn('orchestrator: setSplash on existing post failed (non-fatal)', {
+          err: err instanceof Error ? err.message : String(err),
+          postId: existing,
+        });
+      }
       return;
     }
     const post = await reddit.submitCustomPost({
       title: 'RedLattice · Live Analytics',
       subredditName: sub,
+      splash: SPLASH_OPTS,
     });
     await redis.set(K.pulsePostId(), post.id);
     try {
