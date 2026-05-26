@@ -1,0 +1,238 @@
+- generic [active] [ref=e1]:
+  - navigation [ref=e2]:
+    - generic [ref=e4]:
+      - link "SubVitals SubVitals" [ref=e5] [cursor=pointer]:
+        - /url: /
+        - img "SubVitals" [ref=e7]
+        - generic [ref=e8]: SubVitals
+      - generic [ref=e9]:
+        - link "Features" [ref=e10] [cursor=pointer]:
+          - /url: "#features"
+        - link "How it works" [ref=e11] [cursor=pointer]:
+          - /url: "#how-it-works"
+        - link "Built for" [ref=e12] [cursor=pointer]:
+          - /url: "#built-for"
+      - link "Install" [ref=e13] [cursor=pointer]:
+        - /url: https://developers.reddit.com/apps/sub-vitals
+  - main [ref=e14]:
+    - generic [ref=e15]:
+      - generic:
+        - img
+      - generic [ref=e16]:
+        - generic [ref=e18]: Built for the Reddit Mod Tools Hackathon 2026
+        - heading "Your subreddit's vital signs. At a glance." [level=1] [ref=e21]:
+          - text: Your subreddit's vital signs.
+          - text: At a glance.
+        - paragraph [ref=e23]: SubVitals gives moderators real-time CX analytics — auto-classification, sentiment tracking, crisis detection, and AI-powered triage — all natively inside Reddit.
+        - generic [ref=e25]:
+          - link "Install on Reddit" [ref=e26] [cursor=pointer]:
+            - /url: https://developers.reddit.com/apps/sub-vitals
+            - img [ref=e27]
+            - text: Install on Reddit
+          - link "View on GitHub" [ref=e29] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e30]
+            - text: View on GitHub
+        - generic [ref=e33]:
+          - generic [ref=e34]:
+            - generic [ref=e35]: "3"
+            - generic [ref=e36]: Core modules
+          - generic [ref=e37]:
+            - generic [ref=e38]: "9"
+            - generic [ref=e39]: Feature cards
+          - generic [ref=e40]:
+            - generic [ref=e41]: 100%
+            - generic [ref=e42]: Reddit-native
+    - generic [ref=e44]:
+      - generic [ref=e45]:
+        - generic [ref=e46]: The difference
+        - heading "Before and after SubVitals" [level=2] [ref=e47]
+      - generic [ref=e48]:
+        - generic [ref=e49]:
+          - generic [ref=e50]:
+            - generic [ref=e51]: ✕
+            - heading "Without SubVitals" [level=3] [ref=e52]
+          - list [ref=e53]:
+            - listitem [ref=e54]: Manually sorting hundreds of posts every shift
+            - listitem [ref=e56]: Missing critical escalations until they go viral
+            - listitem [ref=e58]: No visibility into response times or team load
+            - listitem [ref=e60]: Duplicate tickets from the same user, different posts
+            - listitem [ref=e62]: Zero data on what topics are actually driving volume
+            - listitem [ref=e64]: Post-mortem reports built from memory, not data
+        - generic [ref=e66]:
+          - generic [ref=e67]:
+            - generic [ref=e68]: ✓
+            - heading "With SubVitals" [level=3] [ref=e69]
+          - list [ref=e70]:
+            - listitem [ref=e71]: Auto-classified inbox — bugs, billing, features, sorted instantly
+            - listitem [ref=e73]: Crisis alerts fire before escalations go public
+            - listitem [ref=e75]: "Real-time leaderboard: who responded, how fast"
+            - listitem [ref=e77]: Deduplication groups same-user threads automatically
+            - listitem [ref=e79]: Contact driver dashboard shows volume by topic
+            - listitem [ref=e81]: Audit log with full searchable mod action history
+    - generic [ref=e84]:
+      - generic [ref=e85]:
+        - generic [ref=e86]: Features
+        - heading "Everything your mod team needs" [level=2] [ref=e87]
+        - paragraph [ref=e88]: Nine modules, one install. SubVitals runs entirely inside Reddit — no external dashboards, no new tabs.
+      - generic [ref=e89]:
+        - generic [ref=e92]:
+          - generic [ref=e93]: 🏷️
+          - heading "Auto-Classification" [level=3] [ref=e94]
+          - paragraph [ref=e95]: "Every post tagged by intent: bug, billing, feature request, and more."
+        - generic [ref=e98]:
+          - generic [ref=e99]: 📊
+          - heading "Sentiment Scoring" [level=3] [ref=e100]
+          - paragraph [ref=e101]: AFINN lexicon + AI judge on every post and comment.
+        - generic [ref=e104]:
+          - generic [ref=e105]: 🚨
+          - heading "Crisis Detection" [level=3] [ref=e106]
+          - paragraph [ref=e107]: Auto-grouped incidents when negative sentiment spikes above threshold.
+        - generic [ref=e110]:
+          - generic [ref=e111]: ⚡
+          - heading "Rules Engine" [level=3] [ref=e112]
+          - paragraph [ref=e113]: WHEN/THEN automation for mod workflows — no code required.
+        - generic [ref=e116]:
+          - generic [ref=e117]: 🤖
+          - heading "AI Copilot" [level=3] [ref=e118]
+          - paragraph [ref=e119]: Chat assistant for mods with full tool-calling and context.
+        - generic [ref=e122]:
+          - generic [ref=e123]: 👥
+          - heading "Team Metrics" [level=3] [ref=e124]
+          - paragraph [ref=e125]: Response latency leaderboard for verified agents and mods.
+        - generic [ref=e128]:
+          - generic [ref=e129]: 📈
+          - heading "Pipeline System" [level=3] [ref=e130]
+          - paragraph [ref=e131]: 10 built-in analysis templates, fully configurable per subreddit.
+        - generic [ref=e134]:
+          - generic [ref=e135]: 📋
+          - heading "Audit Log" [level=3] [ref=e136]
+          - paragraph [ref=e137]: Every mod action logged, timestamped, and fully searchable.
+        - generic [ref=e140]:
+          - generic [ref=e141]: 🔒
+          - heading "Privacy-First" [level=3] [ref=e142]
+          - paragraph [ref=e143]: All data stays in Reddit's infrastructure. Zero external storage.
+    - generic [ref=e146]:
+      - generic [ref=e147]:
+        - generic [ref=e148]: Getting started
+        - heading "Up and running in minutes" [level=2] [ref=e149]
+      - generic [ref=e152]:
+        - generic [ref=e153]:
+          - generic [ref=e154]:
+            - img [ref=e156]
+            - generic [ref=e158]: "1"
+          - generic [ref=e159]: "01"
+          - heading "Install" [level=3] [ref=e160]
+          - paragraph [ref=e161]: One click from the Devvit App Directory. SubVitals installs directly into your subreddit — no API keys needed to get started.
+        - generic [ref=e162]:
+          - generic [ref=e163]:
+            - img [ref=e165]
+            - generic [ref=e168]: "2"
+          - generic [ref=e169]: "02"
+          - heading "Configure" [level=3] [ref=e170]
+          - paragraph [ref=e171]: Set your brand name, intent taxonomy, and optional OpenAI API key for AI scoring. Takes less than five minutes.
+        - generic [ref=e172]:
+          - generic [ref=e173]:
+            - img [ref=e175]
+            - generic [ref=e178]: "3"
+          - generic [ref=e179]: "03"
+          - heading "Analyze" [level=3] [ref=e180]
+          - paragraph [ref=e181]: Posts auto-classify the moment they are approved. Your dashboard goes live immediately with real-time sentiment, volume, and team metrics.
+    - generic [ref=e183]:
+      - generic [ref=e184]:
+        - generic [ref=e185]: Built for
+        - heading "Brand communities on Reddit" [level=2] [ref=e186]
+        - paragraph [ref=e187]: SubVitals is purpose-built for brand-operated subreddits where customer support happens in the open.
+      - generic [ref=e188]:
+        - generic [ref=e189]:
+          - img [ref=e191]
+          - generic [ref=e194]:
+            - generic [ref=e195]: Hardware
+            - heading "r/Sonos" [level=3] [ref=e196]
+            - paragraph [ref=e197]: Hardware support communities
+        - generic [ref=e198]:
+          - img [ref=e200]
+          - generic [ref=e203]:
+            - generic [ref=e204]: SaaS
+            - heading "r/OpenPhone" [level=3] [ref=e205]
+            - paragraph [ref=e206]: SaaS product communities
+        - generic [ref=e207]:
+          - img [ref=e209]
+          - generic [ref=e212]:
+            - generic [ref=e213]: Finance
+            - heading "r/Fidelity" [level=3] [ref=e214]
+            - paragraph [ref=e215]: Financial services communities
+        - generic [ref=e216]:
+          - img [ref=e218]
+          - generic [ref=e221]:
+            - generic [ref=e222]: All brands
+            - heading "Any brand subreddit" [level=3] [ref=e223]
+            - paragraph [ref=e224]: With customer-facing traffic
+    - generic [ref=e227]:
+      - paragraph [ref=e228]: Built with
+      - generic [ref=e229]:
+        - generic [ref=e230]:
+          - img [ref=e232]
+          - generic [ref=e234]:
+            - generic [ref=e235]: Devvit Web
+            - generic [ref=e236]: Reddit's native app platform
+        - generic [ref=e237]:
+          - img [ref=e239]
+          - generic [ref=e241]:
+            - generic [ref=e242]: React 19
+            - generic [ref=e243]: UI rendering engine
+        - generic [ref=e244]:
+          - img [ref=e246]
+          - generic [ref=e248]:
+            - generic [ref=e249]: TypeScript
+            - generic [ref=e250]: Type-safe throughout
+        - generic [ref=e251]:
+          - img [ref=e253]
+          - generic [ref=e255]:
+            - generic [ref=e256]: Hono
+            - generic [ref=e257]: Edge-first HTTP routing
+        - generic [ref=e258]:
+          - img [ref=e260]
+          - generic [ref=e262]:
+            - generic [ref=e263]: OpenAI
+            - generic [ref=e264]: AI-powered classification
+        - generic [ref=e265]:
+          - img [ref=e267]
+          - generic [ref=e269]:
+            - generic [ref=e270]: Tailwind CSS
+            - generic [ref=e271]: Utility-first styling
+    - generic [ref=e274]:
+      - img [ref=e279]
+      - generic [ref=e282]:
+        - generic [ref=e284]: Free during hackathon
+        - heading "Ready to see your subreddit's vital signs?" [level=2] [ref=e286]:
+          - text: Ready to see your subreddit's
+          - text: vital signs?
+        - paragraph [ref=e287]: One-click install from the Devvit App Directory. Your dashboard goes live the moment your first post is approved.
+        - link "Install SubVitals" [ref=e289] [cursor=pointer]:
+          - /url: https://developers.reddit.com/apps/sub-vitals
+          - img [ref=e290]
+          - text: Install SubVitals
+  - contentinfo [ref=e292]:
+    - generic [ref=e293]:
+      - generic [ref=e294]:
+        - generic [ref=e295]:
+          - img "SubVitals" [ref=e297]
+          - generic [ref=e298]:
+            - generic [ref=e299]: SubVitals
+            - text: Reddit CX Analytics
+        - navigation [ref=e300]:
+          - link "Privacy Policy" [ref=e301] [cursor=pointer]:
+            - /url: /privacy
+          - link "Terms of Service" [ref=e302] [cursor=pointer]:
+            - /url: /terms
+          - link "GitHub" [ref=e303] [cursor=pointer]:
+            - /url: "#"
+            - img [ref=e304]
+            - text: GitHub
+      - generic [ref=e306]:
+        - generic [ref=e307]: Built for the Reddit Mod Tools Hackathon 2026
+        - generic [ref=e308]:
+          - text: Made with ❤ by
+          - link "u/divyanx_" [ref=e309] [cursor=pointer]:
+            - /url: https://www.reddit.com/user/divyanx_

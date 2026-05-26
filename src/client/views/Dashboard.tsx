@@ -698,7 +698,8 @@ function Posts({
   const instancesQ = useQuery({
     queryKey: ['pipelines-instances'],
     queryFn: () => api.pipelines.listInstances(),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
   });
 
   const instances: PipelineInstance[] = (instancesQ.data?.instances ?? [])
@@ -865,7 +866,8 @@ function PipelinesTab({
   const instancesQ = useQuery({
     queryKey: ['pipelines-instances'],
     queryFn: () => api.pipelines.listInstances(),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
   });
 
   const templatesQ = useQuery({
@@ -1129,12 +1131,14 @@ function BooleanInstanceView({ instance }: { instance: PipelineInstance }) {
   const distQ = useQuery({
     queryKey: ['tag-distribution', instance.id, 'bool', 30],
     queryFn: () => api.tags.distribution(instance.id, ['true', 'false'], 30),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
   });
   const truePostsQ = useQuery({
     queryKey: ['tag-posts', instance.id, 'true'],
     queryFn: () => api.tags.posts(instance.id, 'true', 50),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
   });
 
   const dist = distQ.data?.distribution ?? [];
@@ -2582,28 +2586,33 @@ function Overview({
   const recentQ = useQuery({
     queryKey: ['recent-posts-500'],
     queryFn: () => api.recentPosts(500),
-    staleTime: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
   const volumeQ = useQuery({
     queryKey: ['drivers-volume'],
     queryFn: api.driverVolume,
-    staleTime: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
   const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy, staleTime: 300_000 });
   const sentimentQ = useQuery({
     queryKey: ['sentiment-rollup'],
     queryFn: api.sentimentRollup,
-    staleTime: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
   const incidentsQ = useQuery({
     queryKey: ['incidents', 'active'],
     queryFn: () => api.incidents('active'),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
   });
   const leaderboardQ = useQuery({
     queryKey: ['agent-leaderboard-7'],
     queryFn: () => api.agentLeaderboard(7),
-    staleTime: 120_000,
+    staleTime: 15_000,
+    refetchInterval: 20_000,
   });
   // themesQ removed — themes moved to Pipelines tab (cluster pipeline) in the new IA
 
@@ -4013,7 +4022,8 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
     queryKey: ['admin-debug'],
     queryFn: api.adminDebug,
     enabled: open,
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
   });
 
   const stats: DebugStats = (() => {
@@ -4953,7 +4963,8 @@ function SavedViewsStrip({ tab, currentParams, onApply }: SavedViewsStripProps) 
       const data = await api.views.list();
       return data.views.filter((v) => v.tab === tab);
     },
-    staleTime: 60_000,
+    staleTime: 10_000,
+    refetchInterval: 15_000,
   });
 
   const saveView = useMutation({
@@ -5141,7 +5152,8 @@ function Audit() {
         ...(actionFilter ? { action: actionFilter } : {}),
         ...(actorFilter ? { actor: actorFilter } : {}),
       }),
-    staleTime: 30_000,
+    staleTime: 5_000,
+    refetchInterval: 10_000,
   });
 
   const commitActor = useCallback(() => {
