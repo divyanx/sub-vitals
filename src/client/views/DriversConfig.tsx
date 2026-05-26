@@ -993,8 +993,7 @@ function TaxonomyEmptyState({ onAdd }: { onAdd: () => void }) {
       </div>
       <p className="mb-1 text-sm font-medium text-[var(--n-11)]">No drivers yet</p>
       <p className="mb-5 max-w-xs text-xs text-[var(--n-8)]">
-        Create your first contact driver category. Posts will be auto-tagged based on keywords you
-        define.
+        Create your first intent category. Posts will be auto-tagged based on keywords you define.
       </p>
       <button
         type="button"
@@ -1477,7 +1476,7 @@ export function TaxonomyConfigSection({
 
   return (
     <Section
-      title="Contact driver taxonomy"
+      title="Intent taxonomy"
       description="Define the issue categories used for tagging posts. Children indent under parents. Changes take effect on the next auto-tagged post."
     >
       {/* Templates marketplace — shown above editor */}

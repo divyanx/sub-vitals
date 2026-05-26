@@ -2863,7 +2863,7 @@ function Overview({
               <EmptyState
                 icon="🏷️"
                 title="No driver data yet"
-                body="No posts have been tagged yet. Apply a taxonomy template or wait for new posts to flow through the contact-drivers pipeline."
+                body="No posts have been tagged yet. Apply a taxonomy template or wait for new posts to flow through the intent classifier pipeline."
               />
             )}
           </section>
@@ -4252,7 +4252,7 @@ const PIPELINE_THRESHOLDS: Record<
 const PIPELINE_DEFAULTS: Record<string, { systemPrompt: string; userPrompt: string }> = {
   'contact-drivers': {
     systemPrompt:
-      'You classify Reddit posts about a brand into contact driver categories. Respond with the most appropriate driver ID from the taxonomy.',
+      'You classify Reddit posts about a brand into intent categories. Respond with the most appropriate driver ID from the taxonomy.',
     userPrompt:
       'Post title: {{post.title}}\nPost body: {{post.body}}\nTaxonomy: {{taxonomy_json}}\n\nClassify this post.',
   },

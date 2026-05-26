@@ -2,7 +2,7 @@
  * Onboarding.tsx — First-run wizard for SubVitals mods.
  *
  * Renders as a <dialog> modal overlay over the dashboard. Four steps:
- * Welcome → Triage Inbox → Contact Drivers → Done.
+ * Welcome → Triage Inbox → Pipelines → Done.
  *
  * Shown once per (subreddit, user) pair; Redis key `rl:onboarded:{userId}`
  * tracks completion. TanStack Query drives status fetch and completion mutation.
@@ -64,11 +64,11 @@ const STEPS: [Step, Step, Step, Step] = [
       'Posts auto-prioritize by severity × sentiment × age. High-urgency threads bubble to the top automatically — no manual sorting required.',
   },
   {
-    title: 'Contact Drivers',
+    title: 'Pipelines',
     icon: '◎',
-    body: 'Every post gets tagged into a driver category.',
+    body: 'Every post flows through configurable analysis pipelines.',
     detail:
-      'Edit your taxonomy in Settings → Contact Driver Taxonomy to match how YOUR community talks. The auto-tagger learns your label vocabulary within seconds of a post hitting the queue.',
+      'Seven pipelines are pre-installed — intent classification, sentiment scoring, spam detection, and more. Browse the catalogue to add or tune pipelines for your community.',
   },
   {
     title: "You're ready",

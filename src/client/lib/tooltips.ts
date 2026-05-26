@@ -6,8 +6,7 @@ export const TOOLTIPS = {
   // Pulse KPIs
   postsToday:
     'Total posts submitted to this subreddit today (UTC). Includes all auto-tagged and manually tagged posts.',
-  topDriver:
-    'The contact driver category with the most posts today. Click to drill into the Drivers tab.',
+  topDriver: 'The intent category with the most posts today. Click to drill into the Drivers tab.',
   negativeShare:
     'Negative posts ÷ total posts today. Formula: negative_count / total_count. Threshold: ≥40% = alert, ≥25% = warning.',
   activeIncidents:
@@ -15,7 +14,7 @@ export const TOOLTIPS = {
   avgFirstResponse:
     'Mean time from post submission to first verified rep comment, averaged across all reps over the last 7 days.',
   aiSpendMtd:
-    'Month-to-date AI cost in USD, accumulated across contact-driver classification, sentiment judging, theme clustering, and AI draft replies.',
+    'Month-to-date AI cost in USD, accumulated across intent classification, sentiment judging, theme clustering, and AI draft replies.',
 
   // Sentiment cards
   sentimentPositive:
@@ -35,7 +34,7 @@ export const TOOLTIPS = {
 
   // Pipeline logic
   pipelineContactDrivers:
-    'Keyword match → AI classification. Posts matching a driver keyword skip the AI call to save cost.',
+    'Keyword match → AI classification. Posts matching a taxonomy keyword skip the AI call to save cost.',
   pipelineSentiment:
     'AFINN lexicon for clear signals; AI judge only for ambiguous cases (score between −0.1 and +0.1).',
   pipelineImpostor:
