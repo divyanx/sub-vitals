@@ -193,7 +193,7 @@ describe('deliverWebhook', () => {
 
     await deliverWebhook('wh1', 'post-tag', { postId: 'p1', driverId: 'billing' });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1]!.body as string) as {
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string) as {
       blocks: Array<{ type: string }>;
     };
     expect(body.blocks).toBeDefined();
@@ -208,7 +208,7 @@ describe('deliverWebhook', () => {
 
     await deliverWebhook('wh1', 'incident-open', { incidentId: 'inc1' });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1]!.body as string) as {
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string) as {
       embeds: Array<{ title: string; color: number }>;
     };
     expect(body.embeds).toBeDefined();
@@ -224,7 +224,7 @@ describe('deliverWebhook', () => {
 
     await deliverWebhook('wh1', 'incident-open', { incidentId: 'inc1', reason: 'spike' });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1]!.body as string) as {
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string) as {
       event_action: string;
       payload: { severity: string; custom_details: Record<string, unknown> };
     };
@@ -238,7 +238,7 @@ describe('deliverWebhook', () => {
 
     await deliverWebhook('wh1', 'post-tag', { postId: 'p1' });
 
-    const body = JSON.parse(mockFetch.mock.calls[0][1]!.body as string) as {
+    const body = JSON.parse(mockFetch.mock.calls[0][1]?.body as string) as {
       event: string;
       ts: number;
       payload: Record<string, unknown>;

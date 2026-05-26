@@ -551,7 +551,7 @@ const PRIMARY_TABS: { id: Tab; label: string }[] = [
 
 const SETTINGS_SECTIONS: { id: SettingsSection; label: string }[] = [
   { id: 'brand', label: 'Brand' },
-  { id: 'team', label: 'Team roster' },
+  { id: 'team', label: 'Team Roster' },
   { id: 'thresholds', label: 'Thresholds' },
   { id: 'ai', label: 'AI' },
   { id: 'webhooks', label: 'Webhooks' },
@@ -787,7 +787,7 @@ function Posts({
           onOpenPost={(_postId, url) => {
             // `window.open(url, '_blank')` works inside Devvit's iframe;
             // `window.open` itself is sandboxed without the target arg.
-            // `<a target="_blank">` would be cleaner, but the panel calls
+            // `<a target="_top">` would be cleaner, but the panel calls
             // back to us with the url so we use the equivalent here.
             if (url) window.open(url, '_blank', 'noopener,noreferrer');
           }}
@@ -912,12 +912,20 @@ function PipelinesTab({
   };
 
   const handleDelete = async (id: string) => {
+    await qc.cancelQueries({ queryKey: ['pipelines-instances'] });
+    const prev = qc.getQueryData<{ instances: PipelineInstance[] }>(['pipelines-instances']);
+    if (prev) {
+      qc.setQueryData(['pipelines-instances'], {
+        ...prev,
+        instances: prev.instances.filter((i) => i.id !== id),
+      });
+    }
     try {
       await api.pipelines.deleteInstance(id);
-      await qc.invalidateQueries({ queryKey: ['pipelines-instances'] });
     } catch {
-      /* non-fatal */
+      if (prev) qc.setQueryData(['pipelines-instances'], prev);
     }
+    await qc.invalidateQueries({ queryKey: ['pipelines-instances'] });
   };
 
   const handleDuplicate = async (id: string) => {
@@ -1198,7 +1206,7 @@ function BooleanInstanceView({ instance }: { instance: PipelineInstance }) {
                   <div className="min-w-0 flex-1">
                     <a
                       href={p.url || `https://www.reddit.com/comments/${bareId}`}
-                      target="_blank"
+                      target="_top"
                       rel="noopener noreferrer"
                       className="block truncate text-[length:var(--t-sm)] font-medium text-[var(--n-12)] hover:text-[var(--accent-11)] hover:underline"
                       title={p.title}
@@ -2538,14 +2546,14 @@ function HeatmapCell({ count, max, label }: { count: number; max: number; label:
   // count is always reachable.
   return (
     <div
-      className="group relative h-4 w-full rounded-[2px] border border-[var(--border)]/40"
+      className="group relative h-4 w-full overflow-visible rounded-[2px] border border-[var(--border)]/40"
       style={{ backgroundColor: `rgba(255, 69, 0, ${alpha.toFixed(2)})` }}
       title={label}
     >
       {count > 0 ? (
         <span
           role="tooltip"
-          className="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1 hidden -translate-x-1/2 whitespace-nowrap rounded-[var(--r-1)] bg-[var(--n-1)] px-2 py-0.5 text-[10px] text-[var(--n-11)] shadow-[var(--shadow-2)] group-hover:block"
+          className="pointer-events-none absolute top-full left-1/2 z-30 mt-1 hidden -translate-x-1/2 whitespace-nowrap rounded-[var(--r-1)] bg-[var(--n-1)] px-2 py-0.5 text-[10px] text-[var(--n-11)] shadow-[var(--shadow-2)] group-hover:block"
         >
           {label}
         </span>
@@ -2990,7 +2998,7 @@ function ActivityTicker({ items }: { items: RecentPost[] }) {
         <li key={p.postId} className="px-3 py-2.5">
           <a
             href={p.url}
-            target="_blank"
+            target="_top"
             rel="noopener noreferrer"
             className="block w-full truncate text-left text-xs font-medium text-[var(--text)] hover:text-[var(--accent-11)] hover:underline"
             title={p.title}
@@ -3696,7 +3704,7 @@ function SentimentPostList({ label }: { label: 'positive' | 'neutral' | 'negativ
             <div className="min-w-0 flex-1">
               <a
                 href={p.url}
-                target="_blank"
+                target="_top"
                 rel="noopener noreferrer"
                 className="text-sm font-medium text-[var(--text)] hover:text-[var(--accent-11)] hover:underline"
               >
@@ -3952,19 +3960,16 @@ function Themes() {
                 {t.samplePostIds.length > 0 ? (
                   <div className="mt-3 flex flex-wrap gap-1 text-xs">
                     {t.samplePostIds.slice(0, 4).map((pid) => {
-                      // Sample post IDs carry the t3_ prefix already
-                      // (Devvit's fullname format). Drop it for the
-                      // user-facing URL.
                       const bare = pid.startsWith('t3_') ? pid.slice(3) : pid;
                       return (
                         <a
                           key={pid}
                           href={`https://www.reddit.com/comments/${bare}`}
-                          target="_blank"
+                          target="_top"
                           rel="noopener noreferrer"
                           className="rounded border border-[var(--border)] bg-[var(--bg)] px-2 py-0.5 font-mono text-[var(--text-muted)] hover:border-[var(--accent-9)] hover:text-[var(--accent-11)]"
                         >
-                          {pid}
+                          {bare}
                         </a>
                       );
                     })}
@@ -4208,27 +4213,6 @@ function CustomPipelineCard({
         )}
       </div>
     </div>
-  );
-}
-
-/** Stub card for the future Studio custom pipeline */
-export function StubPipelineCard({ onOpen }: { onOpen: () => void }) {
-  return (
-    <button
-      type="button"
-      onClick={onOpen}
-      data-testid="pipeline-card-studio-stub"
-      className="flex flex-col items-start rounded-xl border border-dashed border-[var(--border)] bg-[var(--surface)] p-5 text-left transition hover:border-[var(--accent-9)]/50 hover:bg-[var(--surface)]"
-    >
-      <span className="mb-2 text-2xl" aria-hidden="true">
-        +
-      </span>
-      <h3 className="text-sm font-semibold text-[var(--text-muted)]">Custom pipeline</h3>
-      <p className="mt-1 text-xs text-[var(--text-muted)]">RedLattice Studio</p>
-      <p className="mt-3 text-xs text-[var(--accent-11)] underline underline-offset-2">
-        Build custom pipelines in Studio →
-      </p>
-    </button>
   );
 }
 
@@ -5347,38 +5331,15 @@ function AuditRow({
 // Export — CSV download for warehouse / Sprinklr-style ingestion
 // ---------------------------------------------------------------------------
 
-/**
- * CsvDownloadButton — fetches the CSV via XHR + creates an in-memory
- * blob URL + triggers download via a synthetic anchor click.
- *
- * The previous implementation used `<a href="/api/..." target="_top">`
- * which broke inside Devvit's iframe — `target="_top"` navigates the
- * parent Reddit frame to a RELATIVE URL like `/api/export/posts.csv`,
- * which Reddit resolves to `https://www.reddit.com/api/export/...`
- * (404). The blob + anchor approach works inside the sandbox because
- * the URL is local to the iframe document.
- */
 function CsvDownloadButton({ limit }: { limit: number }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const handleDownload = async () => {
+  const handleDownload = () => {
     setBusy(true);
     setErr(null);
     try {
-      const res = await fetch(`/api/export/posts.csv?limit=${limit}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `redlattice-posts-${new Date().toISOString().slice(0, 10)}.csv`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      // Browsers leak the blob URL until revoked. Defer a tick so the
-      // download has time to start.
-      setTimeout(() => URL.revokeObjectURL(url), 5_000);
+      window.open(`/api/export/posts.csv?limit=${limit}`, '_top');
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
@@ -5433,8 +5394,7 @@ function ExportTab() {
           <div>GET /api/export/posts.csv?limit=N</div>
         </div>
         <p className="mt-3 max-w-2xl text-xs text-[var(--text-muted)]">
-          All routes are mod-protected and return JSON unless otherwise noted. Phase 2 will add
-          bearer-token auth so external services can pull directly without a mod session.
+          All routes are mod-protected and return JSON unless otherwise noted.
         </p>
       </section>
     </div>

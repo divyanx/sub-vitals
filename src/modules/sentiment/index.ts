@@ -100,6 +100,7 @@ export const sentimentModule: RedLatticeModule = {
     const parsed = commentCreateMinimalSchema.safeParse(event);
     if (!parsed.success || !parsed.data.comment) return;
     const comment = parsed.data.comment;
+    const authorName = parsed.data.author?.name ?? comment.authorName ?? 'unknown';
 
     if (!(await processedOnce(HANDLER_COMMENT, comment.id))) return;
 
@@ -107,7 +108,7 @@ export const sentimentModule: RedLatticeModule = {
     // everything it needs without re-fetching from Reddit.
     if (comment.postId) {
       const detected = await detectAgent({
-        username: comment.authorName,
+        username: authorName,
         flairText: comment.authorFlair?.text,
         distinguishedBy: comment.distinguishedBy,
       });
@@ -115,7 +116,7 @@ export const sentimentModule: RedLatticeModule = {
         commentId: comment.id,
         postId: comment.postId,
         ...(comment.parentId ? { parentId: comment.parentId } : {}),
-        authorName: comment.authorName ?? 'unknown',
+        authorName,
         body: comment.body,
         createdAt: Date.now(),
         isAgent: detected.isAgent,

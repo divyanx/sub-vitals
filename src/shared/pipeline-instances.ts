@@ -173,6 +173,10 @@ export async function installFromTemplate(opts: {
 
   // Determine display order (append at end)
   const existing = await listInstances();
+  const duplicate = existing.find((i) => i.templateId === opts.templateId);
+  if (duplicate)
+    throw new Error(`Pipeline "${tpl.name}" is already installed as "${duplicate.name}".`);
+
   const maxOrder = existing.reduce((m, i) => Math.max(m, i.order ?? 0), 0);
 
   const id = `pi_${nanoid()}`;

@@ -82,6 +82,7 @@ export const contactDriversModule: RedLatticeModule = {
     if (!parsed.success || !parsed.data.post) return;
     const post = parsed.data.post;
     const subName = parsed.data.subreddit?.name ?? context.subredditName ?? '';
+    const authorName = parsed.data.author?.name ?? post.authorName ?? 'unknown';
 
     log.info('contact-drivers: PostCreate received', {
       postId: post.id,
@@ -93,7 +94,7 @@ export const contactDriversModule: RedLatticeModule = {
     await ensurePostMeta({
       postId: post.id,
       title: post.title ?? '',
-      authorName: post.authorName ?? 'unknown',
+      authorName,
       url: `https://www.reddit.com/r/${subName}/comments/${post.id.replace('t3_', '')}`,
       createdAt: Date.now(),
     });

@@ -70,8 +70,10 @@ export const impostorDetectionModule: RedLatticeModule = {
     const parsed = commentCreateMinimalSchema.safeParse(event);
     if (!parsed.success || !parsed.data.comment) return;
     const comment = parsed.data.comment;
+    // Prefer top-level UserV2.name; CommentV2.authorName is not populated by Devvit.
+    const commentAuthorName = parsed.data.author?.name ?? comment.authorName;
     if (!comment.body || comment.body.length < 20) return;
-    if (!comment.authorName || comment.authorName === '[deleted]') return;
+    if (!commentAuthorName || commentAuthorName === '[deleted]') return;
 
     // Idempotency — only check each comment once.
     if (!(await processedOnce(HANDLER, comment.id))) return;
@@ -79,8 +81,8 @@ export const impostorDetectionModule: RedLatticeModule = {
     // Skip distinguished/mod/flair/whitelisted authors — they ARE the brand.
     if (comment.distinguishedBy === 'moderator' || comment.distinguishedBy === 'admin') return;
     try {
-      if (await isUserMod(comment.authorName)) return;
-      if (await isAgent(comment.authorName)) return;
+      if (await isUserMod(commentAuthorName)) return;
+      if (await isAgent(commentAuthorName)) return;
     } catch (err) {
       log.warn('impostor: verification check failed (non-fatal)', { err: String(err) });
       return;
@@ -115,15 +117,15 @@ export const impostorDetectionModule: RedLatticeModule = {
 
     log.info('impostor: pre-filter matched, escalating to LLM', {
       commentId: comment.id,
-      authorName: comment.authorName,
+      authorName: commentAuthorName,
     });
 
     // 24h per-author cooldown to avoid modmail floods.
-    const cooldownKey = `rl:impostor:cd:${comment.authorName.toLowerCase()}`;
+    const cooldownKey = `rl:impostor:cd:${commentAuthorName.toLowerCase()}`;
     const recent = await redis.get(cooldownKey);
     if (recent) {
       log.debug('impostor: author in cooldown, skipping modmail', {
-        authorName: comment.authorName,
+        authorName: commentAuthorName,
       });
       return;
     }
@@ -135,7 +137,7 @@ export const impostorDetectionModule: RedLatticeModule = {
         'You audit Reddit comments for whether the author is FALSELY claiming to be an employee or representative of a brand. A genuine claim from someone unverified is a problem because they may commit the brand to things or mislead users. Return a strict judgment.',
       prompt: [
         `Brand we're protecting: ${brandName}`,
-        `Comment author: u/${comment.authorName} (not on our verified list, not a moderator)`,
+        `Comment author: u/${commentAuthorName} (not on our verified list, not a moderator)`,
         `Comment text:\n"""${comment.body.slice(0, 1500)}"""`,
         '',
         'Does this comment make a substantive claim that the author works at, represents, or speaks for the brand? Ignore generic statements like "I love this brand" or third-person "their support team is great" — only flag first-person affiliation claims. Reply with isImpersonation (boolean), confidence (0-1), the exact claim phrase, and one-sentence reasoning.',
@@ -162,7 +164,7 @@ export const impostorDetectionModule: RedLatticeModule = {
     const body = [
       `⚠️ **Possible impostor**`,
       '',
-      `u/${comment.authorName} appears to be claiming affiliation with **${brandName}** without being on the verified-agent list.`,
+      `u/${commentAuthorName} appears to be claiming affiliation with **${brandName}** without being on the verified-agent list.`,
       '',
       `**Detected claim:** ${result.data.claim}`,
       `**Confidence:** ${(result.data.confidence * 100).toFixed(0)}%`,
@@ -177,14 +179,14 @@ export const impostorDetectionModule: RedLatticeModule = {
       await reddit.modMail.createConversation({
         subredditName,
         to: null,
-        subject: `[RedLattice] Possible impostor: u/${comment.authorName}`,
+        subject: `[RedLattice] Possible impostor: u/${commentAuthorName}`,
         body,
       });
       await redis.set(cooldownKey, '1', {
         expiration: new Date(Date.now() + 24 * 60 * 60 * 1000),
       });
       log.info('impostor: modmail sent', {
-        authorName: comment.authorName,
+        authorName: commentAuthorName,
         commentId: comment.id,
         confidence: result.data.confidence,
       });

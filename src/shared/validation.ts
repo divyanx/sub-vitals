@@ -47,10 +47,17 @@ export const postCreateMinimalSchema = z.object({
       id: z.string().min(1),
       title: z.string().default(''),
       authorId: z.string().optional(),
-      authorName: z.string().optional(),
+      authorName: z.string().optional(), // kept for backwards compat; prefer top-level author.name
       // selftext or body across different proto variants
       selftext: z.string().optional(),
       body: z.string().optional(),
+    })
+    .optional(),
+  // Devvit PostCreate = { post?: PostV2, author?: UserV2, subreddit?: SubredditV2 }
+  // PostV2 does NOT have authorName; the username lives in the top-level UserV2.
+  author: z
+    .object({
+      name: z.string().optional(),
     })
     .optional(),
   subreddit: z
@@ -66,7 +73,7 @@ export const commentCreateMinimalSchema = z.object({
       id: z.string().min(1),
       body: z.string().default(''),
       authorId: z.string().optional(),
-      authorName: z.string().optional(),
+      authorName: z.string().optional(), // kept for backwards compat; prefer top-level author.name
       postId: z.string().optional(),
       parentId: z.string().optional(),
       authorFlair: z
@@ -78,6 +85,13 @@ export const commentCreateMinimalSchema = z.object({
       // distinguishedBy is Reddit's strongest native "speaking-officially"
       // signal — a mod or admin explicitly elects to mark this comment.
       distinguishedBy: z.string().optional(),
+    })
+    .optional(),
+  // Devvit CommentCreate = { comment?: CommentV2, author?: UserV2, subreddit?: SubredditV2 }
+  // CommentV2 does NOT have authorName; the username lives in the top-level UserV2.
+  author: z
+    .object({
+      name: z.string().optional(),
     })
     .optional(),
   subreddit: z

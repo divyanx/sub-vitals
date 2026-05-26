@@ -95,14 +95,15 @@ export const agentMetricsModule: RedLatticeModule = {
     const parsed = commentCreateMinimalSchema.safeParse(event);
     if (!parsed.success || !parsed.data.comment) return;
     const comment = parsed.data.comment;
-    if (!comment.postId || !comment.authorName || comment.authorName === '[deleted]') return;
+    const authorName = parsed.data.author?.name ?? comment.authorName;
+    if (!comment.postId || !authorName || authorName === '[deleted]') return;
 
     if (!(await processedOnce(HANDLER, comment.id))) return;
 
     // Identify agent comments via the four-signal isAgent check.
     let agent = false;
     try {
-      agent = await isAgent(comment.authorName);
+      agent = await isAgent(authorName);
     } catch (err) {
       log.warn('agent-metrics: isAgent failed', { err: String(err) });
       return;
@@ -110,7 +111,7 @@ export const agentMetricsModule: RedLatticeModule = {
 
     if (agent) {
       await recordAgentReply({
-        username: comment.authorName,
+        username: authorName,
         postId: comment.postId,
         replyAt: Date.now(),
       });
