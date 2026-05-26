@@ -306,19 +306,21 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
     name: 'Brand mention counter',
     shortDescription: 'Counts brand and competitor name mentions per post.',
     description:
-      'Pure regex — no LLM. Scans post title and body for a configurable list of brand and competitor terms. Outputs a scalar mention count, useful for share-of-voice tracking in Insights.',
+      'Scans post title and body for brand and competitor terms. Outputs a scalar mention count, useful for share-of-voice tracking in Insights.',
     category: 'extraction',
     kind: 'scalar',
     iconEmoji: '📊',
     defaultConfig: {
       trigger: 'post-create',
-      systemPrompt: '',
-      userPrompt: '',
+      systemPrompt:
+        'You count brand and competitor mentions in Reddit posts. Count each distinct mention of a brand name, product name, or competitor name. Return the total count as a number. If no brands are mentioned, return 0.',
+      userPrompt:
+        'Post title: {{post.title}}\nPost body: {{post.body}}\n\nCount the total number of brand, product, or competitor name mentions in this post. Return the count.',
       outputSchema: 'scalar',
     },
     configurable: ['labels'],
     moduleKey: 'brand-mention-counter',
-    logic: 'Regex term matching',
+    logic: 'LLM-based mention counting',
     example: {
       input: 'Sonos beats Bose any day, also tried Apple HomePod',
       output: '3 mentions',
