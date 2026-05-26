@@ -1,4 +1,4 @@
-# RedLattuce — native Reddit CX analytics
+# RedLettuce — native Reddit CX analytics
 
 [![hackathon](https://img.shields.io/badge/devvit-hackathon%202026-orange)]()
 [![tests](https://img.shields.io/badge/tests-59%20passing-brightgreen)]()
@@ -20,7 +20,7 @@
 
 ## The 30-second demo
 
-Install RedLattuce on a brand subreddit. A pinned "Today's Pulse" post appears automatically. When users post issues, RedLattuce tags them as "Billing", "Bug", "Feature request", etc. — with AI reasoning — and scores the sentiment. Mods open the dashboard from the pinned post to see the Inbox (queue of open issues), the Drivers bar chart (what customers are complaining about), and the Sentiment timeline (is the community mood getting worse?). When a thread goes negative, they get a modmail alert and can respond before it escalates.
+Install RedLettuce on a brand subreddit. A pinned "Today's Pulse" post appears automatically. When users post issues, RedLettuce tags them as "Billing", "Bug", "Feature request", etc. — with AI reasoning — and scores the sentiment. Mods open the dashboard from the pinned post to see the Inbox (queue of open issues), the Drivers bar chart (what customers are complaining about), and the Sentiment timeline (is the community mood getting worse?). When a thread goes negative, they get a modmail alert and can respond before it escalates.
 
 **Demo video:** [youtube.com/watch?v=TODO](https://youtube.com/watch?v=TODO) *(will be recorded before submission)*
 
@@ -79,7 +79,7 @@ redlattice/
 │   │   ├── agent-metrics/            # Response latency + SLA breach tracking
 │   │   ├── audit-log/                # Append-only mod action log
 │   │   ├── dashboard-orchestrator/   # Auto-pin Daily Pulse on install/upgrade
-│   │   └── studio-bridge/            # Outbound webhook to studio.redlattuce.app
+│   │   └── studio-bridge/            # Outbound webhook to studio.redlettuce.app
 │   └── shared/
 │       ├── dispatcher.ts             # Module event fan-out with failure isolation
 │       ├── keys.ts                   # Redis key namespace (rl:*)
@@ -107,7 +107,7 @@ Full module contract: [`docs/05_architecture.md`](docs/05_architecture.md)
 
 **Phase 1 (Hackathon — May 27, 2026):** Contact drivers, sentiment, agent verification, crisis detection, weekly digest, full analytics dashboard.
 
-**Phase 2 (post-hackathon):** Studio webapp at [studio.redlattuce.app](https://studio.redlattuce.app) for multi-sub cross-community analytics, PII guardian, AI-generated content detection, bearer-token REST API for Sprinklr / Khoros integrations.
+**Phase 2 (post-hackathon):** Studio webapp at [studio.redlettuce.app](https://studio.redlettuce.app) for multi-sub cross-community analytics, PII guardian, AI-generated content detection, bearer-token REST API for Sprinklr / Khoros integrations.
 
 ## License
 

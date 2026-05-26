@@ -34,7 +34,7 @@ export type {
 // ---------------------------------------------------------------------------
 
 /**
- * Every RedLattuce feature module implements this contract. The dispatcher
+ * Every RedLettuce feature module implements this contract. The dispatcher
  * fans trigger events to every module that subscribes, with failure isolation.
  *
  * Handlers receive only the typed event payload — there is no `ctx` parameter.

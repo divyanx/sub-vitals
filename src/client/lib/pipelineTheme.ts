@@ -4,7 +4,7 @@
  * a glanceable visual identity.
  *
  * Why HSL hues instead of hex swatches:
- *   - the rest of RedLattuce supports a per-installation accent override
+ *   - the rest of RedLettuce supports a per-installation accent override
  *     (Settings → Brand). Pure hex would clash. HSL lets us derive light
  *     + dark stops at runtime that read well next to any accent.
  *   - keeps the design-token spirit: one number per pipeline, all

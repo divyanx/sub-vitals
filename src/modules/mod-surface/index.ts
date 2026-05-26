@@ -1,5 +1,5 @@
 /**
- * Mod-surface — project RedLattuce pipeline analysis into the *native*
+ * Mod-surface — project RedLettuce pipeline analysis into the *native*
  * Reddit moderation UI so mods see enrichment in the places they already
  * work (mod queue, post page) without ever opening our dashboard.
  *
@@ -256,7 +256,7 @@ function buildFlair(byTemplate: Map<string, Tag>): FlairChoice | null {
  * dedupes across calls (per-post Redis set tracks already-submitted
  * reason hashes) so re-runs don't pile on duplicates.
  *
- * Reasons MUST start with "RedLattuce:" so mods can scan the queue and
+ * Reasons MUST start with "RedLettuce:" so mods can scan the queue and
  * tell our reports apart from user reports at a glance.
  */
 function buildReports(byTemplate: Map<string, Tag>): string[] {
@@ -303,7 +303,7 @@ function buildReports(byTemplate: Map<string, Tag>): string[] {
         line += ` (${sentiment.confidence.toFixed(2)})`;
       }
     }
-    reports.push(`RedLattuce: ${line}`);
+    reports.push(`RedLettuce: ${line}`);
   }
 
   return reports;
@@ -311,7 +311,7 @@ function buildReports(byTemplate: Map<string, Tag>): string[] {
 
 function formatReport(label: string, tag: Tag): string {
   const conf = tag.confidence !== undefined ? ` (${Math.round(tag.confidence * 100)}%)` : '';
-  return `RedLattuce: ${label}${conf}`;
+  return `RedLettuce: ${label}${conf}`;
 }
 
 /**
@@ -395,14 +395,14 @@ function renderCommentBody(tags: Tag[]): string {
     .join('\n');
 
   return [
-    '### 🔬 RedLattuce analysis',
+    '### 🔬 RedLettuce analysis',
     '',
     '| Pipeline | Result | Source |',
     '|---|---|---|',
     rows,
     '',
     `_${tags.length} ${tags.length === 1 ? 'pipeline' : 'pipelines'} ran on this post._ ` +
-      '_Edit pipelines + rules in the RedLattuce dashboard._',
+      '_Edit pipelines + rules in the RedLettuce dashboard._',
   ].join('\n');
 }
 

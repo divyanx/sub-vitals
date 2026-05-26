@@ -2,7 +2,7 @@
 
 > Read this if you're new to the project. ~10 min.
 
-## What RedLattuce is
+## What RedLettuce is
 
 A Reddit Devvit app that turns any **brand subreddit** (e.g. r/Sonos, r/OpenPhone, r/Fidelity) into a customer-experience analytics platform — like Sprinklr or Khoros, but native to Reddit. Mods get:
 
@@ -14,7 +14,7 @@ There are post-MVP modules planned (PII detection, response SLA tracking, AI-con
 
 ## What you can ignore until later
 
-The project lives at `/Users/divyansh/Projects/redlattice/`. Reference documents (the original research brief and architecture spec written before any code) live at `docs/legacy/`. They use the old project name **"BrandPulse"** — same project, renamed to RedLattuce on day 1 of the build. Wherever the legacy docs say BrandPulse, mentally substitute RedLattuce.
+The project lives at `/Users/divyansh/Projects/redlattice/`. Reference documents (the original research brief and architecture spec written before any code) live at `docs/legacy/`. They use the old project name **"BrandPulse"** — same project, renamed to RedLettuce on day 1 of the build. Wherever the legacy docs say BrandPulse, mentally substitute RedLettuce.
 
 ## The platform: Devvit, briefly
 
@@ -28,7 +28,7 @@ Devvit is Reddit's developer platform — apps that run inside Reddit subreddits
 | Triggers/menu/scheduler | Registered in `main.tsx` via `Devvit.add*` calls | **HTTP endpoints declared in `devvit.json`** |
 | Best for | In-feed interactive widgets, games | **Dashboards, multi-route apps, anything needing a real server** |
 
-We chose Devvit Web because RedLattuce is fundamentally a multi-tab analytics dashboard with a backend. Full reasoning in [`docs/01_decisions.md`](01_decisions.md).
+We chose Devvit Web because RedLettuce is fundamentally a multi-tab analytics dashboard with a backend. Full reasoning in [`docs/01_decisions.md`](01_decisions.md).
 
 ## How the parts fit together
 

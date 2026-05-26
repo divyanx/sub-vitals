@@ -669,7 +669,7 @@ export function Lab() {
       <div>
         <h2 className="text-[length:var(--t-2xl)] font-semibold text-[var(--n-12)]">Data Lab</h2>
         <p className="mt-1 text-[length:var(--t-sm)] text-[var(--n-8)]">
-          Inject synthetic Reddit events through the full RedLattuce pipeline — no real API access
+          Inject synthetic Reddit events through the full RedLettuce pipeline — no real API access
           needed. Simulated posts are prefixed <code className="text-[var(--accent-11)]">lab_</code>{' '}
           and can be cleared at any time.
         </p>

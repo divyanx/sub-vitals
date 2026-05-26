@@ -12,7 +12,7 @@
 
 ## Naming discrepancy check
 
-**No action needed.** All user-visible branding correctly says "RedLattuce". The Devvit slug `redlattuce` in package.json and devvit.json is the registered app name and cannot be changed without invalidating all installations. This is documented in `docs/judges-faq.md`.
+**No action needed.** All user-visible branding correctly says "RedLettuce". The Devvit slug `redlettuce` in package.json and devvit.json is the registered app name and cannot be changed without invalidating all installations. This is documented in `docs/judges-faq.md`.
 
 ---
 

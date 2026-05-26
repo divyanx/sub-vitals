@@ -562,7 +562,7 @@ async function maybeRouteToTeam(args: {
   }
   await redis.expire(K.routingSent(args.postId), 7 * 24 * 60 * 60);
 
-  const subject = rule.subject ?? `[RedLattuce] new ${args.driverLabel} post`;
+  const subject = rule.subject ?? `[RedLettuce] new ${args.driverLabel} post`;
   const mentionLine =
     rule.mentions && rule.mentions.length > 0
       ? `\n\nNotifying: ${rule.mentions.map((u) => `u/${u}`).join(' ')}\n\n`
@@ -572,7 +572,7 @@ async function maybeRouteToTeam(args: {
     `Driver: \`${args.driverLabel}\``,
     `Link: ${args.postUrl}`,
     args.reasoning ? `> ${escapeMd(args.reasoning)}` : null,
-    `${mentionLine}Tagged automatically by RedLattuce. Reply to this modmail to coordinate.`,
+    `${mentionLine}Tagged automatically by RedLettuce. Reply to this modmail to coordinate.`,
   ]
     .filter(Boolean)
     .join('\n\n');

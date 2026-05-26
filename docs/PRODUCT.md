@@ -1,6 +1,6 @@
-# RedLattuce — Product Reference
+# RedLettuce — Product Reference
 
-> Single source of truth for what RedLattuce is today (2026-05-20).
+> Single source of truth for what RedLettuce is today (2026-05-20).
 > If anything in `README.md` or `docs/00_start_here.md` conflicts with this doc, this doc wins until I update them.
 
 ## In one sentence
@@ -25,7 +25,7 @@ Every primary tab maps 1:1 to a job. Everything else lives behind a "Configure �
 ## Information architecture
 
 ```
-Header:  ● RedLattuce  analytics                          [⌘K Search]
+Header:  ● RedLettuce  analytics                          [⌘K Search]
 
 Nav:     [Triage] [Content] [Watch] [Respond]            [Configure ▾]
 ```
@@ -141,11 +141,11 @@ Bundle: ~129 KB gzipped initial JS (hard cap 150 KB enforced in build script).
 
 ## What is NOT in the product
 
-- **Studio webapp** (standalone Next.js at studio.redlattuce.app) — exists as a separate repo at `/Users/divyansh/Projects/redlattice-studio/` but is parked. All features intended for Studio (RBAC, multi-sub aggregation, visual pipeline canvas, external APIs) moved into Devvit or were dropped.
-- **Cross-subreddit analytics** — Devvit is per-installation. Each install of RedLattuce has its own data. Cross-sub analytics needs Studio.
+- **Studio webapp** (standalone Next.js at studio.redlettuce.app) — exists as a separate repo at `/Users/divyansh/Projects/redlattice-studio/` but is parked. All features intended for Studio (RBAC, multi-sub aggregation, visual pipeline canvas, external APIs) moved into Devvit or were dropped.
+- **Cross-subreddit analytics** — Devvit is per-installation. Each install of RedLettuce has its own data. Cross-sub analytics needs Studio.
 - **Long-term retention beyond Redis** — Devvit Redis is bounded; oldest data eventually rolls off.
 - **Public REST API with bearer tokens** — was a Studio idea; not in Devvit.
-- **Stripe billing** — RedLattuce is free for everyone on Devvit. Waitlist-driven for Pro/Studio.
+- **Stripe billing** — RedLettuce is free for everyone on Devvit. Waitlist-driven for Pro/Studio.
 
 ## Where things live in code
 
@@ -240,7 +240,7 @@ rl:onboarded:{userId}             string          (onboarding completion flag)
 
 The product has pivoted multiple times. Key decisions in chronological order:
 
-1. **2026-05-16** — Renamed BrandPulse → RedLattuce
+1. **2026-05-16** — Renamed BrandPulse → RedLettuce
 2. **2026-05-16** — Adopted Devvit Web (`@devvit/web`) over classic Devvit
 3. **2026-05-17** — Switched from `latest` to `next` dist-tag (0.12.24-next-...) — runtime install was broken in 0.12.23
 4. **2026-05-17** — All-in on Devvit, deprioritize standalone webapp

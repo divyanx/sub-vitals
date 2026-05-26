@@ -1,4 +1,4 @@
-# RedLattuce — 60-Second Demo Script (Devpost Cut)
+# RedLettuce — 60-Second Demo Script (Devpost Cut)
 
 **Target length:** 50–55 seconds  
 **Hard cap:** 60 seconds  
@@ -9,8 +9,8 @@
 
 | Time | Duration | Voiceover | Screen Action |
 |------|----------|-----------|---------------|
-| 0:00–0:05 | 5s | "Brand mods on Reddit handle thousands of customer signals a week — with zero real tools. RedLattuce fixes that." | Busy brand sub mod queue (r/Sonos style), negative posts stacking up. Fast scroll. |
-| 0:05–0:10 | 5s | "One install. One pinned post. Your subreddit becomes a CX cockpit." | Click pinned "RedLattuce · Live Analytics" post. Webview opens to Pulse tab. Zoom to KPI strip — 6 tiles, green/red deltas. |
+| 0:00–0:05 | 5s | "Brand mods on Reddit handle thousands of customer signals a week — with zero real tools. RedLettuce fixes that." | Busy brand sub mod queue (r/Sonos style), negative posts stacking up. Fast scroll. |
+| 0:05–0:10 | 5s | "One install. One pinned post. Your subreddit becomes a CX cockpit." | Click pinned "RedLettuce · Live Analytics" post. Webview opens to Pulse tab. Zoom to KPI strip — 6 tiles, green/red deltas. |
 | 0:10–0:15 | 5s | "Posts today, sentiment share, active incidents, AI spend — all live." | Pan across sparkline cards (5 drivers), linger 1s on the red active incident banner at top. |
 | 0:15–0:20 | 5s | "Inbox is priority-sorted — not by recency, by what actually needs your attention." | Cut to Inbox tab. Priority queue visible. Cursor hovers top row — bug + negative badge visible. |
 | 0:20–0:25 | 5s | "Click any thread: full sentiment trail, AI draft reply, one tap to resolve." | Click row → drawer opens showing comment sentiment trail. Click "AI draft reply" → 3 candidate replies appear. |
@@ -19,7 +19,7 @@
 | 0:35–0:40 | 5s | "Rules route each driver automatically — bugs to support, refunds to billing, no config hell." | Rules engine config screen. Two routing rules visible with driver → action arrows. |
 | 0:40–0:45 | 5s | "Crisis detected — incident auto-opened, posts grouped, resolves when sentiment returns to baseline." | Incidents tab. Red crisis card with affected post count. Zoom on "Auto-resolved when sentiment normalizes" label. |
 | 0:45–0:50 | 5s | "AI copilot. Emerging themes. Agent leaderboard. All native — no webhooks, no Zapier, no leaving Reddit." | Fast montage: Themes tab (1s) → "Battery drain after firmware update" cluster. Agents leaderboard (1s) → first-response column sorted. AI copilot chat bubble open (1s). |
-| 0:50–0:55 | 5s | "RedLattuce. Native CX analytics for Reddit. Free on Devvit." | RedLattuce logo centered on clean background. URL: redlattuce.app. Hold 3 seconds. Fade. |
+| 0:50–0:55 | 5s | "RedLettuce. Native CX analytics for Reddit. Free on Devvit." | RedLettuce logo centered on clean background. URL: redlettuce.app. Hold 3 seconds. Fade. |
 
 ---
 

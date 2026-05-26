@@ -1,7 +1,7 @@
 # 2026-05-23 · Mod-tool revamp — design
 
 > Status: **Approved 2026-05-23** · Owner: Divyansh
-> Reframes RedLattuce from "Devvit app with a Team feature" into a **mod tool whose users are the subreddit's moderators**. Stops leaking analysis to the public unless a mod opts in. Sweeps and fixes the broken Configure surfaces.
+> Reframes RedLettuce from "Devvit app with a Team feature" into a **mod tool whose users are the subreddit's moderators**. Stops leaking analysis to the public unless a mod opts in. Sweeps and fixes the broken Configure surfaces.
 
 ## Goals
 
@@ -24,7 +24,7 @@ Four sequenced workstreams, each ending in its own git commit checkpoint with a 
 ### WS-1 · "Team" → Mods (auto, read-only)
 
 **Behavior.**
-- The "team" on RedLattuce is whoever is a moderator of the subreddit, fetched live from Reddit via `reddit.getModerators({subredditName}).all()`.
+- The "team" on RedLettuce is whoever is a moderator of the subreddit, fetched live from Reddit via `reddit.getModerators({subredditName}).all()`.
 - The existing "Team roster" surface under `Configure ▾` is replaced with a read-only **"Mod team"** view: list of mods with username, mod-since date, permissions (if exposed by the Devvit API), and a "you" marker on the current user's row.
 - `agent-verification` is kept but reframed as **"Verified reps"** — the surface for non-mod brand employees who post in the sub. A one-liner above the list clarifies: *"Mods are automatically verified. Add a Verified rep only for brand employees who post here but aren't moderators."*
 - `sentiment` agent-detection (`src/modules/sentiment/index.ts`) gains moderator-status as the first verification source, ahead of flair-pattern and `AgentRecord`. New precedence: `isModerator > AgentRecord > flair-pattern > distinguished`.
@@ -91,7 +91,7 @@ Four sequenced workstreams, each ending in its own git commit checkpoint with a 
 
 **Behavior.**
 - Header subtitle reframed from "analytics" → **"mod tool"** wording (target file located during execution; likely `src/client/components/Header.tsx`).
-- `ModsOnlyLanding.tsx` copy updated to make the mod-team positioning explicit: *"You are signed in as a moderator of r/{subredditName}. RedLattuce is built for your mod team."*
+- `ModsOnlyLanding.tsx` copy updated to make the mod-team positioning explicit: *"You are signed in as a moderator of r/{subredditName}. RedLettuce is built for your mod team."*
 - New 3-step onboarding overlay shown to a mod the first time they open the dashboard, gated by a Redis sentinel `rl:onboarded:{username}` (set on dismiss). Steps:
   1. *Triage* — what needs you now.
   2. *Pipelines* — auto-classify everything in the background.
@@ -138,7 +138,7 @@ No migrations needed — every new field reads a safe default when absent.
 
 ## Module contract / event-flow impact
 
-No changes to the `RedLattuceModule` contract or the dispatcher. All changes ride on existing event-handler shapes.
+No changes to the `RedLettuceModule` contract or the dispatcher. All changes ride on existing event-handler shapes.
 
 ## Permissions
 
@@ -165,7 +165,7 @@ Work directly on `main` (matches current cadence). One commit per workstream + a
 
 ## Risks & mitigations
 
-- **Devvit `setPostFlair` removal breaks something downstream.** Mitigation: grep for callers of the contact-drivers flair side-effect (filter dependencies, e2e assertions); none expected — flair is observable Reddit state, not RedLattuce state.
+- **Devvit `setPostFlair` removal breaks something downstream.** Mitigation: grep for callers of the contact-drivers flair side-effect (filter dependencies, e2e assertions); none expected — flair is observable Reddit state, not RedLettuce state.
 - **`reddit.getModerators` rate-limits.** Mitigation: 5-min Redis cache + token bucket on the helper (reuse existing `ratelimit.takeToken`).
 - **Iframe download fallback adds a new endpoint.** Mitigation: only added if the blob path is confirmed broken in real Devvit; otherwise the existing code stays.
 - **Webhooks surface deletion is user-visible.** Mitigation: prefer disabling-with-badge over deletion so the existing nav doesn't rearrange.

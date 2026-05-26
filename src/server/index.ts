@@ -1,5 +1,5 @@
 /**
- * RedLattuce — Devvit Web server entry.
+ * RedLettuce — Devvit Web server entry.
  *
  * Boots a Hono app, registers shared middleware + module API routes, mounts
  * the platform-facing `/internal/*` endpoints declared in `devvit.json`, and
@@ -476,7 +476,7 @@ app.get('/api/export/posts.csv', async (c) => {
     status: 200,
     headers: {
       'content-type': 'text/csv; charset=utf-8',
-      'content-disposition': `attachment; filename="redlattuce-posts-${today()}.csv"`,
+      'content-disposition': `attachment; filename="redlettuce-posts-${today()}.csv"`,
     },
   });
 });
@@ -521,7 +521,7 @@ app.get('/api/triage/queue', async (c) => {
     getRecentPostIds(200),
     redis.get(K.pulsePostId()),
   ]);
-  // Exclude RedLattuce's own dashboard post — it's a system post, not
+  // Exclude RedLettuce's own dashboard post — it's a system post, not
   // customer content, and clicking actions on it 404s.
   const ids = rawIds.filter((id) => id !== dashboardPostId);
   const [metas, tags, sents] = await Promise.all([
@@ -996,7 +996,7 @@ app.post('/api/pipelines/builtin/:id/test', async (c) => {
 
   const systemPrompt =
     cfg.systemPrompt ||
-    `You are a RedLattuce pipeline running ${id}. Analyze the input and respond concisely.`;
+    `You are a RedLettuce pipeline running ${id}. Analyze the input and respond concisely.`;
   const userPromptTemplate = cfg.userPrompt || '{{post.body}}';
   const prompt = userPromptTemplate
     .replace(/\{\{\s*post\.title\s*\}\}/g, '')
@@ -2099,7 +2099,7 @@ app.post('/internal/menu/open-dashboard', async (c) => {
     }
 
     const post = await reddit.submitCustomPost({
-      title: 'RedLattuce · Analytics Dashboard',
+      title: 'RedLettuce · Analytics Dashboard',
       subredditName: sub,
     });
     await redis.set(K.pulsePostId(), post.id);
@@ -2188,7 +2188,7 @@ app.post('/internal/scheduler/weekly-digest', async (c) => {
     await reddit.modMail.createConversation({
       subredditName,
       to: null,
-      subject: `[RedLattuce] Weekly Digest — ${stats.weekDates[0]} to ${stats.weekDates[stats.weekDates.length - 1]}`,
+      subject: `[RedLettuce] Weekly Digest — ${stats.weekDates[0]} to ${stats.weekDates[stats.weekDates.length - 1]}`,
       body,
     });
     await setLastDigestSentAt(Date.now());
@@ -2930,4 +2930,4 @@ app.get('/api/webhooks/:id/deliveries', async (c) => {
 
 const port = getServerPort();
 serve({ fetch: app.fetch, createServer, port });
-log.info('redlattuce server listening', { port });
+log.info('redlettuce server listening', { port });

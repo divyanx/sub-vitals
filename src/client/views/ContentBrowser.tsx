@@ -572,7 +572,7 @@ function ModReplyDrawer({ item, onClose, onToast }: ModReplyDrawerProps) {
                 onChange={() => setAs('app')}
                 className="accent-[var(--accent-9)]"
               />
-              RedLattuce bot
+              RedLettuce bot
             </label>
           </div>
         </div>

@@ -47,8 +47,8 @@ test.describe('Pulse view', () => {
     await expect(page.getByRole('tab', { name: 'Posts' })).toBeVisible({ timeout: 5000 });
   });
 
-  test('header shows RedLattuce brand name', async ({ page }) => {
+  test('header shows RedLettuce brand name', async ({ page }) => {
     await page.goto('/?view=pulse');
-    await expect(page.getByRole('heading', { name: /RedLattuce/i })).toBeVisible({ timeout: 8000 });
+    await expect(page.getByRole('heading', { name: /RedLettuce/i })).toBeVisible({ timeout: 8000 });
   });
 });

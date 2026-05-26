@@ -284,7 +284,7 @@ async function executeAction(action: Action, ctx: RuleContext): Promise<void> {
           reason: action.reason.slice(0, 100),
           ...(action.message ? { message: action.message.slice(0, 1000) } : {}),
           ...(action.durationDays ? { duration: action.durationDays } : {}),
-          note: `RedLattuce rule ${ctx.tag?.pipelineId ?? ''}`.slice(0, 250),
+          note: `RedLettuce rule ${ctx.tag?.pipelineId ?? ''}`.slice(0, 250),
         });
         await recordAudit('rule-audit' satisfies AuditAction, postId ?? commentId ?? null, {
           action: 'ban-author',
@@ -339,7 +339,7 @@ async function executeAction(action: Action, ctx: RuleContext): Promise<void> {
           reason: action.reason.slice(0, 100),
           ...(action.message ? { message: action.message.slice(0, 1000) } : {}),
           ...(action.durationDays ? { duration: action.durationDays } : {}),
-          note: `RedLattuce repeat ${action.pipelineId} (${count} in ${action.windowDays}d)`.slice(
+          note: `RedLettuce repeat ${action.pipelineId} (${count} in ${action.windowDays}d)`.slice(
             0,
             250,
           ),

@@ -6,8 +6,8 @@
  * studio-token setting is empty (most installs will not have Studio).
  *
  * HMAC signature scheme (matches Studio's /api/webhooks/devvit verifier):
- *   Header: x-redlattuce-signature: sha256=<hex>
- *   Header: x-redlattuce-timestamp: <unix-ms>
+ *   Header: x-redlettuce-signature: sha256=<hex>
+ *   Header: x-redlettuce-timestamp: <unix-ms>
  *   Sig = HMAC-SHA256(key = studio-token, msg = `${timestamp}.${rawBody}`)
  *
  * Rate-limited to 10 req/min per installation via the shared token bucket.
@@ -176,8 +176,8 @@ export async function forwardToStudio(
             method: 'POST',
             headers: {
               'content-type': 'application/json',
-              'x-redlattuce-signature': `sha256=${hexSig}`,
-              'x-redlattuce-timestamp': String(ts),
+              'x-redlettuce-signature': `sha256=${hexSig}`,
+              'x-redlettuce-timestamp': String(ts),
             },
             body: rawBody,
             signal: ctrl.signal,

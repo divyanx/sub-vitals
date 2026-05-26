@@ -123,7 +123,7 @@ function buildSlackBody(event: string, payload: Record<string, unknown>): unknow
     blocks: [
       {
         type: 'header',
-        text: { type: 'plain_text', text: `RedLattuce · ${event}`, emoji: true },
+        text: { type: 'plain_text', text: `RedLettuce · ${event}`, emoji: true },
       },
       ...(fields.length > 0
         ? [{ type: 'section', fields }]
@@ -144,7 +144,7 @@ function buildDiscordBody(event: string, payload: Record<string, unknown>): unkn
   return {
     embeds: [
       {
-        title: `RedLattuce · ${event}`,
+        title: `RedLettuce · ${event}`,
         description: `Event fired at <t:${Math.floor(Date.now() / 1000)}:T>`,
         color,
         fields,
@@ -159,8 +159,8 @@ function buildPagerDutyBody(event: string, payload: Record<string, unknown>): un
     routing_key: '', // callers using PD should set this in their URL or via payload override
     event_action: event === 'incident-resolve' ? 'resolve' : 'trigger',
     payload: {
-      summary: `RedLattuce: ${event}`,
-      source: 'redlattuce-devvit',
+      summary: `RedLettuce: ${event}`,
+      source: 'redlettuce-devvit',
       severity,
       custom_details: payload,
     },
@@ -243,9 +243,9 @@ export async function deliverWebhook(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-redlattuce-signature': `sha256=${hexSig}`,
-          'x-redlattuce-timestamp': String(ts),
-          'x-redlattuce-event': eventKind,
+          'x-redlettuce-signature': `sha256=${hexSig}`,
+          'x-redlettuce-timestamp': String(ts),
+          'x-redlettuce-event': eventKind,
         },
         body: rawBody,
         signal: ctrl.signal,
