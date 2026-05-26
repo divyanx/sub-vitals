@@ -45,13 +45,11 @@ export async function dispatch<E extends keyof EventMap>(
   event: E,
   payload: EventMap[E],
 ): Promise<void> {
-  const handlers: Array<Promise<void>> = [];
   for (const mod of modules) {
     const handler = mod[event];
     if (typeof handler !== 'function') continue;
-    handlers.push(runOne(mod, event, handler as (e: EventMap[E]) => Promise<void>, payload));
+    await runOne(mod, event, handler as (e: EventMap[E]) => Promise<void>, payload);
   }
-  await Promise.allSettled(handlers);
 }
 
 // ---------------------------------------------------------------------------
