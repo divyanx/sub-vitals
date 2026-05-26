@@ -435,7 +435,7 @@ export function Dashboard({
         onSettingsSection={navigateToSettings}
         badges={badges}
       />
-      <main className="mx-auto w-full max-w-6xl flex-1 px-6 py-8">
+      <main className="mx-auto w-full max-w-[1600px] flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
           <Suspense fallback={<SkeletonGrid />}>
             {tab === 'posts' && (
@@ -489,7 +489,7 @@ export function Dashboard({
 function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
   return (
     <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-3 backdrop-blur">
-      <div className="mx-auto flex max-w-6xl items-center gap-3">
+      <div className="mx-auto flex max-w-[1600px] items-center gap-3">
         <img
           src="/logo-64.png"
           srcSet="/logo-64.png 1x, /logo-256.png 4x"
@@ -590,7 +590,7 @@ function Nav({
 
   return (
     <nav className="relative border-b border-[var(--n-4)] bg-[var(--n-0)]">
-      <div className="mx-auto flex max-w-6xl items-stretch px-6">
+      <div className="mx-auto flex max-w-[1600px] items-stretch px-6">
         <div className="min-w-0 flex-1">
           <Tabs
             tabs={PRIMARY_TABS.map((t) => {
@@ -808,7 +808,7 @@ function Posts({
             if (e.key === 'Escape') setContentBrowserOpen(false);
           }}
         >
-          <div className="flex h-full w-full max-w-5xl flex-col overflow-hidden bg-[var(--n-0)]">
+          <div className="flex h-full w-full max-w-[1600px] flex-col overflow-hidden bg-[var(--n-0)]">
             <div className="flex items-center justify-between border-b border-[var(--n-4)] px-6 py-4">
               <h2 className="text-[length:var(--t-lg)] font-semibold text-[var(--n-12)]">
                 All posts
@@ -1332,7 +1332,7 @@ function CatalogueModal({
         if (e.key === 'Escape') onClose();
       }}
     >
-      <div className="flex max-h-full w-full max-w-6xl flex-col overflow-hidden rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] shadow-[var(--shadow-3)]">
+      <div className="flex max-h-full w-full max-w-[1600px] flex-col overflow-hidden rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] shadow-[var(--shadow-3)]">
         <div className="flex items-center justify-between border-b border-[var(--n-4)] px-5 py-4">
           <div>
             <h3 className="text-[length:var(--t-lg)] font-semibold text-[var(--n-12)]">
