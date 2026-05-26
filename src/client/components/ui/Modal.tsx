@@ -64,8 +64,9 @@ export function Modal({
         'w-full rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-2)]',
         'shadow-[var(--shadow-2)] text-[var(--n-11)] p-0',
         'backdrop:bg-black/60',
+        'fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2',
         // Full-screen on mobile, centered on sm+
-        'max-sm:fixed max-sm:inset-0 max-sm:m-0 max-sm:max-w-none max-sm:rounded-none max-sm:h-dvh',
+        'max-sm:inset-0 max-sm:m-0 max-sm:max-w-none max-sm:rounded-none max-sm:h-dvh max-sm:translate-x-0 max-sm:translate-y-0 max-sm:top-0 max-sm:left-0',
         maxWidth,
       ].join(' ')}
     >
