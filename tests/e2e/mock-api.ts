@@ -292,7 +292,7 @@ export async function setupMocks(page: Page): Promise<void> {
       return route.fulfill({
         json: {
           connected: false,
-          studioUrl: 'https://studio.redlattice.app',
+          studioUrl: 'https://studio.redlattuce.app',
           tokenConfigured: false,
         },
       });

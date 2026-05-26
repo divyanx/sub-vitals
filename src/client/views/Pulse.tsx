@@ -1,11 +1,11 @@
 /**
- * Daily Pulse view — the inline native-feeling panel for the pinned RedLattice post.
+ * Daily Pulse view — the inline native-feeling panel for the pinned RedLattuce post.
  *
  * Rendered at `?view=pulse` (the default when a mod opens the pinned post).
  * Designed to be glanceable — all critical metrics visible without scrolling.
  *
  * Layout:
- *   Header: "RedLattice · Today's Pulse" with orange accent dot
+ *   Header: "RedLattuce · Today's Pulse" with orange accent dot
  *   Stat row (4 numbers): Posts today / Top driver / Negative share / Active incidents
  *   Mini trend: 7-day sentiment bar chart (positive / neutral / negative stacked bars)
  *   Footer: "Open full dashboard →" CTA
@@ -30,7 +30,7 @@ export function Pulse({ onOpenDashboard }: Props) {
           aria-hidden="true"
         />
         <h1 className="text-[length:var(--t-xl)] font-semibold tracking-tight text-[var(--n-12)]">
-          RedLattice · Today's Pulse
+          RedLattuce · Today's Pulse
         </h1>
         {stats.data && (
           <span className="ml-auto text-xs text-[var(--text-muted)]" title="Date">

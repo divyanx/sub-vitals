@@ -1,10 +1,10 @@
-# RedLattice Docs Site Implementation Plan
+# RedLattuce Docs Site Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Scaffold, populate, and deploy a production-quality Nextra v4 docs site at `/Users/divyansh/Projects/redlattice-docs/` with 17 real-content pages covering all RedLattice concepts, guides, and references.
+**Goal:** Scaffold, populate, and deploy a production-quality Nextra v4 docs site at `/Users/divyansh/Projects/redlattice-docs/` with 17 real-content pages covering all RedLattuce concepts, guides, and references.
 
-**Architecture:** Next.js 15 App Router with Nextra v4 docs theme, content stored as MDX files in a top-level `content/` directory, sidebar auto-generated from `_meta.js` files. OG images generated per-page via `next/og`. Deployed to Vercel targeting `docs.redlattice.app`.
+**Architecture:** Next.js 15 App Router with Nextra v4 docs theme, content stored as MDX files in a top-level `content/` directory, sidebar auto-generated from `_meta.js` files. OG images generated per-page via `next/og`. Deployed to Vercel targeting `docs.redlattuce.app`.
 
 **Tech Stack:** Nextra v4, Next.js 15, React 19, Tailwind CSS v4 (for custom overrides), TypeScript strict, Biome lint, Vercel deploy.
 
@@ -306,14 +306,14 @@ import 'nextra-theme-docs/style.css'
 import type { Metadata } from 'next'
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://docs.redlattice.app'),
+  metadataBase: new URL('https://docs.redlattuce.app'),
   title: {
-    default: 'RedLattice Docs',
-    template: '%s — RedLattice',
+    default: 'RedLattuce Docs',
+    template: '%s — RedLattuce',
   },
   description: 'Native CX analytics for Reddit brand communities.',
   openGraph: {
-    siteName: 'RedLattice Docs',
+    siteName: 'RedLattuce Docs',
     images: [{ url: '/og/default.png', width: 1200, height: 630 }],
   },
   twitter: {
@@ -325,11 +325,11 @@ const navbar = (
   <Navbar
     logo={
       <span style={{ fontWeight: 700, fontSize: '1.1rem', color: '#f97316' }}>
-        RedLattice
+        RedLattuce
       </span>
     }
     projectLink="https://github.com/redlattice/redlattice"
-    chatLink="https://studio.redlattice.app"
+    chatLink="https://studio.redlattuce.app"
     chatLinkLabel="Open Studio →"
   />
 )
@@ -337,8 +337,8 @@ const navbar = (
 const footer = (
   <Footer>
     <span>
-      © {new Date().getFullYear()} RedLattice. Built for Reddit mod teams. •{' '}
-      <a href="https://status.redlattice.app">Status</a>
+      © {new Date().getFullYear()} RedLattuce. Built for Reddit mod teams. •{' '}
+      <a href="https://status.redlattuce.app">Status</a>
     </span>
   </Footer>
 )
@@ -534,19 +534,19 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/index.mdx`:
 
 ```mdx
 ---
-title: RedLattice Docs
+title: RedLattuce Docs
 description: Native CX analytics for Reddit brand communities.
 ---
 
 import { Cards } from 'nextra/components'
 
-# RedLattice
+# RedLattuce
 
 **CX analytics built into Reddit — not bolted on.**
 
-RedLattice is a Devvit app that turns your brand subreddit into a structured support channel. It automatically classifies posts by contact driver, scores sentiment, tracks verified company agents, and surfaces crises before they escalate.
+RedLattuce is a Devvit app that turns your brand subreddit into a structured support channel. It automatically classifies posts by contact driver, scores sentiment, tracks verified company agents, and surfaces crises before they escalate.
 
-<Image src="/screenshots/dashboard-overview.png" alt="RedLattice dashboard overview showing contact driver breakdown and sentiment trend" />
+<Image src="/screenshots/dashboard-overview.png" alt="RedLattuce dashboard overview showing contact driver breakdown and sentiment trend" />
 
 ## What's in Phase 1
 
@@ -575,7 +575,7 @@ RedLattice is a Devvit app that turns your brand subreddit into a structured sup
 ## Quick links
 
 - [Install on your subreddit →](/getting-started)
-- [Studio dashboard →](https://studio.redlattice.app)
+- [Studio dashboard →](https://studio.redlattuce.app)
 - [GitHub](https://github.com/redlattice/redlattice)
 ```
 
@@ -586,14 +586,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/getting-started.mdx`:
 ```mdx
 ---
 title: Getting Started
-description: Install RedLattice on your brand subreddit in under five minutes.
+description: Install RedLattuce on your brand subreddit in under five minutes.
 ---
 
 import { Steps, Callout } from 'nextra/components'
 
 # Getting Started
 
-RedLattice is a [Devvit](https://developers.reddit.com/docs) app — it runs natively inside Reddit. There is no external server to manage and no OAuth dance for your users.
+RedLattuce is a [Devvit](https://developers.reddit.com/docs) app — it runs natively inside Reddit. There is no external server to manage and no OAuth dance for your users.
 
 **Time to first insight: ~5 minutes.**
 
@@ -609,13 +609,13 @@ RedLattice is a [Devvit](https://developers.reddit.com/docs) app — it runs nat
 
 ### Find the app in the Reddit App Directory
 
-Open [RedLattice on the App Directory](https://www.reddit.com/r/devvit/comments/redlattice) and click **Add to community**. Select your subreddit from the dropdown.
+Open [RedLattuce on the App Directory](https://www.reddit.com/r/devvit/comments/redlattice) and click **Add to community**. Select your subreddit from the dropdown.
 
-<Image src="/screenshots/app-directory-install.png" alt="Reddit App Directory install button for RedLattice" />
+<Image src="/screenshots/app-directory-install.png" alt="Reddit App Directory install button for RedLattuce" />
 
 ### Accept the permissions prompt
 
-RedLattice requests the following permissions:
+RedLattuce requests the following permissions:
 
 | Permission | Why |
 |---|---|
@@ -626,9 +626,9 @@ RedLattice requests the following permissions:
 
 Click **Allow**.
 
-### Open Mod Tools → RedLattice Settings
+### Open Mod Tools → RedLattuce Settings
 
-In your subreddit, go to **Mod Tools → Apps → RedLattice → Settings**. Configure at minimum:
+In your subreddit, go to **Mod Tools → Apps → RedLattuce → Settings**. Configure at minimum:
 
 ```
 Brand name:          Sonos          # shown in the Daily Pulse post header
@@ -643,7 +643,7 @@ Verified agents:     (leave blank)  # you'll add these in the Agent guide
 
 ### Verify installation with a test post
 
-Post something in your subreddit. Open **Mod Tools → RedLattice → Dashboard**. You should see the post appear in the **Recent Activity** feed within 30 seconds.
+Post something in your subreddit. Open **Mod Tools → RedLattuce → Dashboard**. You should see the post appear in the **Recent Activity** feed within 30 seconds.
 
 <Image src="/screenshots/getting-started-first-post.png" alt="Dashboard showing the first post scored after installation" />
 
@@ -696,7 +696,7 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/concepts/contact-driver
 ```mdx
 ---
 title: Contact Drivers
-description: Understand how RedLattice classifies posts by issue type using a customizable two-level taxonomy.
+description: Understand how RedLattuce classifies posts by issue type using a customizable two-level taxonomy.
 ---
 
 import { Callout } from 'nextra/components'
@@ -709,7 +709,7 @@ Tracking contact drivers over time answers the question every CX team cares abou
 
 ## Hierarchy
 
-RedLattice uses a two-level hierarchy:
+RedLattuce uses a two-level hierarchy:
 
 ```
 Category
@@ -747,7 +747,7 @@ Moderators open a post in the dashboard or via the mod menu and select a driver 
 
 ### 2. Keyword auto-suggest
 
-On every new post submission, RedLattice matches the title + body against a keyword index built from your taxonomy. If a match exceeds the confidence threshold, the driver is suggested (not auto-applied — a mod must confirm).
+On every new post submission, RedLattuce matches the title + body against a keyword index built from your taxonomy. If a match exceeds the confidence threshold, the driver is suggested (not auto-applied — a mod must confirm).
 
 The keyword index is seeded from the driver names and descriptions you configure. It improves as mods confirm or reject suggestions.
 
@@ -791,14 +791,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/concepts/sentiment.mdx`
 ```mdx
 ---
 title: Sentiment
-description: How RedLattice scores post and comment sentiment using AFINN lexicon scoring with planned AI hybrid upgrade.
+description: How RedLattuce scores post and comment sentiment using AFINN lexicon scoring with planned AI hybrid upgrade.
 ---
 
 import { Callout } from 'nextra/components'
 
 # Sentiment
 
-RedLattice scores the **emotional tone** of every post and comment on a scale from **−1.0** (very negative) to **+1.0** (very positive).
+RedLattuce scores the **emotional tone** of every post and comment on a scale from **−1.0** (very negative) to **+1.0** (very positive).
 
 This lets you spot threads going sideways before they become PR problems, and track whether your brand's subreddit health is improving over time.
 
@@ -832,10 +832,10 @@ Individual post/comment scores are aggregated to a **thread score** using a deca
 
 ## Escalation modmail
 
-When a thread's rolling score crosses the **alert threshold** (default: −0.4, configurable), RedLattice sends a modmail to the mod team:
+When a thread's rolling score crosses the **alert threshold** (default: −0.4, configurable), RedLattuce sends a modmail to the mod team:
 
 ```
-Subject: [RedLattice] Escalation Alert — r/Sonos
+Subject: [RedLattuce] Escalation Alert — r/Sonos
 
 Thread: "No sound after firmware update" (score: -0.61)
 URL: https://reddit.com/r/Sonos/comments/abc123
@@ -844,7 +844,7 @@ Top negative signals:
 - "still broken after three days" (-0.7)
 - "no response from Sonos" (-0.5)
 
-→ Open in Studio: https://studio.redlattice.app/threads/abc123
+→ Open in Studio: https://studio.redlattuce.app/threads/abc123
 ```
 
 <Callout type="warning">
@@ -884,14 +884,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/concepts/agents.mdx`:
 ```mdx
 ---
 title: Agent Verification
-description: How RedLattice identifies and tracks verified company representatives in your brand subreddit.
+description: How RedLattuce identifies and tracks verified company representatives in your brand subreddit.
 ---
 
 import { Callout } from 'nextra/components'
 
 # Agent Verification
 
-**Verified agents** are Reddit accounts belonging to your company's customer support or community team. RedLattice flags their posts and comments distinctively in the dashboard and uses their activity to compute response SLA metrics.
+**Verified agents** are Reddit accounts belonging to your company's customer support or community team. RedLattuce flags their posts and comments distinctively in the dashboard and uses their activity to compute response SLA metrics.
 
 ## Why it matters
 
@@ -904,7 +904,7 @@ In r/Sonos, the difference between a community answer and an official Sonos resp
 Verification is controlled entirely by moderators — there is no self-service signup. A moderator uses the mod menu or settings panel to add a Reddit username to the verified agents list.
 
 ```
-Mod Tools → RedLattice Settings → Verified Agents → Add username
+Mod Tools → RedLattuce Settings → Verified Agents → Add username
 ```
 
 <Image src="/screenshots/agent-verification-settings.png" alt="Verified agents settings panel showing the whitelist UI" />
@@ -916,7 +916,7 @@ Mod Tools → RedLattice Settings → Verified Agents → Add username
 
 ### Mark/Unmark via mod menu
 
-For one-off verification, moderators can right-click any comment and select **RedLattice → Mark as Verified Agent** or **Unmark as Verified Agent** from the mod menu.
+For one-off verification, moderators can right-click any comment and select **RedLattuce → Mark as Verified Agent** or **Unmark as Verified Agent** from the mod menu.
 
 ### Visual signals in dashboard
 
@@ -978,14 +978,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/concepts/incidents.mdx`
 ```mdx
 ---
 title: Incidents
-description: How RedLattice detects, tracks, and auto-resolves customer experience incidents in your brand subreddit.
+description: How RedLattuce detects, tracks, and auto-resolves customer experience incidents in your brand subreddit.
 ---
 
 import { Callout } from 'nextra/components'
 
 # Incidents
 
-An **incident** is a period of sustained negative sentiment or a spike in a specific contact driver that exceeds your configured thresholds. RedLattice detects incidents automatically and creates a structured record you can act on.
+An **incident** is a period of sustained negative sentiment or a spike in a specific contact driver that exceeds your configured thresholds. RedLattuce detects incidents automatically and creates a structured record you can act on.
 
 ## What triggers an incident
 
@@ -1040,7 +1040,7 @@ Each incident stores:
 When an incident resolves, the mod team receives:
 
 ```
-Subject: [RedLattice] Incident Resolved — r/Sonos
+Subject: [RedLattuce] Incident Resolved — r/Sonos
 
 Incident #2026050311 opened 2026-05-03 11:00 UTC, resolved 14:22 UTC (3h 22m).
 
@@ -1050,7 +1050,7 @@ Top driver: Setup / Wi-Fi (21 posts)
 
 Action taken by mods: 4 posts tagged, 2 threads locked.
 
-→ Full incident report: https://studio.redlattice.app/incidents/inc_2026050311
+→ Full incident report: https://studio.redlattuce.app/incidents/inc_2026050311
 ```
 
 ## Viewing incidents
@@ -1138,14 +1138,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/concepts/pipelines.mdx`
 ```mdx
 ---
 title: Pipelines
-description: Built-in and custom event processing pipelines in RedLattice, and how to build your own with Studio.
+description: Built-in and custom event processing pipelines in RedLattuce, and how to build your own with Studio.
 ---
 
 import { Callout } from 'nextra/components'
 
 # Pipelines
 
-A **pipeline** is an ordered sequence of processing steps that runs when a Reddit event fires. RedLattice ships with three built-in pipelines and will support custom pipelines via Studio in v0.2.
+A **pipeline** is an ordered sequence of processing steps that runs when a Reddit event fires. RedLattuce ships with three built-in pipelines and will support custom pipelines via Studio in v0.2.
 
 ## Built-in pipelines
 
@@ -1260,14 +1260,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/guides/customize-taxono
 ```mdx
 ---
 title: Customize Taxonomy
-description: Step-by-step guide to replacing or extending RedLattice's default contact driver taxonomy.
+description: Step-by-step guide to replacing or extending RedLattuce's default contact driver taxonomy.
 ---
 
 import { Steps, Callout } from 'nextra/components'
 
 # Customize Your Contact Driver Taxonomy
 
-RedLattice ships with a default 6-category, 24-driver taxonomy designed for hardware/software brand subreddits. Most brand teams replace at least half of it within the first week.
+RedLattuce ships with a default 6-category, 24-driver taxonomy designed for hardware/software brand subreddits. Most brand teams replace at least half of it within the first week.
 
 This guide walks you through customizing it to match your support categories.
 
@@ -1336,7 +1336,7 @@ Keywords power the auto-suggest on new posts. Click a driver and add keyword phr
 
 ### Save and preview
 
-Click **Save Taxonomy**. RedLattice rebuilds the keyword index immediately. You can test it by typing a sample post title into the **Preview** field — it will show which driver (if any) would be suggested.
+Click **Save Taxonomy**. RedLattuce rebuilds the keyword index immediately. You can test it by typing a sample post title into the **Preview** field — it will show which driver (if any) would be suggested.
 
 <Image src="/screenshots/taxonomy-preview.png" alt="Taxonomy preview field showing a test post title and the suggested driver" />
 
@@ -1365,14 +1365,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/guides/configure-routin
 ```mdx
 ---
 title: Configure Routing
-description: Set up modmail routing rules to send RedLattice alerts to the right channels.
+description: Set up modmail routing rules to send RedLattuce alerts to the right channels.
 ---
 
 import { Steps, Callout } from 'nextra/components'
 
 # Configure Modmail Routing
 
-By default, all RedLattice alerts (escalation, incident open, incident resolved) go to the subreddit's **default modmail inbox**. If your mod team uses flair filters, separate modmail accounts, or external tools, you can configure routing rules to direct alerts more precisely.
+By default, all RedLattuce alerts (escalation, incident open, incident resolved) go to the subreddit's **default modmail inbox**. If your mod team uses flair filters, separate modmail accounts, or external tools, you can configure routing rules to direct alerts more precisely.
 
 ## Routing options
 
@@ -1422,7 +1422,7 @@ npx devvit settings set REDLATTICE_WEBHOOK_URL
 
 **Step 3b — Enable webhook routing in Studio:**
 
-Toggle **Send to webhook** on for each alert type you want to route. RedLattice will verify the webhook is reachable before saving.
+Toggle **Send to webhook** on for each alert type you want to route. RedLattuce will verify the webhook is reachable before saving.
 
 ### Test your routing
 
@@ -1444,7 +1444,7 @@ Click **Send test alert** next to any alert type. A test modmail or webhook POST
     "peakSentiment": -0.71,
     "affectedPosts": 34
   },
-  "studioUrl": "https://studio.redlattice.app/incidents/inc_2026050311",
+  "studioUrl": "https://studio.redlattuce.app/incidents/inc_2026050311",
   "timestamp": "2026-05-03T11:00:00Z"
 }
 ```
@@ -1462,21 +1462,21 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/guides/connect-studio.m
 ```mdx
 ---
 title: Connect Studio
-description: Generate a read-only API token and connect your subreddit to the RedLattice Studio dashboard.
+description: Generate a read-only API token and connect your subreddit to the RedLattuce Studio dashboard.
 ---
 
 import { Steps, Callout } from 'nextra/components'
 
 # Connect Studio
 
-**Studio** is the RedLattice web dashboard — it provides the full analytics UI (contact driver trends, sentiment charts, agent leaderboard, incident history) that can't fit into Reddit's native Devvit interface.
+**Studio** is the RedLattuce web dashboard — it provides the full analytics UI (contact driver trends, sentiment charts, agent leaderboard, incident history) that can't fit into Reddit's native Devvit interface.
 
 Studio reads data from your subreddit's Redis store via a read-only API token. It cannot perform mod actions.
 
 ## What you'll need
 
 - Moderator access to the subreddit
-- The RedLattice Devvit app already installed ([Getting Started →](/getting-started))
+- The RedLattuce Devvit app already installed ([Getting Started →](/getting-started))
 - 5 minutes
 
 ## Steps
@@ -1485,7 +1485,7 @@ Studio reads data from your subreddit's Redis store via a read-only API token. I
 
 ### Generate an API token
 
-In Reddit: go to **Mod Tools → RedLattice → Settings → Studio Integration**.
+In Reddit: go to **Mod Tools → RedLattuce → Settings → Studio Integration**.
 
 Click **Generate token**. A 64-character read-only token is displayed once — copy it immediately.
 
@@ -1509,7 +1509,7 @@ This encrypts the token at rest in Reddit's infrastructure. It is never logged o
 
 ### Open Studio and connect your subreddit
 
-Navigate to [studio.redlattice.app](https://studio.redlattice.app). Click **Connect subreddit**.
+Navigate to [studio.redlattuce.app](https://studio.redlattuce.app). Click **Connect subreddit**.
 
 Enter:
 - **Subreddit name**: `r/Sonos` (with or without the `r/` prefix)
@@ -1535,7 +1535,7 @@ Once connected, you'll land on the **Overview** tab. If you've had posts since i
 
 ## Revoking access
 
-To revoke Studio access: **Mod Tools → RedLattice → Settings → Studio Integration → Revoke token**. Any active Studio sessions lose access within 60 seconds.
+To revoke Studio access: **Mod Tools → RedLattuce → Settings → Studio Integration → Revoke token**. Any active Studio sessions lose access within 60 seconds.
 
 ## Next steps
 
@@ -1551,14 +1551,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/guides/seed-test-data.m
 ```mdx
 ---
 title: Seed Test Data
-description: Run the RedLattice demo seeder to populate your test subreddit with realistic posts and analytics.
+description: Run the RedLattuce demo seeder to populate your test subreddit with realistic posts and analytics.
 ---
 
 import { Steps, Callout } from 'nextra/components'
 
 # Seed Test Data
 
-The RedLattice demo seeder generates a realistic 30-day history of posts, comments, sentiment scores, and contact driver tags in a **private test subreddit**. Use it to explore the Studio dashboard without waiting for real user activity.
+The RedLattuce demo seeder generates a realistic 30-day history of posts, comments, sentiment scores, and contact driver tags in a **private test subreddit**. Use it to explore the Studio dashboard without waiting for real user activity.
 
 <Callout type="warning">
   **Never run the seeder on a live subreddit.** It creates synthetic posts using
@@ -1568,7 +1568,7 @@ The RedLattice demo seeder generates a realistic 30-day history of posts, commen
 ## Prerequisites
 
 - Node.js 20+ installed locally
-- RedLattice already installed on a **private** test subreddit
+- RedLattuce already installed on a **private** test subreddit
 - Your Reddit account has moderator access to that subreddit
 - Studio connected ([Connect Studio guide →](/guides/connect-studio))
 
@@ -1576,7 +1576,7 @@ The RedLattice demo seeder generates a realistic 30-day history of posts, commen
 
 <Steps>
 
-### Clone the RedLattice repository
+### Clone the RedLattuce repository
 
 ```bash
 git clone https://github.com/redlattice/redlattice.git
@@ -1621,15 +1621,15 @@ Expected output:
 ...
 [seed] Day 30/30: creating 11 posts...
 [seed] Seeding complete. 421 posts, 1,847 comments created.
-[seed] Triggering RedLattice processing...
-[seed] Done. Open Studio to explore: https://studio.redlattice.app
+[seed] Triggering RedLattuce processing...
+[seed] Done. Open Studio to explore: https://studio.redlattuce.app
 ```
 
 This takes 3–8 minutes depending on subreddit size and Reddit's rate limits.
 
 ### Explore the seeded dashboard
 
-Open [studio.redlattice.app](https://studio.redlattice.app) and select your test subreddit. You should see:
+Open [studio.redlattuce.app](https://studio.redlattuce.app) and select your test subreddit. You should see:
 
 - 30 days of sentiment trend data
 - Contact driver breakdown with realistic distribution
@@ -1675,14 +1675,14 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/guides/onboarding-your-
 ```mdx
 ---
 title: Onboarding Your Team
-description: Best practices for onboarding your mod team and company agents to RedLattice.
+description: Best practices for onboarding your mod team and company agents to RedLattuce.
 ---
 
 import { Callout } from 'nextra/components'
 
 # Onboarding Your Team
 
-Getting value from RedLattice requires two groups of people: **moderators** who tag, triage, and configure, and **verified agents** who are your company's representatives in the subreddit.
+Getting value from RedLattuce requires two groups of people: **moderators** who tag, triage, and configure, and **verified agents** who are your company's representatives in the subreddit.
 
 This guide covers how to set both groups up for success in the first week.
 
@@ -1690,11 +1690,11 @@ This guide covers how to set both groups up for success in the first week.
 
 ### Who needs access
 
-Every moderator with `modconfig` permission can access RedLattice settings. Moderators without `modconfig` can still use the **Mod Menu** actions (tag a driver, mark an agent) but cannot change settings.
+Every moderator with `modconfig` permission can access RedLattuce settings. Moderators without `modconfig` can still use the **Mod Menu** actions (tag a driver, mark an agent) but cannot change settings.
 
 Recommended role split:
 
-| Role | Minimum Reddit mod permission | RedLattice access |
+| Role | Minimum Reddit mod permission | RedLattuce access |
 |---|---|---|
 | Head mod / analytics lead | `modconfig` | Full settings + Studio |
 | Active mods | `modposts` | Mod menu actions |
@@ -1713,12 +1713,12 @@ Recommended role split:
 Share this with your mod team:
 
 **Tagging a contact driver:**
-1. Open a post. In the mod menu, select **RedLattice → Tag contact driver**.
+1. Open a post. In the mod menu, select **RedLattuce → Tag contact driver**.
 2. Choose a category, then a driver.
 3. Click **Apply**. The tag appears immediately in Studio.
 
 **Flagging a post for review:**
-Select **RedLattice → Flag for review** from the mod menu. The post appears in the Studio **Flagged** queue.
+Select **RedLattuce → Flag for review** from the mod menu. The post appears in the Studio **Flagged** queue.
 
 **Checking the Daily Pulse:**
 Look for the pinned post in your subreddit. It updates nightly at 02:00 UTC with yesterday's stats.
@@ -1744,20 +1744,20 @@ Add every Reddit account that officially represents your company in the subreddi
 **Via settings (bulk):**
 
 ```
-Mod Tools → RedLattice Settings → Verified Agents → Add username
+Mod Tools → RedLattuce Settings → Verified Agents → Add username
 ```
 
 Add one username per line. Changes take effect immediately.
 
 **Via mod menu (one-off):**
 
-Right-click any comment → **RedLattice → Mark as Verified Agent**.
+Right-click any comment → **RedLattuce → Mark as Verified Agent**.
 
 ### Setting expectations with agents
 
 Verified agents don't need to do anything differently in Reddit. Their comments are automatically detected and counted. The one thing to communicate:
 
-> "Your Reddit username is in the verified agents list. RedLattice uses this to track response times and quality. It does not share any data about you publicly — it's only visible to moderators in the Studio dashboard."
+> "Your Reddit username is in the verified agents list. RedLattuce uses this to track response times and quality. It does not share any data about you publicly — it's only visible to moderators in the Studio dashboard."
 
 ## Healthy habits for the first month
 
@@ -1800,12 +1800,12 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/reference/triggers.mdx`
 ```mdx
 ---
 title: Triggers Reference
-description: All Reddit event triggers that RedLattice subscribes to, with payload shapes and processing guarantees.
+description: All Reddit event triggers that RedLattuce subscribes to, with payload shapes and processing guarantees.
 ---
 
 # Triggers Reference
 
-RedLattice subscribes to four Devvit trigger types. Each trigger fires a pipeline run through the central dispatcher.
+RedLattuce subscribes to four Devvit trigger types. Each trigger fires a pipeline run through the central dispatcher.
 
 ## PostSubmit
 
@@ -1907,9 +1907,9 @@ Fires when a moderator takes an action (remove, approve, flair, ban, etc.).
 }
 ```
 
-**Action types RedLattice processes:**
+**Action types RedLattuce processes:**
 
-| Action type | What RedLattice does |
+| Action type | What RedLattuce does |
 |---|---|
 | `removepost` | Marks post as removed in rollups; excluded from future scoring |
 | `approvepost` | Re-includes a previously removed post |
@@ -1919,7 +1919,7 @@ Fires when a moderator takes an action (remove, approve, flair, ban, etc.).
 
 ## AppInstall / AppUpgrade
 
-Fires when the RedLattice app is installed or upgraded in a new subreddit.
+Fires when the RedLattuce app is installed or upgraded in a new subreddit.
 
 **Registered in:** `src/triggers/install.ts`
 
@@ -1970,19 +1970,19 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/reference/settings.mdx`
 ```mdx
 ---
 title: Settings Reference
-description: Every RedLattice setting documented — scope, type, default, and effect.
+description: Every RedLattuce setting documented — scope, type, default, and effect.
 ---
 
 import { Callout } from 'nextra/components'
 
 # Settings Reference
 
-RedLattice uses two setting scopes:
+RedLattuce uses two setting scopes:
 
 | Scope | What it means | Who can set it |
 |---|---|---|
 | **App-scope** | One value per app across all installations. Used for secrets (API keys). | Set via `npx devvit settings set KEY` in terminal |
-| **Installation-scope** | Per-subreddit. Configured in Mod Tools → RedLattice Settings. | Any mod with `modconfig` |
+| **Installation-scope** | Per-subreddit. Configured in Mod Tools → RedLattuce Settings. | Any mod with `modconfig` |
 
 <Callout type="warning">
   Setting scope is **sticky after deploy**. You cannot safely change a setting
@@ -2086,7 +2086,7 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/reference/api.mdx`:
 ```mdx
 ---
 title: REST API Reference
-description: RedLattice Studio REST API — available in v0.2.
+description: RedLattuce Studio REST API — available in v0.2.
 ---
 
 import { Callout } from 'nextra/components'
@@ -2158,7 +2158,7 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/changelog.mdx`:
 ```mdx
 ---
 title: Changelog
-description: Release notes for RedLattice, following Keep a Changelog format and semantic versioning.
+description: Release notes for RedLattuce, following Keep a Changelog format and semantic versioning.
 ---
 
 # Changelog
@@ -2213,21 +2213,21 @@ Create `/Users/divyansh/Projects/redlattice-docs/content/about.mdx`:
 
 ```mdx
 ---
-title: About RedLattice
-description: What RedLattice is, who built it, and why it exists.
+title: About RedLattuce
+description: What RedLattuce is, who built it, and why it exists.
 ---
 
-# About RedLattice
+# About RedLattuce
 
 ## What it is
 
-RedLattice is a native CX analytics app for brand subreddits. It runs entirely inside Reddit using the [Devvit](https://developers.reddit.com/docs) platform — no external server, no OAuth dance for end users, no data leaving Reddit's infrastructure.
+RedLattuce is a native CX analytics app for brand subreddits. It runs entirely inside Reddit using the [Devvit](https://developers.reddit.com/docs) platform — no external server, no OAuth dance for end users, no data leaving Reddit's infrastructure.
 
 It turns a subreddit like r/Sonos or r/OpenPhone from a moderating chore into a structured customer experience channel: every post gets a contact driver, every thread gets a sentiment score, and your team gets alerts before problems escalate.
 
 ## Who built it
 
-RedLattice is an independent side project by a CX analytics engineer at Sprinklr (contact drivers, CSAT, quality management). It is **not affiliated with Sprinklr** and does not use any Sprinklr APIs or data.
+RedLattuce is an independent side project by a CX analytics engineer at Sprinklr (contact drivers, CSAT, quality management). It is **not affiliated with Sprinklr** and does not use any Sprinklr APIs or data.
 
 The domain expertise is real. The product-market fit hypothesis: Sprinklr-class CX analytics, native to Reddit, at a fraction of the price.
 
@@ -2235,7 +2235,7 @@ The domain expertise is real. The product-market fit hypothesis: Sprinklr-class 
 
 Reddit is increasingly where technical product issues surface first — often before Zendesk tickets are filed. Brand subreddits like r/Sonos and r/sonos_support have active user communities that provide real-time signal on product quality, firmware issues, and support gaps.
 
-Today, most brand teams monitor these communities manually or with generic social listening tools that weren't designed for Reddit's structure (posts, comments, flairs, mod actions). RedLattice is purpose-built for how Reddit actually works.
+Today, most brand teams monitor these communities manually or with generic social listening tools that weren't designed for Reddit's structure (posts, comments, flairs, mod actions). RedLattuce is purpose-built for how Reddit actually works.
 
 ## Phase 1 scope
 
@@ -2259,13 +2259,13 @@ Post-hackathon goals:
 
 ## License
 
-RedLattice is source-available for personal and non-commercial use. Commercial licensing for brand teams is handled separately — [contact us](mailto:hello@redlattice.app).
+RedLattuce is source-available for personal and non-commercial use. Commercial licensing for brand teams is handled separately — [contact us](mailto:hello@redlattuce.app).
 
 ## Status and support
 
-- [Status page](https://status.redlattice.app)
+- [Status page](https://status.redlattuce.app)
 - [GitHub](https://github.com/redlattice/redlattice)
-- [Studio dashboard](https://studio.redlattice.app)
+- [Studio dashboard](https://studio.redlattuce.app)
 - Bug reports: open an issue on GitHub
 - Feature requests: [GitHub Discussions](https://github.com/redlattice/redlattice/discussions)
 ```
@@ -2335,7 +2335,7 @@ export function OgImage({
           }}
         />
         <span style={{ color: '#f97316', fontSize: '20px', fontWeight: 700 }}>
-          RedLattice
+          RedLattuce
         </span>
       </div>
 
@@ -2377,7 +2377,7 @@ export function OgImage({
           color: '#525252',
         }}
       >
-        docs.redlattice.app
+        docs.redlattuce.app
       </div>
     </div>
   )
@@ -2400,7 +2400,7 @@ export const runtime = 'edge'
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url)
-  const title = searchParams.get('title') ?? 'RedLattice Docs'
+  const title = searchParams.get('title') ?? 'RedLattuce Docs'
   const description = searchParams.get('description') ?? undefined
 
   return new ImageResponse(
@@ -2443,11 +2443,11 @@ Create `/Users/divyansh/Projects/redlattice-docs/vercel.json`:
 Create `/Users/divyansh/Projects/redlattice-docs/README.md`:
 
 ```markdown
-# RedLattice Docs
+# RedLattuce Docs
 
-Documentation site for [RedLattice](https://github.com/redlattice/redlattice) — native CX analytics for Reddit brand subreddits.
+Documentation site for [RedLattuce](https://github.com/redlattice/redlattice) — native CX analytics for Reddit brand subreddits.
 
-**Live site:** https://docs.redlattice.app
+**Live site:** https://docs.redlattuce.app
 
 ## Stack
 
@@ -2498,11 +2498,11 @@ When prompted:
 
 ### Set the custom domain
 
-In the Vercel dashboard → Project → Settings → Domains → Add `docs.redlattice.app`.
+In the Vercel dashboard → Project → Settings → Domains → Add `docs.redlattuce.app`.
 
 Add a CNAME record in your DNS provider:
 ```
-CNAME docs.redlattice.app → cname.vercel-dns.com
+CNAME docs.redlattuce.app → cname.vercel-dns.com
 ```
 
 ### Subsequent deploys

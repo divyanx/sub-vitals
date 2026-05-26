@@ -10,7 +10,7 @@ Run via `npm run dev` against a private subreddit with <200 members.
 ### Setup
 
 1. Deploy to your playtest sub: `npm run dev`
-2. Ensure the RedLattice dashboard post is pinned (install the app, or use "Open RedLattice dashboard" from the subreddit menu to create + pin it)
+2. Ensure the RedLattuce dashboard post is pinned (install the app, or use "Open RedLattuce dashboard" from the subreddit menu to create + pin it)
 3. Optionally seed data first: `npm run seed:demo -- --sub r/<your_test_sub>` (see Feature 1 below)
 
 ### Verification steps
@@ -18,7 +18,7 @@ Run via `npm run dev` against a private subreddit with <200 members.
 #### 1. Pulse loads inline with stats visible
 
 - [ ] Open the subreddit on Reddit.com
-- [ ] The pinned RedLattice post renders immediately with the Pulse view at `?view=pulse`
+- [ ] The pinned RedLattuce post renders immediately with the Pulse view at `?view=pulse`
 - [ ] **Posts today** stat shows a number (may be 0 on a fresh sub)
 - [ ] **Top driver** stat shows a driver label or "—" if no tagged posts exist
 - [ ] **Negative share** stat shows a percentage or "—" with trend direction
@@ -118,10 +118,10 @@ npm run seed:demo -- --sub r/<your_test_sub>
 - [ ] The first complaint-tagged post has 10 extra high-negativity comments appended
 - [ ] Comments contain the `[SEED:RL]` marker
 
-#### 6. Dashboard shows seeded data after RedLattice processes posts
+#### 6. Dashboard shows seeded data after RedLattuce processes posts
 
 - [ ] Wait ~30s after seed completes for Devvit triggers to process
-- [ ] Open the RedLattice dashboard
+- [ ] Open the RedLattuce dashboard
 - [ ] Drivers tab shows bars for bug, question, complaint, etc.
 - [ ] Sentiment tab shows a non-empty chart
 - [ ] Overview tab shows recent activity with driver badges

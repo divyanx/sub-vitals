@@ -318,7 +318,7 @@ async function sendOpenModmail(incident: Incident): Promise<void> {
   const postMetas = await Promise.all(firstPostIds.map((id) => getPostMeta(id)));
 
   const lines: string[] = [
-    `**[RedLattice] Crisis incident opened — ${incident.id}**`,
+    `**[RedLattuce] Crisis incident opened — ${incident.id}**`,
     '',
     `**Reason:** ${incident.reason}`,
     `**Started:** ${new Date(incident.startedAt).toUTCString()}`,
@@ -342,7 +342,7 @@ async function sendOpenModmail(incident: Incident): Promise<void> {
     await reddit.modMail.createConversation({
       subredditName,
       to: null,
-      subject: `[RedLattice] Crisis incident ${incident.id}`,
+      subject: `[RedLattuce] Crisis incident ${incident.id}`,
       body: lines.join('\n'),
     });
     log.info('crisis: opening modmail sent', { id: incident.id });

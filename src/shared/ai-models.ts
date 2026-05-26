@@ -1,5 +1,5 @@
 /**
- * Curated model catalog for RedLattice.
+ * Curated model catalog for RedLattuce.
  *
  * Pricing assumptions per tagging call: ~500 input tokens + ~200 output tokens.
  * Costs are guidance estimates; actual billing comes from OpenRouter.

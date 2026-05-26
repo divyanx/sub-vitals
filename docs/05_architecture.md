@@ -4,11 +4,11 @@
 
 ## Module contract
 
-Every feature is a `RedLatticeModule`:
+Every feature is a `RedLattuceModule`:
 
 ```ts
 // src/shared/types.ts
-export interface RedLatticeModule {
+export interface RedLattuceModule {
   readonly name: string;
   readonly description: string;
   readonly tier: 'core' | 'pro' | 'enterprise';
@@ -52,7 +52,7 @@ Total budget: < 5s. Lexicon sentiment is sub-ms. Redis writes are ~5ms. The expe
 ## Event flow: Menu action
 
 ```
-1. Mod clicks "RedLattice · Tag issue" on a post
+1. Mod clicks "RedLattuce · Tag issue" on a post
 2. Devvit → POST /internal/menu/tag-issue  (body = { location, targetId })
 3. Server route handler:
      a. Parse body with Zod

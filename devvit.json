@@ -11,7 +11,7 @@
         "generativelanguage.googleapis.com",
         "openrouter.ai",
         "*.openrouter.ai",
-        "studio.redlattice.app"
+        "studio.redlattuce.app"
       ]
     },
     "media": true
@@ -58,14 +58,14 @@
       },
       {
         "label": "Mark resolved",
-        "description": "Mark this post as resolved in the RedLattice queue",
+        "description": "Mark this post as resolved in the RedLattuce queue",
         "location": "post",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/mark-resolved"
       },
       {
         "label": "Re-open in queue",
-        "description": "Re-open a resolved post in the RedLattice queue",
+        "description": "Re-open a resolved post in the RedLattuce queue",
         "location": "post",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/mark-open"
@@ -85,8 +85,8 @@
         "endpoint": "/internal/menu/unmark-agent"
       },
       {
-        "label": "Open RedLattice dashboard",
-        "description": "Open the RedLattice analytics dashboard",
+        "label": "Open RedLattuce dashboard",
+        "description": "Open the RedLattuce analytics dashboard",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/open-dashboard"
@@ -135,13 +135,13 @@
       "studio-bridge-enabled": {
         "type": "boolean",
         "label": "Enable Studio webapp bridge (deprecated)",
-        "helpText": "Forwards events to studio.redlattice.app. Disabled by default — the domain is pending Reddit gateway approval, so calls will fail until approved. Leave OFF unless you've been told otherwise.",
+        "helpText": "Forwards events to studio.redlattuce.app. Disabled by default — the domain is pending Reddit gateway approval, so calls will fail until approved. Leave OFF unless you've been told otherwise.",
         "defaultValue": false
       },
       "auto-reports-enabled": {
         "type": "boolean",
         "label": "Auto-report posts with each pipeline verdict",
-        "helpText": "When ON (default), RedLattice attaches one report line per pipeline signal (Intent, Sentiment, Spam, Fraud, PII, Impostor). Reports appear inline in the native Reddit \"Reported\" queue — mods see each verdict without opening the post. Turn OFF if you don't want bot reports cluttering your queue.",
+        "helpText": "When ON (default), RedLattuce attaches one report line per pipeline signal (Intent, Sentiment, Spam, Fraud, PII, Impostor). Reports appear inline in the native Reddit \"Reported\" queue — mods see each verdict without opening the post. Turn OFF if you don't want bot reports cluttering your queue.",
         "defaultValue": true
       }
     },
@@ -191,7 +191,7 @@
       "agent-flair-text": {
         "type": "string",
         "label": "Verified-agent flair text to apply",
-        "helpText": "When a mod marks a comment author as a verified agent, RedLattice also applies this Reddit user flair so everyone in the sub can see who's official. e.g. \"Sonos Team\" or \"Verified Agent\". Leave blank to skip the flair sync.",
+        "helpText": "When a mod marks a comment author as a verified agent, RedLattuce also applies this Reddit user flair so everyone in the sub can see who's official. e.g. \"Sonos Team\" or \"Verified Agent\". Leave blank to skip the flair sync.",
         "defaultValue": "Verified Agent"
       },
       "agent-flair-color": {

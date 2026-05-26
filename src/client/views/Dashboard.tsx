@@ -500,7 +500,7 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
           className="block h-7 w-7 shrink-0 rounded-md"
         />
         <div className="min-w-0 leading-tight">
-          <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattice</h1>
+          <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLattuce</h1>
           <p className="hidden text-[length:var(--t-xs)] text-[var(--text-muted)] sm:block">
             Customer experience mod cockpit for brand subreddits
           </p>
@@ -5370,7 +5370,7 @@ function ExportTab() {
           Data export
         </h2>
         <p className="mb-4 max-w-2xl text-sm text-[var(--text-muted)]">
-          RedLattice keeps the operational hot data in Devvit Redis. For longer retention, cross-sub
+          RedLattuce keeps the operational hot data in Devvit Redis. For longer retention, cross-sub
           analytics, or pulling into your own warehouse (BigQuery, Snowflake, Sprinklr), export the
           most recent posts as CSV. Endpoint is mod-only and same-origin to the dashboard.
         </p>

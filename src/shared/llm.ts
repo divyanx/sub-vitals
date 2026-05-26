@@ -180,13 +180,13 @@ async function trackModelError(slug: string, reason: string): Promise<boolean> {
     await reddit.modMail.createConversation({
       subredditName: null as unknown as string, // platform fills in from installation context
       to: null,
-      subject: 'RedLattice: AI model auto-switched',
+      subject: 'RedLattuce: AI model auto-switched',
       body: [
-        `RedLattice auto-switched your AI model from **${slug}** to **${DEFAULT_MODEL}** because of repeated errors (${FALLBACK_ERROR_THRESHOLD}+ in 24h).`,
+        `RedLattuce auto-switched your AI model from **${slug}** to **${DEFAULT_MODEL}** because of repeated errors (${FALLBACK_ERROR_THRESHOLD}+ in 24h).`,
         '',
         `Last error reason: ${reason}`,
         '',
-        'Visit **Settings → AI** in the RedLattice dashboard to fix the setting or accept the default.',
+        'Visit **Settings → AI** in the RedLattuce dashboard to fix the setting or accept the default.',
       ].join('\n'),
     });
   } catch (mailErr) {

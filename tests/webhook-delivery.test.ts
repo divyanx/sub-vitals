@@ -149,7 +149,7 @@ describe('deliverWebhook', () => {
   // 2. HMAC signature header is present and correct format
   // -------------------------------------------------------------------------
 
-  it('sets X-RedLattice-Signature header in sha256=<hex> format', async () => {
+  it('sets X-RedLattuce-Signature header in sha256=<hex> format', async () => {
     mockFetch.mockResolvedValueOnce(makeResponse(200, 'ok'));
 
     await deliverWebhook('wh1', 'post-tag', { postId: 'p1' });
@@ -158,9 +158,9 @@ describe('deliverWebhook', () => {
     const [, init] = mockFetch.mock.calls[0] as [string, RequestInit];
     const headers = init.headers as Record<string, string>;
 
-    expect(headers['x-redlattice-signature']).toMatch(/^sha256=[0-9a-f]{64}$/);
-    expect(headers['x-redlattice-timestamp']).toMatch(/^\d+$/);
-    expect(headers['x-redlattice-event']).toBe('post-tag');
+    expect(headers['x-redlattuce-signature']).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect(headers['x-redlattuce-timestamp']).toMatch(/^\d+$/);
+    expect(headers['x-redlattuce-event']).toBe('post-tag');
   });
 
   it('HMAC signature is stable: same secret+payload → same hex', async () => {
@@ -177,8 +177,8 @@ describe('deliverWebhook', () => {
     const sig1 = (mockFetch.mock.calls[0][1] as RequestInit).headers as Record<string, string>;
     const sig2 = (mockFetch.mock.calls[1][1] as RequestInit).headers as Record<string, string>;
     // Both must be valid sha256 signatures
-    expect(sig1['x-redlattice-signature']).toMatch(/^sha256=[0-9a-f]{64}$/);
-    expect(sig2['x-redlattice-signature']).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect(sig1['x-redlattuce-signature']).toMatch(/^sha256=[0-9a-f]{64}$/);
+    expect(sig2['x-redlattuce-signature']).toMatch(/^sha256=[0-9a-f]{64}$/);
   });
 
   // -------------------------------------------------------------------------

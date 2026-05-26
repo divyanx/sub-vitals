@@ -72,7 +72,7 @@ The whole fan-out must finish in **< 5 seconds** (the platform kills handlers ar
 
 ## How a menu action fires
 
-A mod clicks "RedLattice · Tag issue" on a post. The flow:
+A mod clicks "RedLattuce · Tag issue" on a post. The flow:
 
 1. Reddit POSTs to our server at the endpoint we declared in `devvit.json` `menu.items[].endpoint`.
 2. The body is `{ location: "post", targetId: "t3_xyz" }`.
@@ -114,7 +114,7 @@ Routes under `/api/*` are mod-only (the server's middleware checks). Routes unde
 
 ## Redis client
 
-`@devvit/redis`'s `RedisClient` exposes the standard Redis ops: `set/get/del/exists/incr/incrBy/expire/hSet/hGet/hIncrBy/hGetAll/hDel/zAdd/zRange/zRem/zRemRangeByScore/...` Per-installation isolation is automatic — two subreddits installing RedLattice can use the same key strings without colliding.
+`@devvit/redis`'s `RedisClient` exposes the standard Redis ops: `set/get/del/exists/incr/incrBy/expire/hSet/hGet/hIncrBy/hGetAll/hDel/zAdd/zRange/zRem/zRemRangeByScore/...` Per-installation isolation is automatic — two subreddits installing RedLattuce can use the same key strings without colliding.
 
 Critical syntax note:
 

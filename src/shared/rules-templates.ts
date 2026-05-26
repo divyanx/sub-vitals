@@ -8,7 +8,7 @@
  *
  * To add a new template: copy an existing entry, give it a fresh
  * templateId (kebab-case), and write a one-line `whatHappens` that
- * states the cause and effect plainly ("when X happens, RedLattice
+ * states the cause and effect plainly ("when X happens, RedLattuce
  * does Y"). The UI shows that line literally.
  *
  * All templates install with enabled=false by default so mods can read
@@ -63,7 +63,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
       { type: 'remove-post', spam: true },
       {
         type: 'ban-author',
-        reason: 'Fraud / impersonation attempt (RedLattice)',
+        reason: 'Fraud / impersonation attempt (RedLattuce)',
         message:
           'Your account has been permanently banned for posting fraudulent or impersonation content in this community.',
       },
@@ -129,7 +129,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
         type: 'send-modmail',
         subject: 'Possible brand impostor — verify',
         bodyTemplate:
-          'Audit log entry for post {{post.id}}: an author was flagged as a possible impostor. Open RedLattice → Audit log for details.',
+          'Audit log entry for post {{post.id}}: an author was flagged as a possible impostor. Open RedLattuce → Audit log for details.',
       },
     ],
   },
@@ -293,7 +293,7 @@ export const RULE_TEMPLATES: RuleTemplate[] = [
         pipelineId: 'sentiment',
         threshold: 5,
         windowDays: 30,
-        reason: '5+ strongly-negative posts in 30 days (RedLattice)',
+        reason: '5+ strongly-negative posts in 30 days (RedLattuce)',
         durationDays: 7,
       },
     ],

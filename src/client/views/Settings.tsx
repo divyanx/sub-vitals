@@ -489,7 +489,7 @@ function IdentityTrustSection({
   return (
     <Section
       title="Identity & trust"
-      description="Configure how RedLattice detects and displays verified brand reps."
+      description="Configure how RedLattuce detects and displays verified brand reps."
     >
       <div className="space-y-4">
         <Input

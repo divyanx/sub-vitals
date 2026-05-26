@@ -1031,7 +1031,7 @@ app.post('/api/pipelines/builtin/:id/test', async (c) => {
   const overrides = await getEffectiveOverrides(id);
   const systemPrompt =
     overrides.systemPrompt ??
-    `You are a RedLattice pipeline running ${id}. Analyze the input and respond concisely.`;
+    `You are a RedLattuce pipeline running ${id}. Analyze the input and respond concisely.`;
   const userPromptTemplate = overrides.userPrompt ?? '{{post.body}}';
 
   const prompt = userPromptTemplate.replace('{{post.body}}', parsed.data.sampleInput);
@@ -2527,7 +2527,7 @@ Open `tests/e2e/pipelines.spec.ts`. Add these tests after the last existing test
     await page.getByTestId('studio-advanced-multiple-steps-/-branching').click();
     // Should close modal and open Studio promotion modal
     await expect(page.getByTestId('new-pipeline-modal')).not.toBeVisible();
-    await expect(page.getByRole('dialog', { name: /RedLattice Studio/i })).toBeVisible();
+    await expect(page.getByRole('dialog', { name: /RedLattuce Studio/i })).toBeVisible();
   });
 ```
 

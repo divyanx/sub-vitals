@@ -1,4 +1,4 @@
-# RedLattice Visual + Interaction QA Report
+# RedLattuce Visual + Interaction QA Report
 
 **Date**: 2026-05-17  
 **Tester**: QA Engineer (automated agent pass)  
@@ -203,7 +203,7 @@ npm run test:e2e
 
 **Expected**: A heading like "Settings" is visible at H2 level, consistent with other tabs (Inbox shows "Triage inbox", Incidents shows "Incidents", etc.). The error banner appears below it.
 
-**Actual**: The tab renders only the inline error banner `Failed to load settings. [Retry]` with no heading. The heading hierarchy jumps from H1 (RedLattice) directly to nothing.
+**Actual**: The tab renders only the inline error banner `Failed to load settings. [Retry]` with no heading. The heading hierarchy jumps from H1 (RedLattuce) directly to nothing.
 
 **Evidence**: `src/client/views/Settings.tsx:192–200` — the `isError` guard returns the error div before any heading is rendered.
 

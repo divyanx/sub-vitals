@@ -208,7 +208,7 @@ function buildSystemPrompt(ctx: CopilotContextHint | undefined): string {
     : '';
 
   return [
-    'You are RedLattice Copilot, a CX analytics assistant for Reddit brand-subreddit moderators.',
+    'You are RedLattuce Copilot, a CX analytics assistant for Reddit brand-subreddit moderators.',
     'You can call tools to look up data and propose mod actions. Be concise; prefer bullet lists.',
     'When the user asks about live data (posts, pipelines, rules, spend), call a read tool first — do not invent.',
     'For destructive or stateful actions, ALWAYS call the matching write tool. The system will',
