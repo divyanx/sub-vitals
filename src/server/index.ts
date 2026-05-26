@@ -1871,7 +1871,8 @@ app.post('/api/posts/:postId/approve', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const postId = c.req.param('postId');
   try {
-    await reddit.approve(`t3_${postId}`);
+    const fullPostId = postId.startsWith('t3_') ? postId : `t3_${postId}`;
+    await reddit.approve(fullPostId as `t3_${string}`);
     void recordAudit('mod-approve', postId, { type: 'post' });
     return c.json({ ok: true });
   } catch (err) {
@@ -1894,7 +1895,8 @@ app.post('/api/posts/:postId/remove', async (c) => {
   const parsed = modRemoveBodySchema.safeParse(raw);
   const spam = parsed.success ? parsed.data.spam : false;
   try {
-    await reddit.remove(`t3_${postId}`, spam);
+    const fullId = postId.startsWith('t3_') ? postId : `t3_${postId}`;
+    await reddit.remove(fullId as `t3_${string}`, spam);
     void recordAudit(spam ? 'mod-spam' : 'mod-remove', postId, { type: 'post', spam });
     return c.json({ ok: true });
   } catch (err) {
@@ -1907,7 +1909,8 @@ app.post('/api/posts/:postId/lock', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const postId = c.req.param('postId');
   try {
-    const post = await reddit.getPostById(`t3_${postId}` as `t3_${string}`);
+    const lockFullId = postId.startsWith('t3_') ? postId : `t3_${postId}`;
+    const post = await reddit.getPostById(lockFullId as `t3_${string}`);
     await post.lock();
     void recordAudit('mod-lock', postId, { type: 'post' });
     return c.json({ ok: true });
@@ -1921,7 +1924,8 @@ app.post('/api/comments/:commentId/approve', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const commentId = c.req.param('commentId');
   try {
-    await reddit.approve(`t1_${commentId}`);
+    const fullCommentId = commentId.startsWith('t1_') ? commentId : `t1_${commentId}`;
+    await reddit.approve(fullCommentId as `t1_${string}`);
     void recordAudit('mod-approve', commentId, { type: 'comment' });
     return c.json({ ok: true });
   } catch (err) {
@@ -1942,7 +1946,8 @@ app.post('/api/comments/:commentId/remove', async (c) => {
   const parsed = modRemoveBodySchema.safeParse(raw);
   const spam = parsed.success ? parsed.data.spam : false;
   try {
-    await reddit.remove(`t1_${commentId}`, spam);
+    const fullCmtId = commentId.startsWith('t1_') ? commentId : `t1_${commentId}`;
+    await reddit.remove(fullCmtId as `t1_${string}`, spam);
     void recordAudit(spam ? 'mod-spam' : 'mod-remove', commentId, { type: 'comment', spam });
     return c.json({ ok: true });
   } catch (err) {
@@ -1955,7 +1960,8 @@ app.post('/api/comments/:commentId/distinguish', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const commentId = c.req.param('commentId');
   try {
-    const comment = await reddit.getCommentById(`t1_${commentId}` as `t1_${string}`);
+    const distFullId = commentId.startsWith('t1_') ? commentId : `t1_${commentId}`;
+    const comment = await reddit.getCommentById(distFullId as `t1_${string}`);
     await comment.distinguish();
     void recordAudit('mod-distinguish', commentId, { type: 'comment' });
     return c.json({ ok: true });
