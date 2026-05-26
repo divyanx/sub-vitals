@@ -196,7 +196,7 @@ function newId(prefix: string): string {
 // Prompt builder
 // ---------------------------------------------------------------------------
 
-function buildSystemPrompt(ctx: CopilotContextHint | undefined): string {
+async function buildSystemPrompt(ctx: CopilotContextHint | undefined): Promise<string> {
   const toolLines = TOOLS.map((t) => `- ${t.name} (${t.safety}): ${t.description}`).join('\n');
 
   const ctxBlock = ctx
@@ -207,6 +207,15 @@ function buildSystemPrompt(ctx: CopilotContextHint | undefined): string {
       `When the user says "this post" / "this pipeline", default to that id.`
     : '';
 
+  const [brandName, brandVoice] = await Promise.all([
+    readEffectiveSetting<string>('brand-name').catch(() => undefined),
+    readEffectiveSetting<string>('brand-voice').catch(() => undefined),
+  ]);
+  const brandBlock =
+    brandName || brandVoice
+      ? `\n\nCommunity context:\n${brandName ? `- Brand: ${brandName}\n` : ''}${brandVoice ? `- Description: ${brandVoice}\n` : ''}`
+      : '';
+
   return [
     'You are SubVitals Copilot, a CX analytics assistant for Reddit brand-subreddit moderators.',
     'You can call tools to look up data and propose mod actions. Be concise; prefer bullet lists.',
@@ -216,6 +225,7 @@ function buildSystemPrompt(ctx: CopilotContextHint | undefined): string {
     '("I will install …, click Confirm to proceed").',
     `\nAvailable tools:\n${toolLines}`,
     ctxBlock,
+    brandBlock,
   ].join('\n');
 }
 
@@ -459,7 +469,7 @@ async function handleChat(c: Context): Promise<Response> {
     const isReasoning = /^(o1|o3|o4)/.test(provider.model);
     const result = await generateText({
       model: provider.handle,
-      system: buildSystemPrompt(body.data.context),
+      system: await buildSystemPrompt(body.data.context),
       messages: recent.map((m) => ({
         role: m.role === 'tool' ? 'assistant' : (m.role as 'user' | 'assistant'),
         content: m.content,
