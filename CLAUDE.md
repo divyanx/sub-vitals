@@ -1,4 +1,4 @@
-# RedLettuce — Claude Code Instructions
+# SubVitals — Claude Code Instructions
 
 This file is auto-loaded every Claude Code session in this directory. Keep it concise and load-bearing; long-form context belongs in `docs/`.
 

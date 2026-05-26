@@ -3,7 +3,7 @@
  * Tier: CORE · Phase 1
  *
  * Cross-cutting concerns for the dashboard post:
- *   - On AppInstall and AppUpgrade, ensure exactly one pinned RedLettuce
+ *   - On AppInstall and AppUpgrade, ensure exactly one pinned SubVitals
  *     dashboard post exists in the subreddit.
  *   - The post is the React iframe; whoever opens it sees the live analytics.
  *   - Idempotent via the rl:pulse:postId key.
@@ -40,7 +40,7 @@ export const dashboardOrchestratorModule: RedLatticeModule = {
 // supported way to set the launch-screen icon in @devvit/web@0.12.x.
 // Future-proof migration is an inline-entrypoint splash; out of scope here.
 const SPLASH_OPTS = {
-  appDisplayName: 'RedLettuce',
+  appDisplayName: 'SubVitals',
   appIconUri: 'icon-1024.png',
 } as const;
 
@@ -71,7 +71,7 @@ async function ensurePinnedDashboard(trigger: 'install' | 'upgrade'): Promise<vo
       return;
     }
     const post = await reddit.submitCustomPost({
-      title: 'RedLettuce · Live Analytics',
+      title: 'SubVitals · Live Analytics',
       subredditName: sub,
       splash: SPLASH_OPTS,
     });

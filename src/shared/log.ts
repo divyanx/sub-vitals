@@ -51,7 +51,7 @@ function emit(level: Level, msg: string, fields?: Fields): void {
   const record = {
     ts: new Date().toISOString(),
     level,
-    app: 'redlettuce',
+    app: 'sub-vitals',
     msg,
     ...contextFields(),
     ...((fields ? (redact(fields) as Fields) : undefined) ?? {}),

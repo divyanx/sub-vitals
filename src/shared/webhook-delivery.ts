@@ -123,7 +123,7 @@ function buildSlackBody(event: string, payload: Record<string, unknown>): unknow
     blocks: [
       {
         type: 'header',
-        text: { type: 'plain_text', text: `RedLettuce · ${event}`, emoji: true },
+        text: { type: 'plain_text', text: `SubVitals · ${event}`, emoji: true },
       },
       ...(fields.length > 0
         ? [{ type: 'section', fields }]
@@ -144,7 +144,7 @@ function buildDiscordBody(event: string, payload: Record<string, unknown>): unkn
   return {
     embeds: [
       {
-        title: `RedLettuce · ${event}`,
+        title: `SubVitals · ${event}`,
         description: `Event fired at <t:${Math.floor(Date.now() / 1000)}:T>`,
         color,
         fields,
@@ -159,8 +159,8 @@ function buildPagerDutyBody(event: string, payload: Record<string, unknown>): un
     routing_key: '', // callers using PD should set this in their URL or via payload override
     event_action: event === 'incident-resolve' ? 'resolve' : 'trigger',
     payload: {
-      summary: `RedLettuce: ${event}`,
-      source: 'redlettuce-devvit',
+      summary: `SubVitals: ${event}`,
+      source: 'sub-vitals-devvit',
       severity,
       custom_details: payload,
     },
@@ -243,9 +243,9 @@ export async function deliverWebhook(
         method: 'POST',
         headers: {
           'content-type': 'application/json',
-          'x-redlettuce-signature': `sha256=${hexSig}`,
-          'x-redlettuce-timestamp': String(ts),
-          'x-redlettuce-event': eventKind,
+          'x-sub-vitals-signature': `sha256=${hexSig}`,
+          'x-sub-vitals-timestamp': String(ts),
+          'x-sub-vitals-event': eventKind,
         },
         body: rawBody,
         signal: ctrl.signal,

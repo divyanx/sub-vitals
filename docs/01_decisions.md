@@ -16,7 +16,7 @@ Format: each decision is a small ADR (Architecture Decision Record). When a deci
 **Decision.** Devvit Web.
 
 **Why.**
-- RedLettuce is fundamentally a multi-tab analytics dashboard. Devvit Web is purpose-built for that. Blocks is purpose-built for in-feed games/widgets.
+- SubVitals is fundamentally a multi-tab analytics dashboard. Devvit Web is purpose-built for that. Blocks is purpose-built for in-feed games/widgets.
 - Reddit's 2025 hackathon center of gravity was Devvit Web. Hackathon judges will recognize it as on-platform-strategy. A classic-Blocks dashboard reads as legacy.
 - Pro-tier plans (external REST API for Sprinklr-style consumers, webhooks) need a real HTTP server. Classic Devvit doesn't provide one natively.
 - The original scaffold mixed both paradigms (`devvit.json` Devvit-Web shape + `main.tsx` classic-style). The two don't compose. We picked the side that fits this product.
@@ -66,7 +66,7 @@ We pick latest because the hackathon submission will be scored partly on code qu
 **Date:** 2026-05-16
 **Status:** Accepted
 
-**Context.** RedLettuce has two surfaces:
+**Context.** SubVitals has two surfaces:
 1. **Daily Pulse** — a pinned post in the brand subreddit, auto-updating, glanceable.
 2. **Dashboard** — the full multi-tab analytics surface (Overview / Drivers / Sentiment / Agents / Settings).
 
@@ -98,7 +98,7 @@ We could build these as two separate apps, or as one React app with different vi
 - `rl:dr:roll:{date}` → HASH, fields = driver IDs, values = counts. Plus a `__total__` field for total posts.
 - `rl:sent:roll:{date}` → HASH, fields = `positive` / `neutral` / `negative` / `score_sum` / `total`. Average score derived from `score_sum / total` on read.
 
-(Key prefix is `rl:` for RedLettuce; the legacy spec used `bp:`. We're not maintaining backward compatibility — this is a fresh build.)
+(Key prefix is `rl:` for SubVitals; the legacy spec used `bp:`. We're not maintaining backward compatibility — this is a fresh build.)
 
 ---
 
@@ -109,7 +109,7 @@ We could build these as two separate apps, or as one React app with different vi
 
 **Context.** Classic Devvit passes `ctx` (with `ctx.redis`, `ctx.reddit`, etc.) into every handler. Devvit Web has an async-local `context` you `import` from `@devvit/web/server` plus separate `redis`/`reddit`/`settings`/`scheduler` singletons.
 
-**Decision.** Our `RedLettuceModule` interface takes only the typed event payload, no `ctx`. Modules import what they need.
+**Decision.** Our `SubVitalsModule` interface takes only the typed event payload, no `ctx`. Modules import what they need.
 
 **Why.** It matches the platform. Passing a synthetic `ctx` just to mirror the classic API would be a leaky abstraction that bites us later when we hit something `ctx` doesn't cover.
 
@@ -183,7 +183,7 @@ We could build these as two separate apps, or as one React app with different vi
 
 **Why CSV.** Universal. Every BI tool, every warehouse loader, every spreadsheet accepts it. Phase 2 will add bearer-token auth + an additional JSON pull endpoint for fully programmatic ingestion.
 
-**Consequences.** RedLettuce positions cleanly as "the on-Reddit analytics tier"; customers wire the CSV pull into their existing CX stack in 30 minutes. No partnership negotiation needed.
+**Consequences.** SubVitals positions cleanly as "the on-Reddit analytics tier"; customers wire the CSV pull into their existing CX stack in 30 minutes. No partnership negotiation needed.
 
 ---
 

@@ -80,7 +80,7 @@ export function CopilotPanel(props: CopilotPanelProps) {
       {open && (
         <aside
           role="dialog"
-          aria-label="RedLettuce Copilot"
+          aria-label="SubVitals Copilot"
           data-testid="copilot-panel"
           className="fixed inset-y-0 right-0 z-50 w-full md:w-[420px] bg-[var(--n-2)] border-l border-[var(--n-4)] flex flex-col shadow-[var(--shadow-3)]"
         >

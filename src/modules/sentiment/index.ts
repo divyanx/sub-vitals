@@ -389,7 +389,7 @@ async function checkForEscalation(postId: string): Promise<void> {
     await reddit.modMail.createConversation({
       subredditName,
       to: null,
-      subject: '[RedLettuce] Negative thread escalation detected',
+      subject: '[SubVitals] Negative thread escalation detected',
       body: [
         `Thread https://reddit.com/comments/${postId.replace('t3_', '')}`,
         '',

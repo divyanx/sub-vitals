@@ -2,7 +2,7 @@
  * Module — Studio Bridge
  * Tier: CORE · Phase 2
  *
- * RedLettuce module that registers with the dispatcher but does no event
+ * SubVitals module that registers with the dispatcher but does no event
  * processing itself. The actual outbound webhook logic lives in
  * `src/shared/studio-bridge.ts` and is called by other modules via
  * `forwardToStudio(kind, payload)` after they persist their own state.
@@ -31,7 +31,7 @@ const studioPutSchema = z.object({
 
 export const studioBridgeModule: RedLatticeModule = {
   name: 'studio-bridge',
-  description: 'Forwards selected events to RedLettuce Studio via authenticated outbound webhook.',
+  description: 'Forwards selected events to SubVitals Studio via authenticated outbound webhook.',
   tier: 'core',
 
   async enabled(): Promise<boolean> {
@@ -111,8 +111,8 @@ export const studioBridgeModule: RedLatticeModule = {
             method: 'POST',
             headers: {
               'content-type': 'application/json',
-              'x-redlettuce-signature': `sha256=${hexSig}`,
-              'x-redlettuce-timestamp': String(ts),
+              'x-sub-vitals-signature': `sha256=${hexSig}`,
+              'x-sub-vitals-timestamp': String(ts),
             },
             body: pingBody,
             signal: ctrl.signal,

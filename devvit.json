@@ -1,8 +1,12 @@
 {
   "$schema": "https://developers.reddit.com/schema/config-file.v1.json",
-  "name": "redlattuce",
+  "name": "sub-vitals",
   "permissions": {
-    "reddit": { "enable": true, "scope": "moderator", "asUser": ["SUBMIT_COMMENT"] },
+    "reddit": {
+      "enable": true,
+      "scope": "moderator",
+      "asUser": ["SUBMIT_COMMENT"]
+    },
     "redis": true,
     "http": {
       "enable": true,
@@ -11,7 +15,7 @@
         "generativelanguage.googleapis.com",
         "openrouter.ai",
         "*.openrouter.ai",
-        "studio.redlettuce.app"
+        "studio.sub-vitals.app"
       ]
     },
     "media": true
@@ -58,14 +62,14 @@
       },
       {
         "label": "Mark resolved",
-        "description": "Mark this post as resolved in the RedLettuce queue",
+        "description": "Mark this post as resolved in the SubVitals queue",
         "location": "post",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/mark-resolved"
       },
       {
         "label": "Re-open in queue",
-        "description": "Re-open a resolved post in the RedLettuce queue",
+        "description": "Re-open a resolved post in the SubVitals queue",
         "location": "post",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/mark-open"
@@ -85,8 +89,8 @@
         "endpoint": "/internal/menu/unmark-agent"
       },
       {
-        "label": "Open RedLettuce dashboard",
-        "description": "Open the RedLettuce analytics dashboard",
+        "label": "Open SubVitals dashboard",
+        "description": "Open the SubVitals analytics dashboard",
         "location": "subreddit",
         "forUserType": "moderator",
         "endpoint": "/internal/menu/open-dashboard"
@@ -135,13 +139,13 @@
       "studio-bridge-enabled": {
         "type": "boolean",
         "label": "Enable Studio webapp bridge (deprecated)",
-        "helpText": "Forwards events to studio.redlettuce.app. Disabled by default — the domain is pending Reddit gateway approval, so calls will fail until approved. Leave OFF unless you've been told otherwise.",
+        "helpText": "Forwards events to studio.sub-vitals.app. Disabled by default — the domain is pending Reddit gateway approval, so calls will fail until approved. Leave OFF unless you've been told otherwise.",
         "defaultValue": false
       },
       "auto-reports-enabled": {
         "type": "boolean",
         "label": "Auto-report posts with each pipeline verdict",
-        "helpText": "When ON (default), RedLettuce attaches one report line per pipeline signal (Intent, Sentiment, Spam, Fraud, PII, Impostor). Reports appear inline in the native Reddit \"Reported\" queue — mods see each verdict without opening the post. Turn OFF if you don't want bot reports cluttering your queue.",
+        "helpText": "When ON (default), SubVitals attaches one report line per pipeline signal (Intent, Sentiment, Spam, Fraud, PII, Impostor). Reports appear inline in the native Reddit \"Reported\" queue — mods see each verdict without opening the post. Turn OFF if you don't want bot reports cluttering your queue.",
         "defaultValue": true
       }
     },
@@ -191,7 +195,7 @@
       "agent-flair-text": {
         "type": "string",
         "label": "Verified-agent flair text to apply",
-        "helpText": "When a mod marks a comment author as a verified agent, RedLettuce also applies this Reddit user flair so everyone in the sub can see who's official. e.g. \"Sonos Team\" or \"Verified Agent\". Leave blank to skip the flair sync.",
+        "helpText": "When a mod marks a comment author as a verified agent, SubVitals also applies this Reddit user flair so everyone in the sub can see who's official. e.g. \"Sonos Team\" or \"Verified Agent\". Leave blank to skip the flair sync.",
         "defaultValue": "Verified Agent"
       },
       "agent-flair-color": {

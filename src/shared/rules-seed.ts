@@ -128,7 +128,7 @@ export function buildSeedRules(): Rule[] {
         { type: 'remove-post' as const, spam: true },
         {
           type: 'send-modmail' as const,
-          subject: 'Fraud removed by RedLettuce',
+          subject: 'Fraud removed by SubVitals',
           bodyTemplate:
             'The fraud-detector pipeline removed a post from {{post.id}}. Review the audit log for the reasoning.',
         },

@@ -172,14 +172,14 @@ export const impostorDetectionModule: RedLatticeModule = {
       '',
       `**Link to comment:** ${commentUrl}`,
       '',
-      'If this person actually is on your team, mark them as a verified agent (comment menu → "Mark verified agent") and RedLettuce will stop flagging them. If they are not, consider replying publicly to set the record straight.',
+      'If this person actually is on your team, mark them as a verified agent (comment menu → "Mark verified agent") and SubVitals will stop flagging them. If they are not, consider replying publicly to set the record straight.',
     ].join('\n');
 
     try {
       await reddit.modMail.createConversation({
         subredditName,
         to: null,
-        subject: `[RedLettuce] Possible impostor: u/${commentAuthorName}`,
+        subject: `[SubVitals] Possible impostor: u/${commentAuthorName}`,
         body,
       });
       await redis.set(cooldownKey, '1', {

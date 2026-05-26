@@ -3,7 +3,7 @@
  *
  * Rules verified:
  *   1. No-op when studio-token is empty (or absent).
- *   2. Correct headers when token is set (x-redlettuce-signature, x-redlettuce-timestamp).
+ *   2. Correct headers when token is set (x-sub-vitals-signature, x-sub-vitals-timestamp).
  *   3. Retries once on 5xx, then gives up.
  *   4. Does not retry on 4xx.
  *   5. Never throws to caller under any failure.
@@ -70,7 +70,7 @@ const { forwardToStudio } = await import('../src/shared/studio-bridge.ts');
 // Helpers
 // ---------------------------------------------------------------------------
 
-function mockSettings(token: string, url = 'https://studio.redlettuce.app') {
+function mockSettings(token: string, url = 'https://studio.sub-vitals.app') {
   mockReadEffectiveSetting.mockImplementation(async (name: string, fallback?: unknown) => {
     if (name === 'studio-token') return token;
     if (name === 'studio-url') return url;
@@ -146,11 +146,11 @@ describe('forwardToStudio', () => {
 
     expect(mockFetch).toHaveBeenCalledOnce();
     const [url, init] = mockFetch.mock.calls[0] as [string, RequestInit];
-    expect(url).toBe('https://studio.redlettuce.app/api/webhooks/devvit');
+    expect(url).toBe('https://studio.sub-vitals.app/api/webhooks/devvit');
     expect((init.headers as Record<string, string>)['content-type']).toBe('application/json');
-    expect((init.headers as Record<string, string>)['x-redlettuce-timestamp']).toMatch(/^\d+$/);
+    expect((init.headers as Record<string, string>)['x-sub-vitals-timestamp']).toMatch(/^\d+$/);
 
-    const sig = (init.headers as Record<string, string>)['x-redlettuce-signature'];
+    const sig = (init.headers as Record<string, string>)['x-sub-vitals-signature'];
     expect(sig).toMatch(/^sha256=[0-9a-f]{64}$/);
 
     const sentBody = JSON.parse(init.body as string) as {

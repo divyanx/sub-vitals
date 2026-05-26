@@ -1,4 +1,4 @@
-# RedLettuce Demo Video — Script + Shot List
+# SubVitals Demo Video — Script + Shot List
 
 **Target length:** 2:45 (Devvit App Directory hard caps at 3 min)
 **Tools:** OBS / QuickTime + ScreenStudio / Loom (zoom + auto-cursor zoom for clickable detail)
@@ -24,10 +24,10 @@
 
 ## Scene 2 · The reveal (0:15–0:30) — 15s
 
-**Visual:** Reddit sub homepage. Pinned post titled "RedLettuce · Live Analytics". Click it. Webview opens to the Pulse tab with real KPIs filled in.
+**Visual:** Reddit sub homepage. Pinned post titled "SubVitals · Live Analytics". Click it. Webview opens to the Pulse tab with real KPIs filled in.
 
 **Voice:**
-> RedLettuce is native CX analytics for Reddit, built on Devvit. One install, one pinned post, and your sub becomes a full triage cockpit.
+> SubVitals is native CX analytics for Reddit, built on Devvit. One install, one pinned post, and your sub becomes a full triage cockpit.
 
 **Action:** Quick zoom on KPI strip — 6 metrics, deltas, top driver, active incident count.
 
@@ -55,7 +55,7 @@
 **Visual:** Click **Contact drivers** tab. See the visual taxonomy tree at the top.
 
 **Voice:**
-> Every brand defines its own contact drivers — Bug, Refund, Feature Request — and now they're hierarchical. Bug splits into Crash, UI Glitch, Audio. RedLettuce's AI picks the most specific leaf when it's confident.
+> Every brand defines its own contact drivers — Bug, Refund, Feature Request — and now they're hierarchical. Bug splits into Crash, UI Glitch, Audio. SubVitals's AI picks the most specific leaf when it's confident.
 
 **Action:**
 1. Show the tree editor with indented children
@@ -106,19 +106,19 @@
 **Voice:**
 > Built-in pipelines cover the common cases. Custom pipelines let your team encode your own classification rules — system prompt, output schema, action. All without leaving Reddit.
 
-**Action:** Show advanced option click → Studio promotion modal: "Multi-step pipelines need RedLettuce Studio →"
+**Action:** Show advanced option click → Studio promotion modal: "Multi-step pipelines need SubVitals Studio →"
 
 **Voice continues:**
-> For multi-step workflows, A/B testing, cross-subreddit analytics, and integrations with Sprinklr or Zendesk — we've built RedLettuce Studio, our Pro tier at studio.redlettuce.app.
+> For multi-step workflows, A/B testing, cross-subreddit analytics, and integrations with Sprinklr or Zendesk — we've built SubVitals Studio, our Pro tier at studio.sub-vitals.app.
 
 ---
 
 ## Scene 8 · The close (2:35–2:45) — 10s
 
-**Visual:** RedLettuce logo. URL: **redlettuce.app**. Brief credits.
+**Visual:** SubVitals logo. URL: **sub-vitals.app**. Brief credits.
 
 **Voice:**
-> RedLettuce. Native CX analytics for Reddit. Free on Devvit, Pro on Studio.
+> SubVitals. Native CX analytics for Reddit. Free on Devvit, Pro on Studio.
 > Built for the hackathon, ready for r/Sonos.
 
 **Action:** Hold logo 3 seconds. Fade.

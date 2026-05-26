@@ -142,7 +142,7 @@ export function App() {
   const initial = useMemo(readInitialState, []);
   const [view, setView] = useState<View>(initial.view);
 
-  // Mod-status check — RedLettuce is a mod tool; non-mods see a friendly
+  // Mod-status check — SubVitals is a mod tool; non-mods see a friendly
   // landing instead of broken loading states. Server still enforces via
   // requireMod on every endpoint; this is the UX layer.
   const meQ = useQuery({

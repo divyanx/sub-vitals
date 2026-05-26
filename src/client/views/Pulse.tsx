@@ -1,11 +1,11 @@
 /**
- * Daily Pulse view — the inline native-feeling panel for the pinned RedLettuce post.
+ * Daily Pulse view — the inline native-feeling panel for the pinned SubVitals post.
  *
  * Rendered at `?view=pulse` (the default when a mod opens the pinned post).
  * Designed to be glanceable — all critical metrics visible without scrolling.
  *
  * Layout:
- *   Header: "RedLettuce · Today's Pulse" with orange accent dot
+ *   Header: "SubVitals · Today's Pulse" with orange accent dot
  *   Stat row (4 numbers): Posts today / Top driver / Negative share / Active incidents
  *   Mini trend: 7-day sentiment bar chart (positive / neutral / negative stacked bars)
  *   Footer: "Open full dashboard →" CTA
@@ -30,7 +30,7 @@ export function Pulse({ onOpenDashboard }: Props) {
           aria-hidden="true"
         />
         <h1 className="text-[length:var(--t-xl)] font-semibold tracking-tight text-[var(--n-12)]">
-          RedLettuce · Today's Pulse
+          SubVitals · Today's Pulse
         </h1>
         {stats.data && (
           <span className="ml-auto text-xs text-[var(--text-muted)]" title="Date">

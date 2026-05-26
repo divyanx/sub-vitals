@@ -1,5 +1,5 @@
 /**
- * Onboarding.tsx — First-run wizard for RedLettuce mods.
+ * Onboarding.tsx — First-run wizard for SubVitals mods.
  *
  * Renders as a <dialog> modal overlay over the dashboard. Four steps:
  * Welcome → Triage Inbox → Contact Drivers → Done.
@@ -50,11 +50,11 @@ interface Step {
 
 const STEPS: [Step, Step, Step, Step] = [
   {
-    title: 'Welcome to RedLettuce',
+    title: 'Welcome to SubVitals',
     icon: '◈',
     body: 'Native CX analytics for your Reddit brand community.',
     detail:
-      'RedLettuce lives entirely inside your subreddit — no external logins, no third-party cookies. Everything you see is scoped to your installation.',
+      'SubVitals lives entirely inside your subreddit — no external logins, no third-party cookies. Everything you see is scoped to your installation.',
   },
   {
     title: 'Triage Inbox',
@@ -73,7 +73,7 @@ const STEPS: [Step, Step, Step, Step] = [
   {
     title: "You're ready",
     icon: '✓',
-    body: 'Submit a test post to see RedLettuce in action.',
+    body: 'Submit a test post to see SubVitals in action.',
     detail:
       'It auto-tags within 5 seconds. Check the Inbox tab — the post will appear with its sentiment score and suggested driver already filled in.',
   },
@@ -150,7 +150,7 @@ function OnboardingModal({ onComplete }: OnboardingProps) {
   return (
     <dialog
       ref={dialogRef}
-      aria-label="RedLettuce onboarding tour"
+      aria-label="SubVitals onboarding tour"
       aria-modal="true"
       onClose={dismiss}
       className="m-auto max-h-[90vh] w-full max-w-lg overflow-y-auto rounded-[var(--r-4)] border border-[var(--n-4)] bg-[var(--n-1)] p-0 shadow-[var(--shadow-3)] backdrop:bg-black/60 open:flex open:flex-col max-sm:fixed max-sm:inset-0 max-sm:m-0 max-sm:max-w-none max-sm:rounded-none max-sm:h-dvh"

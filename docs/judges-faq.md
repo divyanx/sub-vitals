@@ -1,4 +1,4 @@
-# RedLettuce — FAQ for hackathon judges
+# SubVitals — FAQ for hackathon judges
 
 Things judges might want to know that aren't obvious from the demo video.
 
@@ -6,7 +6,7 @@ Things judges might want to know that aren't obvious from the demo video.
 
 Devvit is excellent for the in-Reddit experience — pinned posts, mod menus, custom forms, native triggers. We use it for everything that happens inside a single subreddit.
 
-The standalone Studio webapp (studio.redlettuce.app) exists because:
+The standalone Studio webapp (studio.sub-vitals.app) exists because:
 - A mod managing multiple brand subs (e.g. r/Sonos + r/SonosBeta + r/SonosCommunity) can't see a unified cross-sub view from inside Reddit
 - Long-term analytics (90 days, 1 year) don't fit in per-installation Redis
 - External integrations (Sprinklr, Zendesk, Slack) need an authenticated REST API that Devvit doesn't expose
@@ -16,7 +16,7 @@ The Devvit app works completely standalone — Studio is a **strict upgrade**, n
 
 ## What is the brand name?
 
-The app is called **RedLettuce** — brand name and Devvit slug both match. The slug `redlettuce` on the Devvit directory is correct and intentional.
+The app is called **SubVitals** — brand name and Devvit slug both match. The slug `sub-vitals` on the Devvit directory is correct and intentional.
 
 ## What's actually using AI vs heuristics?
 
@@ -55,7 +55,7 @@ OpenRouter gives mods provider choice (Anthropic / Google / OpenAI / Mistral) wi
 
 - **Devvit app**: `/Users/divyansh/Projects/redlattice/` (private during hackathon, will open-source the core post-judging under MIT)
 - **Studio webapp**: `/Users/divyansh/Projects/redlattice-studio/` (private SaaS — code stays closed)
-- **Docs**: `/Users/divyansh/Projects/redlattice-docs/` (will be public at docs.redlettuce.app under CC-BY)
+- **Docs**: `/Users/divyansh/Projects/redlattice-docs/` (will be public at docs.sub-vitals.app under CC-BY)
 
 ## What's Phase 2 (post-hackathon)?
 
@@ -87,11 +87,11 @@ From `devvit.json`:
 |---|---|
 | `reddit.scope: moderator` | Read posts/comments, apply flair, send modmail, distinguish comments — all standard mod actions |
 | `redis` | All analytics state (per-installation auto-scoped) |
-| `http` (3 domains: openrouter.ai, api.openai.com, generativelanguage.googleapis.com, studio.redlettuce.app) | Outbound for AI inference + Studio bridge — explicitly listed, no `*` wildcard |
+| `http` (3 domains: openrouter.ai, api.openai.com, generativelanguage.googleapis.com, studio.sub-vitals.app) | Outbound for AI inference + Studio bridge — explicitly listed, no `*` wildcard |
 | `media` | Upload generated demo screenshots / icons for the pinned post |
 
 No write access to user accounts, no DM permissions, no marketplace integration.
 
 ## What if a moderator wants to remove the app?
 
-`npx devvit uninstall` from their sub. All Redis data is automatically purged by Devvit's runtime — RedLettuce has no external storage to clean up (unless Studio was connected, in which case the token can be revoked from Studio's settings page).
+`npx devvit uninstall` from their sub. All Redis data is automatically purged by Devvit's runtime — SubVitals has no external storage to clean up (unless Studio was connected, in which case the token can be revoked from Studio's settings page).

@@ -4,11 +4,11 @@
 
 ## Module contract
 
-Every feature is a `RedLettuceModule`:
+Every feature is a `SubVitalsModule`:
 
 ```ts
 // src/shared/types.ts
-export interface RedLettuceModule {
+export interface SubVitalsModule {
   readonly name: string;
   readonly description: string;
   readonly tier: 'core' | 'pro' | 'enterprise';
@@ -52,7 +52,7 @@ Total budget: < 5s. Lexicon sentiment is sub-ms. Redis writes are ~5ms. The expe
 ## Event flow: Menu action
 
 ```
-1. Mod clicks "RedLettuce · Tag issue" on a post
+1. Mod clicks "SubVitals · Tag issue" on a post
 2. Devvit → POST /internal/menu/tag-issue  (body = { location, targetId })
 3. Server route handler:
      a. Parse body with Zod

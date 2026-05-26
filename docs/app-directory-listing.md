@@ -1,4 +1,4 @@
-# RedLettuce — Devvit App Directory Listing Copy
+# SubVitals — Devvit App Directory Listing Copy
 
 Reference document for submission to the Devvit App Directory. All copy is
 final-draft; review before submitting via `devvit publish`.
@@ -18,7 +18,7 @@ Native CX analytics for brand subreddits
 ## Short description
 
 ```
-Turn your brand subreddit into a CX intelligence hub. RedLettuce automatically tags posts by contact driver, scores sentiment on every post and comment, and surfaces a live analytics dashboard — all natively inside Reddit.
+Turn your brand subreddit into a CX intelligence hub. SubVitals automatically tags posts by contact driver, scores sentiment on every post and comment, and surfaces a live analytics dashboard — all natively inside Reddit.
 ```
 
 (221 chars — slightly over 200; trim one of the final clauses if strict enforcement applies)
@@ -26,7 +26,7 @@ Turn your brand subreddit into a CX intelligence hub. RedLettuce automatically t
 **Trimmed variant (197 chars):**
 
 ```
-Turn your brand subreddit into a CX hub. RedLettuce tags posts by contact driver, scores sentiment on every post and comment, and surfaces a live analytics dashboard — native to Reddit.
+Turn your brand subreddit into a CX hub. SubVitals tags posts by contact driver, scores sentiment on every post and comment, and surfaces a live analytics dashboard — native to Reddit.
 ```
 
 ---
@@ -34,7 +34,7 @@ Turn your brand subreddit into a CX hub. RedLettuce tags posts by contact driver
 ## Long description
 
 ```
-RedLettuce is a Devvit-native customer experience analytics suite built for brand subreddits — communities like r/Sonos, r/OpenPhone, or any subreddit where a company's customers congregate.
+SubVitals is a Devvit-native customer experience analytics suite built for brand subreddits — communities like r/Sonos, r/OpenPhone, or any subreddit where a company's customers congregate.
 
 What it does:
 
@@ -72,7 +72,7 @@ From `devvit.json`:
 | `redis` | All application state (driver tags, sentiment scores, agent whitelist, daily rollups, incident records) is stored in Devvit Redis — the only persistence layer available on the platform. |
 | `http` — `api.openai.com`, `openrouter.ai` | Calls OpenRouter for AI-assisted contact-driver classification and sentiment judgment. OpenAI-compatible API. Only fired when the lexicon confidence is below threshold; subject to a per-installation monthly cost cap. |
 | `http` — `generativelanguage.googleapis.com` | Alternative AI provider endpoint (Google Gemini via OpenRouter) — same traffic as above, routed through OpenRouter's multi-provider gateway. |
-| `http` — `studio.redlettuce.app` | Optional outbound webhook to the RedLettuce Studio cross-community analytics webapp. Disabled by default; only activates when a Studio integration token is configured by the mod. |
+| `http` — `studio.sub-vitals.app` | Optional outbound webhook to the SubVitals Studio cross-community analytics webapp. Disabled by default; only activates when a Studio integration token is configured by the mod. |
 | `media` | Required by Devvit Web for the custom post iframe surface that hosts the React analytics dashboard. |
 
 ---
@@ -108,7 +108,7 @@ Judges can install the app from the directory and see it live.
 ## App name (directory display name)
 
 ```
-RedLettuce
+SubVitals
 ```
 
 ## Developer / publisher

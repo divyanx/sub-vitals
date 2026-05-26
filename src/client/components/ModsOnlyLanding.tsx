@@ -2,7 +2,7 @@
  * ModsOnlyLanding — friendly gate for non-moderators.
  *
  * Why this exists:
- *   The pinned RedLettuce post is visible to anyone in the subreddit
+ *   The pinned SubVitals post is visible to anyone in the subreddit
  *   (Reddit posts can't be hidden from subscribers). Without this gate
  *   non-mods opening the post would see a half-loaded dashboard with
  *   every API call 403ing — confusing and looks broken.
@@ -39,7 +39,7 @@ export function ModsOnlyLanding({ subredditName }: ModsOnlyLandingProps) {
             className="block h-7 w-7 shrink-0 rounded-md"
           />
           <div className="leading-tight">
-            <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">RedLettuce</h1>
+            <h1 className="text-lg font-semibold tracking-tight text-[var(--text)]">SubVitals</h1>
             <p className="hidden text-[length:var(--t-xs)] text-[var(--text-muted)] sm:block">
               Customer experience mod cockpit for brand subreddits
             </p>
@@ -61,15 +61,15 @@ export function ModsOnlyLanding({ subredditName }: ModsOnlyLandingProps) {
         </h2>
 
         <p className="mt-3 max-w-md text-[length:var(--t-base)] text-[var(--n-9)]">
-          RedLettuce is a mod-only tool installed in {subLabel}. It helps the moderation team
-          analyse post sentiment, flag spam and fraud, and respond faster to community feedback.
+          SubVitals is a mod-only tool installed in {subLabel}. It helps the moderation team analyse
+          post sentiment, flag spam and fraud, and respond faster to community feedback.
         </p>
 
         <div className="mt-8 grid w-full max-w-md gap-3 text-left">
           <Card
             icon="🧑‍💬"
             title="If you're a community member"
-            body="Thanks for visiting! Mods use RedLettuce to spot urgent posts faster — your bug reports, refund requests, and feature ideas are getting attention."
+            body="Thanks for visiting! Mods use SubVitals to spot urgent posts faster — your bug reports, refund requests, and feature ideas are getting attention."
           />
           <Card
             icon="🛠️"
@@ -79,7 +79,7 @@ export function ModsOnlyLanding({ subredditName }: ModsOnlyLandingProps) {
           <Card
             icon="🚀"
             title="Want this in your subreddit?"
-            body="RedLettuce is open for installation. Search 'RedLettuce' in Reddit's developer console or visit developers.reddit.com to install it in any sub you moderate."
+            body="SubVitals is open for installation. Search 'SubVitals' in Reddit's developer console or visit developers.reddit.com to install it in any sub you moderate."
           />
         </div>
 
