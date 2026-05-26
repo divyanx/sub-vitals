@@ -278,7 +278,7 @@ async function getProvider() {
     | undefined;
   if (!apiKey) return null;
   const { model } = await getEffectiveModel();
-  // Official @ai-sdk/openai provider — gpt-5 family requires
+  // Official @ai-sdk/openai provider — OpenAI provider —
   // max_completion_tokens which this provider handles automatically.
   const provider = createOpenAI({ apiKey });
   return { handle: provider(model || DEFAULT_MODEL), model: model || DEFAULT_MODEL };
@@ -454,9 +454,9 @@ async function handleChat(c: Context): Promise<Response> {
 
   let assistantText = '';
   try {
-    // gpt-5 family rejects non-default temperature; only set it for
+    // Reasoning models reject non-default temperature; only set for
     // non-reasoning models. Bump budget to leave room for reasoning tokens.
-    const isReasoning = /^(gpt-5|o1|o3|o4)/.test(provider.model);
+    const isReasoning = /^(o1|o3|o4)/.test(provider.model);
     const result = await generateText({
       model: provider.handle,
       system: buildSystemPrompt(body.data.context),

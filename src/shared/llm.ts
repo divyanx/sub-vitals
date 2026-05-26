@@ -44,12 +44,12 @@ const DEFAULT_CAP_CENTS = 500;
 const COST_PER_1K: Record<string, { in: number; out: number }> = {
   'anthropic/claude-haiku-4.5': { in: 0.1, out: 0.5 },
   'anthropic/claude-sonnet-4.6': { in: 0.3, out: 1.5 },
-  'openai/gpt-5-mini': { in: 0.025, out: 0.2 },
-  'openai/gpt-5-nano': { in: 0.005, out: 0.04 },
+  'gpt-4.1-mini': { in: 0.015, out: 0.06 },
+  'gpt-4.1-nano': { in: 0.005, out: 0.02 },
   'google/gemini-2.5-flash': { in: 0.03, out: 0.25 },
   'google/gemini-2.5-pro': { in: 0.125, out: 1.0 },
-  'gpt-4o-mini': { in: 0.015, out: 0.06 },
-  'gpt-4o': { in: 0.25, out: 1.0 },
+
+  'gpt-4.1': { in: 0.25, out: 1.0 },
   'meta-llama/llama-4-scout': { in: 0.011, out: 0.034 },
   default: { in: 0.2, out: 0.8 },
 };
@@ -245,7 +245,7 @@ export async function llmObject<S extends ZodTypeAny>(args: {
     return { ok: false, reason: 'rate-limited' };
   }
 
-  // Official @ai-sdk/openai provider — handles gpt-5 family quirks
+  // Official @ai-sdk/openai provider — handles OpenAI model quirks
   // (max_completion_tokens, reasoning_effort, etc.) natively.
   // openrouter.ai is blocked by Devvit's outbound HTTP gate pending
   // api@reddit.com approval; api.openai.com is in devvit.json.
@@ -258,11 +258,11 @@ export async function llmObject<S extends ZodTypeAny>(args: {
   // Track the originally-configured slug (before fallback) for error accounting.
   const configuredSlug = cfg.originalSlug;
 
-  // gpt-5 family are reasoning models: they consume ~128-256 tokens of the
+  // o-series are reasoning models: they consume ~128-256 tokens of the
   // output budget on internal reasoning BEFORE producing any content, and
   // they reject non-default `temperature`. Compensate so small callers
   // (e.g. sentiment with maxTokens=120) don't silently return empty.
-  const isReasoning = /^(gpt-5|o1|o3|o4)/.test(cfg.model);
+  const isReasoning = /^(o1|o3|o4)/.test(cfg.model);
   const requestedMax = args.maxTokens ?? 200;
   const effectiveMax = isReasoning ? Math.max(requestedMax + 512, 768) : requestedMax;
 
