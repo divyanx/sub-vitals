@@ -240,7 +240,7 @@ export async function llmObject<S extends ZodTypeAny>(args: {
   }
 
   // Rate-limit gate (60 reqs / min per installation by default)
-  const allowed = await takeToken({ name: 'llm', capacity: 60, refillPerSec: 1 });
+  const allowed = await takeToken({ name: 'llm', capacity: 10, refillPerSec: 0.5 });
   if (!allowed) {
     return { ok: false, reason: 'rate-limited' };
   }
