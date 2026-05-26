@@ -41,7 +41,7 @@
 
 ## Pre-recording checklist
 
-- [ ] Seeder run: `npm run seed:demo -- --sub r/redlattice_divyanx_`
+- [ ] Seeder run: `npm run seed:demo -- --sub r/sub_vitals_dev`
 - [ ] At least 1 active incident visible
 - [ ] At least 1 hierarchical driver (Bug → Crash) with contributing posts
 - [ ] At least 1 theme card visible
