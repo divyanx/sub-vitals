@@ -434,7 +434,7 @@ async function handleChat(c: Context): Promise<Response> {
       id: newId('m'),
       role: 'assistant',
       content:
-        'I cannot respond — no `openrouter-api-key` is configured. Add it under Settings → AI.',
+        'I cannot respond — no AI API key is configured. Ask a mod to run `npx devvit settings set openrouter-api-key` and paste an OpenAI key.',
       ts: Date.now(),
     };
     convo.messages.push(assistantMsg);
