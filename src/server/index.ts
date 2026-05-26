@@ -1526,6 +1526,7 @@ for (const mod of [
   rulesModule,
   copilotModule,
   studioBridgeModule,
+  dataLabModule,
 ]) {
   mod.apiRoutes?.(app);
 }
