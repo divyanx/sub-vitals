@@ -5335,11 +5335,20 @@ function CsvDownloadButton({ limit }: { limit: number }) {
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
-  const handleDownload = () => {
+  const handleDownload = async () => {
     setBusy(true);
     setErr(null);
     try {
-      window.open(`/api/export/posts.csv?limit=${limit}`, '_top');
+      const res = await fetch(`/api/export/posts.csv?limit=${limit}`);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const text = await res.text();
+      const blob = new Blob([text], { type: 'text/csv' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `sub-vitals-posts-${new Date().toISOString().slice(0, 10)}.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
     } catch (e) {
       setErr(e instanceof Error ? e.message : String(e));
     } finally {
