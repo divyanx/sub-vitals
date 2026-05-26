@@ -28,7 +28,7 @@ export function ModsOnlyLanding({ subredditName }: ModsOnlyLandingProps) {
       {/* Same header shell as the dashboard so it doesn't feel like an
           error page — visual continuity matters. */}
       <header className="border-b border-[var(--border)] bg-[var(--bg)]/80 px-6 py-3 backdrop-blur">
-        <div className="mx-auto flex max-w-[1600px] items-center gap-3">
+        <div className="mx-auto flex max-w-full items-center gap-3">
           <img
             src="/logo-64.png"
             srcSet="/logo-64.png 1x, /logo-256.png 4x"
