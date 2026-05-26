@@ -666,6 +666,18 @@ export const api = {
       if (!r.ok) throw new Error(`clear-fallback failed: HTTP ${r.status}`);
       return (await r.json()) as { ok: boolean; slug?: string; message?: string };
     },
+    setKey: async (key: string): Promise<{ ok: boolean }> => {
+      const r = await fetch('/api/ai/set-key', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ key }),
+      });
+      if (!r.ok) {
+        const b = await r.json().catch(() => ({}));
+        throw new Error((b as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { ok: boolean };
+    },
   },
   adminDebug: () =>
     getJson<{

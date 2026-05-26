@@ -16,7 +16,7 @@
  * one file.
  */
 
-import { context, createServer, getServerPort, reddit, redis, settings } from '@devvit/web/server';
+import { context, createServer, getServerPort, reddit, redis } from '@devvit/web/server';
 import { serve } from '@hono/node-server';
 import { agentMetricsModule } from '@modules/agent-metrics/index.js';
 import {
@@ -2390,7 +2390,7 @@ app.get('/api/settings', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const [effective, openrouterKeyRaw] = await Promise.all([
     readAllEffectiveSettings(),
-    settings.get('openrouter-api-key').catch(() => undefined),
+    readEffectiveSetting<string>('openrouter-api-key'),
   ]);
   return c.json({
     ...effective,
@@ -2457,7 +2457,7 @@ app.put('/api/settings', async (c) => {
   );
 
   const updated = await readAllEffectiveSettings();
-  const openrouterKeyRaw = await settings.get('openrouter-api-key').catch(() => undefined);
+  const openrouterKeyRaw = await readEffectiveSetting<string>('openrouter-api-key');
   void recordAudit('settings-update', null, { keys: Object.keys(updates) });
   return c.json({
     ...updated,
@@ -2709,7 +2709,7 @@ app.post('/api/ai/validate-model', async (c) => {
   // We temporarily override model by calling the provider directly to avoid
   // writing to the shared cost tracker for a probe call.
   const probeSchema = z.object({ ok: z.boolean() });
-  const apiKeyRaw = await settings.get('openrouter-api-key').catch(() => undefined);
+  const apiKeyRaw = await readEffectiveSetting<string>('openrouter-api-key');
   if (typeof apiKeyRaw !== 'string' || !apiKeyRaw) {
     return c.json({
       valid: false,
@@ -2789,6 +2789,28 @@ app.post('/api/ai/clear-fallback', async (c) => {
   await clearFallback(originalSlug);
   log.info('llm: fallback cleared by mod', { slug: originalSlug });
   return c.json({ ok: true, slug: originalSlug });
+});
+
+app.post('/api/ai/set-key', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  let raw: unknown;
+  try {
+    raw = await c.req.json();
+  } catch {
+    return c.json({ error: 'invalid JSON' }, 400);
+  }
+  const body = raw as Record<string, unknown>;
+  const key = typeof body.key === 'string' ? body.key.trim() : '';
+  if (!key || !key.startsWith('sk-')) {
+    return c.json({ error: 'Invalid API key — must start with sk-' }, 400);
+  }
+  try {
+    await writeOverrideSetting('openrouter-api-key', key);
+    return c.json({ ok: true });
+  } catch (err) {
+    log.error('ai: set-key failed', { err: String(err) });
+    return c.json({ error: 'Failed to save key' }, 500);
+  }
 });
 
 /** Returns the current AI model state: effective model, whether fallback is active, original slug. */

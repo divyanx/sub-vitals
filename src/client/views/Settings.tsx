@@ -747,8 +747,20 @@ function AISection({
   const [validating, setValidating] = useState(false);
   const [validation, setValidation] = useState<ValidationResult | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [apiKey, setApiKey] = useState('');
 
   const qc = useQueryClient();
+
+  const saveKeyMut = useMutation({
+    mutationFn: () => api.ai.setKey(apiKey),
+    onSuccess: () => {
+      setApiKey('');
+      toast('success', 'API key saved.');
+      onSaved();
+      void qc.invalidateQueries({ queryKey: ['ai-status', 'settings'] });
+    },
+    onError: (err: Error) => toast('error', err.message),
+  });
 
   const saveMut = useMutation({
     mutationFn: () => api.settings.put({ 'llm-model': effectiveSlug }),
@@ -846,30 +858,41 @@ function AISection({
   return (
     <Section title="AI" description="OpenRouter model selection, validation, and API key status.">
       <div className="space-y-4">
-        {/* API Key status */}
-        <div
-          className={[
-            'flex items-center gap-3 rounded-[var(--r-3)] border px-4 py-3',
-            'text-[length:var(--t-sm)]',
-            data.openrouterKeyConfigured
-              ? 'border-[var(--success-9)] bg-[var(--success-3)] text-[var(--success-11)]'
-              : 'border-[var(--warn-9)] bg-[var(--warn-3)] text-[var(--warn-11)]',
-          ].join(' ')}
-        >
-          <span className="text-base" aria-hidden="true">
-            {data.openrouterKeyConfigured ? '✓' : '⚠'}
-          </span>
-          {data.openrouterKeyConfigured ? (
-            <span>OpenRouter API key is configured.</span>
-          ) : (
-            <span>
-              No API key set. Run{' '}
-              <code className="rounded-[var(--r-1)] bg-[var(--warn-3)] px-1">
-                npx devvit settings set openrouter-api-key
-              </code>{' '}
-              to enable AI features.
+        {/* API Key */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2">
+            <span className="text-base" aria-hidden="true">
+              {data.openrouterKeyConfigured ? '✓' : '⚠'}
             </span>
-          )}
+            <span
+              className={`text-[length:var(--t-sm)] ${data.openrouterKeyConfigured ? 'text-[var(--success-11)]' : 'text-[var(--warn-11)]'}`}
+            >
+              {data.openrouterKeyConfigured
+                ? 'API key configured'
+                : 'No API key — AI features disabled'}
+            </span>
+          </div>
+          <div className="flex gap-2">
+            <input
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              placeholder={data.openrouterKeyConfigured ? '••••••••••••••••••••••' : 'sk-proj-...'}
+              className="min-h-[44px] flex-1 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--input-bg)] px-3 py-1.5 text-[length:var(--t-sm)] text-[var(--n-11)] placeholder:text-[var(--n-7)] outline-none focus:border-[var(--accent-9)]"
+            />
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => saveKeyMut.mutate()}
+              disabled={!apiKey.trim() || saveKeyMut.isPending}
+              isLoading={saveKeyMut.isPending}
+            >
+              {data.openrouterKeyConfigured ? 'Update key' : 'Save key'}
+            </Button>
+          </div>
+          <p className="text-[length:var(--t-xs)] text-[var(--n-8)]">
+            OpenAI API key (sk-proj-...). Powers all AI features. Stored encrypted.
+          </p>
         </div>
 
         {/* Auto-fallback alert */}
