@@ -44,12 +44,12 @@ const DEFAULT_CAP_CENTS = 500;
 const COST_PER_1K: Record<string, { in: number; out: number }> = {
   'anthropic/claude-haiku-4.5': { in: 0.1, out: 0.5 },
   'anthropic/claude-sonnet-4.6': { in: 0.3, out: 1.5 },
-  'gpt-4.1-mini': { in: 0.015, out: 0.06 },
-  'gpt-4.1-nano': { in: 0.005, out: 0.02 },
+  'gpt-5.4-mini': { in: 0.015, out: 0.06 },
+  'gpt-5.4-nano': { in: 0.005, out: 0.02 },
   'google/gemini-2.5-flash': { in: 0.03, out: 0.25 },
   'google/gemini-2.5-pro': { in: 0.125, out: 1.0 },
 
-  'gpt-4.1': { in: 0.25, out: 1.0 },
+  'gpt-5.4': { in: 0.25, out: 1.0 },
   'meta-llama/llama-4-scout': { in: 0.011, out: 0.034 },
   default: { in: 0.2, out: 0.8 },
 };

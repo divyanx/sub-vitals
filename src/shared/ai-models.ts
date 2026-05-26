@@ -21,10 +21,10 @@ export interface ModelOption {
  */
 const COST_TABLE: Record<string, { in: number; out: number }> = {
   'anthropic/claude-haiku-4.5': { in: 0.1, out: 0.5 },
-  'gpt-4.1-mini': { in: 0.015, out: 0.06 },
+  'gpt-5.4-mini': { in: 0.015, out: 0.06 },
   'google/gemini-2.5-flash': { in: 0.03, out: 0.25 },
   'anthropic/claude-sonnet-4-6': { in: 0.3, out: 1.5 },
-  'gpt-4.1': { in: 0.25, out: 1.0 },
+  'gpt-5.4': { in: 0.25, out: 1.0 },
   'mistralai/mistral-large-2509': { in: 0.2, out: 0.6 },
   'google/gemini-2.5-pro': { in: 0.125, out: 1.0 },
   'meta-llama/llama-4-scout': { in: 0.011, out: 0.034 },
@@ -53,12 +53,12 @@ export const CURATED_MODELS: ModelOption[] = [
   },
   {
     // OpenAI direct (bare slug) — openrouter.ai pending Reddit gateway
-    // approval. Using gpt-4.1-mini as default.
-    slug: 'gpt-4.1-mini',
-    label: 'GPT-4.1 Mini',
+    // approval. Using gpt-5.4-mini as default.
+    slug: 'gpt-5.4-mini',
+    label: 'GPT-5.4 Mini',
     provider: 'openai',
     tier: 'recommended',
-    pricePer1kTaggingCalls: estimateUsd('gpt-4.1-mini'),
+    pricePer1kTaggingCalls: estimateUsd('gpt-5.4-mini'),
     supportsStructuredOutput: true,
     notes: 'Fast, cheap, reliable. Default model for all pipelines.',
   },
@@ -81,11 +81,11 @@ export const CURATED_MODELS: ModelOption[] = [
     notes: 'Highest accuracy; use for complex reasoning tasks.',
   },
   {
-    slug: 'gpt-4.1',
-    label: 'GPT-4.1',
+    slug: 'gpt-5.4',
+    label: 'GPT-5.4',
     provider: 'openai',
     tier: 'best',
-    pricePer1kTaggingCalls: estimateUsd('gpt-4.1'),
+    pricePer1kTaggingCalls: estimateUsd('gpt-5.4'),
     supportsStructuredOutput: true,
     notes: "OpenAI's most capable model.",
   },
@@ -130,7 +130,7 @@ export const CURATED_MODELS: ModelOption[] = [
 // Default model — OpenAI direct because openrouter.ai is pending Reddit
 // outbound-domain approval. Once openrouter is approved we can switch
 // the default back to anthropic/claude-haiku-4.5 (cheaper + faster).
-export const DEFAULT_MODEL = 'gpt-4.1-mini';
+export const DEFAULT_MODEL = 'gpt-5.4-mini';
 
 /** Look up a model by slug. Returns null if not in the catalog. */
 export function findModel(slug: string): ModelOption | null {
