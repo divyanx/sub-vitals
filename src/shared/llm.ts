@@ -48,6 +48,8 @@ const COST_PER_1K: Record<string, { in: number; out: number }> = {
   'openai/gpt-5-nano': { in: 0.005, out: 0.04 },
   'google/gemini-2.5-flash': { in: 0.03, out: 0.25 },
   'google/gemini-2.5-pro': { in: 0.125, out: 1.0 },
+  'gpt-4o-mini': { in: 0.015, out: 0.06 },
+  'gpt-4o': { in: 0.25, out: 1.0 },
   'meta-llama/llama-4-scout': { in: 0.011, out: 0.034 },
   default: { in: 0.2, out: 0.8 },
 };

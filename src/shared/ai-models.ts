@@ -54,13 +54,13 @@ export const CURATED_MODELS: ModelOption[] = [
   {
     // OpenAI direct (bare slug) — openrouter.ai pending Reddit gateway
     // approval. Restore 'openai/gpt-5-mini' once approved.
-    slug: 'gpt-5-mini',
-    label: 'GPT-5 Mini',
+    slug: 'gpt-4o-mini',
+    label: 'GPT-4o Mini',
     provider: 'openai',
     tier: 'recommended',
-    pricePer1kTaggingCalls: estimateUsd('gpt-5-mini'),
+    pricePer1kTaggingCalls: estimateUsd('gpt-4o-mini'),
     supportsStructuredOutput: true,
-    notes: 'Reasoning model; default choice while OpenRouter approval is pending.',
+    notes: 'Fast, cheap, reliable. Default model for all pipelines.',
   },
   {
     slug: 'google/gemini-2.5-flash',
@@ -130,7 +130,7 @@ export const CURATED_MODELS: ModelOption[] = [
 // Default model — OpenAI direct because openrouter.ai is pending Reddit
 // outbound-domain approval. Once openrouter is approved we can switch
 // the default back to anthropic/claude-haiku-4.5 (cheaper + faster).
-export const DEFAULT_MODEL = 'gpt-5-mini';
+export const DEFAULT_MODEL = 'gpt-4o-mini';
 
 /** Look up a model by slug. Returns null if not in the catalog. */
 export function findModel(slug: string): ModelOption | null {
