@@ -9,8 +9,7 @@
     },
     "redis": true,
     "http": {
-      "enable": true,
-      "domains": ["api.openai.com"]
+      "enable": true
     },
     "media": true
   },
