@@ -661,6 +661,14 @@ export const api = {
         hint?: string;
       };
     },
+    health: () =>
+      getJson<{
+        ok: boolean;
+        error?: string;
+        model?: string;
+        spentCents?: number;
+        capCents?: number;
+      }>('/api/ai/health'),
     clearFallback: async () => {
       const r = await fetch('/api/ai/clear-fallback', { method: 'POST' });
       if (!r.ok) throw new Error(`clear-fallback failed: HTTP ${r.status}`);

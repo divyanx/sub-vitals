@@ -2852,6 +2852,53 @@ app.get('/api/ai/status', async (c) => {
   });
 });
 
+app.get('/api/ai/health', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const apiKey = await readEffectiveSetting<string>('openrouter-api-key').catch(() => undefined);
+  if (!apiKey) {
+    return c.json({
+      ok: false,
+      error: 'No API key configured. Go to Settings → AI to add your OpenAI key.',
+    });
+  }
+  const { model } = await getEffectiveModel();
+  const spent = await readMonthlyCents();
+  const capRaw = await readEffectiveSetting<number>('llm-monthly-cost-cap-cents').catch(() => 500);
+  const cap = typeof capRaw === 'number' && capRaw > 0 ? capRaw : 500;
+  if (spent >= cap) {
+    return c.json({
+      ok: false,
+      error: `Monthly AI budget exhausted ($${(spent / 100).toFixed(2)} / $${(cap / 100).toFixed(2)}). Raise the cap in Settings → AI or wait for next month.`,
+    });
+  }
+  try {
+    const { createOpenAI } = await import('@ai-sdk/openai');
+    const provider = createOpenAI({ apiKey });
+    const { generateText } = await import('ai');
+    await generateText({
+      model: provider(model),
+      prompt: 'Say ok',
+      abortSignal: AbortSignal.timeout(10_000),
+    });
+    return c.json({ ok: true, model, spentCents: spent, capCents: cap });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('insufficient_quota') || msg.includes('exceeded')) {
+      return c.json({
+        ok: false,
+        error: 'OpenAI API key has no credits. Add billing at platform.openai.com.',
+      });
+    }
+    if (msg.includes('invalid_api_key') || msg.includes('Incorrect API key')) {
+      return c.json({ ok: false, error: 'Invalid OpenAI API key. Update it in Settings → AI.' });
+    }
+    if (msg.includes('rate') || msg.includes('too many')) {
+      return c.json({ ok: false, error: 'AI rate limited. Requests will resume shortly.' });
+    }
+    return c.json({ ok: false, error: `AI error: ${msg.slice(0, 200)}` });
+  }
+});
+
 // ---------------------------------------------------------------------------
 // Webhooks (mod-only)
 // ---------------------------------------------------------------------------

@@ -434,6 +434,7 @@ export function Dashboard({
         onSettingsSection={navigateToSettings}
         badges={badges}
       />
+      <AiHealthBanner />
       <main className="mx-auto w-full max-w-full flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
           <Suspense fallback={<SkeletonGrid />}>
@@ -481,6 +482,36 @@ export function Dashboard({
         currentTab={tab}
         {...(activeInstance ? { currentInstanceId: activeInstance } : {})}
       />
+    </div>
+  );
+}
+
+function AiHealthBanner() {
+  const healthQ = useQuery({
+    queryKey: ['ai-health'],
+    queryFn: () => api.ai.health(),
+    staleTime: 60_000,
+    refetchInterval: 120_000,
+    retry: false,
+  });
+
+  if (healthQ.isPending || !healthQ.data || healthQ.data.ok) return null;
+
+  return (
+    <div className="mx-auto w-full max-w-full px-6">
+      <div className="flex items-center gap-3 rounded-lg border border-[var(--error-9)] bg-[var(--error-3)] px-4 py-3 text-sm text-[var(--error-11)]">
+        <span className="shrink-0 text-lg" aria-hidden="true">
+          ⚠
+        </span>
+        <span className="flex-1">{healthQ.data.error}</span>
+        <button
+          type="button"
+          onClick={() => healthQ.refetch()}
+          className="shrink-0 rounded border border-[var(--error-9)] px-2 py-1 text-xs hover:bg-[var(--error-9)] hover:text-white transition"
+        >
+          Retry
+        </button>
+      </div>
     </div>
   );
 }
