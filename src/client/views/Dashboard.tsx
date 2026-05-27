@@ -66,9 +66,9 @@ import { Onboarding } from './Onboarding.tsx';
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
 const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
 const LabLazy = lazy(() => import('./Lab.tsx').then((m) => ({ default: m.Lab })));
-const SentimentChartLazy = lazy(() =>
-  import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
-);
+
+import { SentimentChart as SentimentChartLazy } from './SentimentChart.tsx';
+
 const RulesLazy = lazy(() => import('./Rules.tsx').then((m) => ({ default: m.Rules })));
 const ContentBrowserLazy = lazy(() =>
   import('./ContentBrowser.tsx').then((m) => ({ default: m.ContentBrowser })),
@@ -3651,13 +3651,7 @@ function SentimentTab() {
         <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
           Daily sentiment volume · 30 days
         </h2>
-        <Suspense
-          fallback={
-            <div className="h-64 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
-          }
-        >
-          <SentimentChartLazy series={series} />
-        </Suspense>
+        <SentimentChartLazy series={series} />
       </section>
     </div>
   );
