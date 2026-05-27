@@ -16,14 +16,27 @@ export type ThemeMode = 'system' | 'dark' | 'light';
 
 const STORAGE_KEY = 'rl-theme';
 
+function detectRedditTheme(): ThemeMode | null {
+  try {
+    const bg = getComputedStyle(document.body).backgroundColor;
+    if (bg) {
+      const match = bg.match(/rgb\((\d+)/);
+      if (match) return Number(match[1]) > 128 ? 'light' : 'dark';
+    }
+  } catch {
+    /* ignore */
+  }
+  return null;
+}
+
 function readStored(): ThemeMode {
   try {
     const v = localStorage.getItem(STORAGE_KEY);
     if (v === 'dark' || v === 'light' || v === 'system') return v;
   } catch {
-    /* SSR / storage blocked */
+    /* SSR / storage blocked — try detecting from Reddit parent */
   }
-  return 'system';
+  return detectRedditTheme() ?? 'system';
 }
 
 function applyTheme(mode: ThemeMode) {
