@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SubVitals</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: #0a0a0a;
+      color: #fafafa;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      overflow: hidden;
+    }
+    .splash {
+      text-align: center;
+      padding: 2rem;
+      max-width: 480px;
+    }
+    .logo {
+      width: 80px;
+      height: 80px;
+      border-radius: 16px;
+      margin: 0 auto 1.5rem;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      letter-spacing: -0.02em;
+    }
+    .desc {
+      color: #a3a3a3;
+      font-size: 0.875rem;
+      margin-bottom: 2rem;
+      line-height: 1.5;
+    }
+    .launch-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.875rem 2rem;
+      background: #ff4500;
+      color: white;
+      border: none;
+      border-radius: 12px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s, transform 0.1s;
+    }
+    .launch-btn:hover { background: #e03d00; }
+    .launch-btn:active { transform: scale(0.97); }
+    .badge {
+      display: inline-block;
+      margin-top: 1.5rem;
+      padding: 0.25rem 0.75rem;
+      background: #1a1a1a;
+      border: 1px solid #333;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      color: #737373;
+    }
+  </style>
+</head>
+<body>
+  <div class="splash">
+    <img src="logo-256.png" alt="SubVitals" class="logo" />
+    <h1>SubVitals · Live Analytics</h1>
+    <p class="desc">Customer experience mod cockpit for brand subreddits. Auto-classification, sentiment tracking, crisis detection, and AI-powered triage.</p>
+    <button type="button" class="launch-btn" id="launch-btn">
+      Open Dashboard →
+    </button>
+    <div class="badge">Mod-only · Powered by AI</div>
+  </div>
+  <script type="module">
+    import { requestExpandedMode } from '@devvit/web/client';
+
+    document.getElementById('launch-btn').addEventListener('click', (e) => {
+      try {
+        requestExpandedMode(e, 'dashboard');
+      } catch (err) {
+        console.error('Failed to enter expanded mode:', err);
+        window.location.href = 'index.html';
+      }
+    });
+  </script>
+</body>
+</html>

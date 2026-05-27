@@ -20,8 +20,12 @@
     "dir": "dist/client",
     "entrypoints": {
       "default": {
-        "entry": "index.html",
-        "height": "tall"
+        "entry": "splash.html",
+        "height": "regular",
+        "inline": true
+      },
+      "dashboard": {
+        "entry": "index.html"
       }
     }
   },
