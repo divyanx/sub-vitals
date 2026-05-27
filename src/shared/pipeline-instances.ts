@@ -145,6 +145,7 @@ export async function listInstances(): Promise<PipelineInstance[]> {
   const instances = Object.values(all)
     .map((v) => JSON.parse(v) as PipelineInstance)
     .sort((a, b) => (a.order ?? 999) - (b.order ?? 999));
+  await backfillEmptyPrompts(instances);
   return instances;
 }
 
@@ -333,4 +334,30 @@ export async function getEffectiveInstanceConfig(
   // Fall back to template defaults
   const tpl = PIPELINE_TEMPLATES.find((t) => t.id === templateId);
   return tpl ? { ...tpl.defaultConfig } : null;
+}
+
+/**
+ * Sync empty instance prompts with their template defaults.
+ * Runs on every listInstances call — cheap because it only writes
+ * when a prompt is empty and the template has a non-empty default.
+ */
+async function backfillEmptyPrompts(instances: PipelineInstance[]): Promise<void> {
+  let dirty = false;
+  for (const inst of instances) {
+    const tpl = PIPELINE_TEMPLATES.find((t) => t.id === inst.templateId);
+    if (!tpl) continue;
+    if (!inst.config.systemPrompt && tpl.defaultConfig.systemPrompt) {
+      inst.config.systemPrompt = tpl.defaultConfig.systemPrompt;
+      dirty = true;
+    }
+    if (!inst.config.userPrompt && tpl.defaultConfig.userPrompt) {
+      inst.config.userPrompt = tpl.defaultConfig.userPrompt;
+      dirty = true;
+    }
+    if (dirty) {
+      inst.updatedAt = Date.now();
+      await saveInstance(inst);
+    }
+    dirty = false;
+  }
 }
