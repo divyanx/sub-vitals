@@ -40,6 +40,8 @@ export class ErrorBoundary extends Component<Props, State> {
           <div className="font-semibold">Something went wrong rendering this view.</div>
           <pre className="mt-3 max-w-full overflow-x-auto whitespace-pre-wrap text-xs text-rose-200/80">
             {error.message}
+            {'\n\n'}
+            {error.stack}
           </pre>
           <button
             type="button"

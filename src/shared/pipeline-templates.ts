@@ -137,7 +137,7 @@ export const PIPELINE_TEMPLATES: PipelineTemplate[] = [
     description:
       'Monitors hourly comment velocity and negative-sentiment share. Triggers an incident when volume exceeds configurable thresholds. No LLM — purely heuristic for speed.',
     category: 'flagging',
-    kind: 'cluster',
+    kind: 'boolean',
     iconEmoji: '📈',
     defaultConfig: {
       trigger: 'comment-create',

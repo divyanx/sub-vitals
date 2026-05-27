@@ -7,16 +7,8 @@
  * actually navigates there.
  */
 
-import { useMemo } from 'react';
-import {
-  Area,
-  AreaChart,
-  CartesianGrid,
-  ResponsiveContainer,
-  Tooltip,
-  XAxis,
-  YAxis,
-} from 'recharts';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { Area, AreaChart, CartesianGrid, Tooltip, XAxis, YAxis } from 'recharts';
 import type { SentimentRollup } from '../lib/api.ts';
 
 interface Props {
@@ -24,6 +16,24 @@ interface Props {
 }
 
 export function SentimentChart({ series }: Props) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(600);
+
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    setWidth(el.clientWidth);
+
+    if (typeof ResizeObserver === 'undefined') return;
+
+    const ro = new ResizeObserver((entries) => {
+      const entry = entries[0];
+      if (entry) setWidth(entry.contentRect.width);
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   const data = useMemo(
     () =>
       series.map((d) => ({
@@ -36,44 +46,47 @@ export function SentimentChart({ series }: Props) {
   );
   return (
     <div className="rounded-[var(--r-3)] border border-[var(--n-4)] bg-[var(--n-2)] p-4 shadow-[var(--shadow-1)]">
-      <div className="h-64 w-full">
-        <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 6, right: 6, left: -16, bottom: 0 }}>
-            <CartesianGrid stroke="var(--n-4)" strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="date" stroke="var(--n-7)" fontSize={11} tickMargin={6} />
-            <YAxis stroke="var(--n-7)" fontSize={11} allowDecimals={false} />
-            <Tooltip
-              contentStyle={{
-                background: 'var(--n-2)',
-                border: '1px solid var(--n-4)',
-                borderRadius: 6,
-                fontSize: 12,
-              }}
-              labelStyle={{ color: 'var(--n-8)' }}
-            />
-            <Area
-              type="monotone"
-              dataKey="positive"
-              stackId="1"
-              stroke="var(--success-9)"
-              fill="var(--success-3)"
-            />
-            <Area
-              type="monotone"
-              dataKey="neutral"
-              stackId="1"
-              stroke="var(--n-7)"
-              fill="var(--n-3)"
-            />
-            <Area
-              type="monotone"
-              dataKey="negative"
-              stackId="1"
-              stroke="var(--error-9)"
-              fill="var(--error-3)"
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+      <div ref={containerRef} className="h-64 w-full">
+        <AreaChart
+          width={width}
+          height={256}
+          data={data}
+          margin={{ top: 6, right: 6, left: -16, bottom: 0 }}
+        >
+          <CartesianGrid stroke="var(--n-4)" strokeDasharray="3 3" vertical={false} />
+          <XAxis dataKey="date" stroke="var(--n-7)" fontSize={11} tickMargin={6} />
+          <YAxis stroke="var(--n-7)" fontSize={11} allowDecimals={false} />
+          <Tooltip
+            contentStyle={{
+              background: 'var(--n-2)',
+              border: '1px solid var(--n-4)',
+              borderRadius: 6,
+              fontSize: 12,
+            }}
+            labelStyle={{ color: 'var(--n-8)' }}
+          />
+          <Area
+            type="monotone"
+            dataKey="positive"
+            stackId="1"
+            stroke="var(--success-9)"
+            fill="var(--success-3)"
+          />
+          <Area
+            type="monotone"
+            dataKey="neutral"
+            stackId="1"
+            stroke="var(--n-7)"
+            fill="var(--n-3)"
+          />
+          <Area
+            type="monotone"
+            dataKey="negative"
+            stackId="1"
+            stroke="var(--error-9)"
+            fill="var(--error-3)"
+          />
+        </AreaChart>
       </div>
     </div>
   );

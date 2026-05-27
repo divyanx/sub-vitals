@@ -1,62 +1,83 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>SubVitals</title>
-  <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-      background: #0a0a0a;
-      color: #fafafa;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      min-height: 100vh;
-    }
-    .splash {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      text-align: center;
-      padding: 2rem;
-      gap: 1.5rem;
-      max-width: 420px;
-    }
-    .logo { width: 72px; height: 72px; border-radius: 14px; }
-    h1 { font-size: 1.4rem; font-weight: 700; letter-spacing: -0.02em; }
-    .desc { color: #a3a3a3; font-size: 0.8rem; line-height: 1.5; }
-    .btn {
-      padding: 0.7rem 1.5rem;
-      background: #ff4500;
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      font-weight: 600;
-      cursor: pointer;
-      text-decoration: none;
-      display: inline-block;
-    }
-    .btn:hover { background: #e03d00; }
-    .badge {
-      padding: 0.2rem 0.6rem;
-      background: #1a1a1a;
-      border: 1px solid #333;
-      border-radius: 999px;
-      font-size: 0.65rem;
-      color: #737373;
-    }
-  </style>
-</head>
-<body>
-  <div class="splash">
-    <img src="logo-256.png" alt="SubVitals" class="logo" />
-    <h1>SubVitals · Live Analytics</h1>
-    <p class="desc">Customer experience mod cockpit for brand subreddits</p>
-    <a href="index.html" class="btn">Open Dashboard →</a>
-    <span class="badge">Mod-only · Powered by AI</span>
-  </div>
-</body>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>SubVitals</title>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        background: #0a0a0a;
+        color: #f5f5f5;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        height: 100%;
+        min-height: 100vh;
+      }
+      .card {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        padding: 16px 24px;
+        width: 100%;
+        max-width: 480px;
+      }
+      .logo {
+        width: 48px;
+        height: 48px;
+        border-radius: 12px;
+        flex-shrink: 0;
+      }
+      .info { flex: 1; min-width: 0; }
+      .title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #f5f5f5;
+        line-height: 1.3;
+      }
+      .desc {
+        font-size: 13px;
+        color: #a3a3a3;
+        margin-top: 2px;
+        line-height: 1.4;
+      }
+      .launch-btn {
+        flex-shrink: 0;
+        padding: 10px 20px;
+        background: #6366f1;
+        color: #fff;
+        border: none;
+        border-radius: 20px;
+        font-size: 14px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .launch-btn:hover { background: #4f46e5; }
+      .launch-btn:active { background: #4338ca; }
+    </style>
+  </head>
+  <body>
+    <div class="card">
+      <img class="logo" src="/logo-64.png" alt="SubVitals" />
+      <div class="info">
+        <div class="title">SubVitals Dashboard</div>
+        <div class="desc">CX analytics &amp; mod tools</div>
+      </div>
+      <button type="button" class="launch-btn" id="launch">Open ▸</button>
+    </div>
+    <script type="module">
+      import { requestExpandedMode } from '@devvit/web/client';
+
+      document.getElementById('launch').addEventListener('click', async (event) => {
+        try {
+          await requestExpandedMode(event, 'dashboard');
+        } catch (e) {
+          console.error('Failed to expand:', e);
+        }
+      });
+    </script>
+  </body>
 </html>

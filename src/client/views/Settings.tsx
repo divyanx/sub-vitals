@@ -141,7 +141,7 @@ export function Settings({ initialSection = 'all' }: { initialSection?: Settings
 
   const settingsQ = useQuery({
     queryKey: ['settings'],
-    queryFn: api.settings.get,
+    queryFn: () => api.settings.get(),
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['settings'] });
@@ -747,7 +747,7 @@ function AISection({
 
   const aiStatusQ = useQuery({
     queryKey: ['ai-status'],
-    queryFn: api.ai.status,
+    queryFn: () => api.ai.status(),
     staleTime: 30_000,
   });
 
@@ -864,7 +864,7 @@ function AISection({
 
   const todayDriverQ = useQuery({
     queryKey: ['driver-volume-today'],
-    queryFn: api.driverVolume,
+    queryFn: () => api.driverVolume(),
     staleTime: 60_000,
   });
   const dailyPosts =
@@ -1266,7 +1266,7 @@ function WebhooksSection({ toast }: { toast: (type: 'success' | 'error', msg: st
 
   const hooksQ = useQuery({
     queryKey: ['webhooks'],
-    queryFn: api.webhooks.list,
+    queryFn: () => api.webhooks.list(),
   });
 
   const invalidate = () => qc.invalidateQueries({ queryKey: ['webhooks'] });

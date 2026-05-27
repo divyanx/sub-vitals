@@ -36,7 +36,7 @@ export function useNavBadges(): NavBadges {
 
   const themesQ = useQuery({
     queryKey: ['themes'],
-    queryFn: api.themes,
+    queryFn: () => api.themes(),
     staleTime: 300_000,
   });
 

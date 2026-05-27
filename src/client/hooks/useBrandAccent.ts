@@ -15,7 +15,7 @@ const DEFAULT_ACCENT = '#FF4500';
 export function useBrandAccent(): void {
   const { data } = useQuery({
     queryKey: ['settings'],
-    queryFn: api.settings.get,
+    queryFn: () => api.settings.get(),
     staleTime: 5 * 60 * 1000, // 5 min
   });
 

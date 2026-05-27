@@ -14,7 +14,11 @@ import { tinykeys } from 'tinykeys';
 // BUILTIN_PIPELINES removed — Pipelines tab now driven by pipeline-instances API
 import type { Pipeline } from '../../shared/types.js';
 import { type Command, CommandPalette } from '../components/CommandPalette.tsx';
-import { CopilotPanel } from '../components/CopilotPanel.tsx';
+
+const CopilotPanelLazy = lazy(() =>
+  import('../components/CopilotPanel.tsx').then((m) => ({ default: m.CopilotPanel })),
+);
+
 import { EmptyState } from '../components/EmptyState.tsx';
 import { InfoTooltip } from '../components/InfoTooltip.tsx';
 import { PipelineSummaryCard } from '../components/PipelineSummaryCard.tsx';
@@ -63,16 +67,19 @@ import {
   TaxonomyConfigSection,
   useDriversToast,
 } from './DriversConfig.tsx';
-import { Insights } from './Insights.tsx';
+
+const InsightsLazy = lazy(() => import('./Insights.tsx').then((m) => ({ default: m.Insights })));
 
 const LabLazy = lazy(() => import('./Lab.tsx').then((m) => ({ default: m.Lab })));
 
-import { Onboarding } from './Onboarding.tsx';
+const OnboardingLazy = lazy(() =>
+  import('./Onboarding.tsx').then((m) => ({ default: m.Onboarding })),
+);
 
 const RulesLazy = lazy(() => import('./Rules.tsx').then((m) => ({ default: m.Rules })));
-const SentimentChartLazy = lazy(() =>
-  import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
-);
+
+import { SentimentChart } from './SentimentChart.tsx';
+
 // Lazy-load heavy tabs — each is code-split into its own async chunk so the
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
 const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
@@ -429,7 +436,9 @@ export function Dashboard({
 
   return (
     <div className="flex min-h-full flex-col bg-[var(--bg)] text-[var(--text)]">
-      <Onboarding />
+      <Suspense fallback={null}>
+        <OnboardingLazy />
+      </Suspense>
       <Header onOpenCmd={() => setCmdOpen(true)} />
       <Nav
         tab={tab}
@@ -462,7 +471,11 @@ export function Dashboard({
                 onOpenCatalogue={openCatalogue}
               />
             )}
-            {tab === 'rules' && <RulesLazy />}
+            {tab === 'rules' && (
+              <Suspense fallback={<SkeletonGrid />}>
+                <RulesLazy />
+              </Suspense>
+            )}
             {tab === 'settings' && (
               <Suspense fallback={<SkeletonGrid />}>
                 <SettingsPane section={settingsSection} onSection={navigateToSettings} />
@@ -484,10 +497,12 @@ export function Dashboard({
           navigateToPipelines(id);
         }}
       />
-      <CopilotPanel
-        currentTab={tab}
-        {...(activeInstance ? { currentInstanceId: activeInstance } : {})}
-      />
+      <Suspense fallback={null}>
+        <CopilotPanelLazy
+          currentTab={tab}
+          {...(activeInstance ? { currentInstanceId: activeInstance } : {})}
+        />
+      </Suspense>
     </div>
   );
 }
@@ -1074,14 +1089,16 @@ function PipelinesTab({
           {/* Instance view */}
           <div className="min-w-0 flex-1">
             {activeInst ? (
-              <InstanceDetailView
-                instance={activeInst}
-                template={templateById.get(activeInst.templateId)}
-                onToggle={(enabled) => handleToggle(activeInst.id, enabled)}
-                onDuplicate={() => handleDuplicate(activeInst.id)}
-                onDelete={() => handleDelete(activeInst.id)}
-                onTune={() => setDrawerPipeline(instanceToLegacyPipeline(activeInst))}
-              />
+              <ErrorBoundary resetKey={activeInst.id}>
+                <InstanceDetailView
+                  instance={activeInst}
+                  template={templateById.get(activeInst.templateId)}
+                  onToggle={(enabled) => handleToggle(activeInst.id, enabled)}
+                  onDuplicate={() => handleDuplicate(activeInst.id)}
+                  onDelete={() => handleDelete(activeInst.id)}
+                  onTune={() => setDrawerPipeline(instanceToLegacyPipeline(activeInst))}
+                />
+              </ErrorBoundary>
             ) : null}
           </div>
         </div>
@@ -1297,12 +1314,14 @@ function PipelineKindView({
       return <Drivers />;
     }
     return (
-      <Insights
-        defaultSection={instance.id}
-        DriversContent={Drivers}
-        SentimentContent={SentimentTab}
-        ThemesContent={Themes}
-      />
+      <Suspense fallback={<SkeletonGrid />}>
+        <InsightsLazy
+          defaultSection={instance.id}
+          DriversContent={Drivers}
+          SentimentContent={SentimentTab}
+          ThemesContent={Themes}
+        />
+      </Suspense>
     );
   }
   if (kind === 'ordinal') {
@@ -1310,12 +1329,14 @@ function PipelineKindView({
       return <SentimentTab />;
     }
     return (
-      <Insights
-        defaultSection={instance.id}
-        DriversContent={Drivers}
-        SentimentContent={SentimentTab}
-        ThemesContent={Themes}
-      />
+      <Suspense fallback={<SkeletonGrid />}>
+        <InsightsLazy
+          defaultSection={instance.id}
+          DriversContent={Drivers}
+          SentimentContent={SentimentTab}
+          ThemesContent={Themes}
+        />
+      </Suspense>
     );
   }
   if (kind === 'cluster') {
@@ -1591,6 +1612,7 @@ function InstallWizard({
       onInstalled(result.instance.id);
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
+    } finally {
       setBusy(false);
     }
   };
@@ -1744,7 +1766,11 @@ function SettingsPane({
           {section === 'webhooks' && <Settings initialSection="webhooks" />}
           {section === 'audit' && <Audit />}
           {section === 'export' && <ExportTab />}
-          {section === 'lab' && <LabLazy />}
+          {section === 'lab' && (
+            <Suspense fallback={<SkeletonGrid />}>
+              <LabLazy />
+            </Suspense>
+          )}
         </>
       </div>
     </div>
@@ -2620,7 +2646,11 @@ function Overview({
     [onNavigate],
   );
   // --- data queries (all independent, staleTime 60s) ---
-  const summaryQ = useQuery({ queryKey: ['summary'], queryFn: api.summary, staleTime: 60_000 });
+  const summaryQ = useQuery({
+    queryKey: ['summary'],
+    queryFn: () => api.summary(),
+    staleTime: 60_000,
+  });
   const recentQ = useQuery({
     queryKey: ['recent-posts-500'],
     queryFn: () => api.recentPosts(500),
@@ -2629,14 +2659,18 @@ function Overview({
   });
   const volumeQ = useQuery({
     queryKey: ['drivers-volume'],
-    queryFn: api.driverVolume,
+    queryFn: () => api.driverVolume(),
     staleTime: 10_000,
     refetchInterval: 15_000,
   });
-  const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy, staleTime: 300_000 });
+  const taxonomyQ = useQuery({
+    queryKey: ['taxonomy'],
+    queryFn: () => api.taxonomy(),
+    staleTime: 300_000,
+  });
   const sentimentQ = useQuery({
     queryKey: ['sentiment-rollup'],
-    queryFn: api.sentimentRollup,
+    queryFn: () => api.sentimentRollup(),
     staleTime: 10_000,
     refetchInterval: 15_000,
   });
@@ -3135,9 +3169,9 @@ function Drivers({
   initialDriver?: string | undefined;
   onSetDriver?: (d: string) => void;
 }) {
-  const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy });
-  const volumeQ = useQuery({ queryKey: ['drivers-volume'], queryFn: api.driverVolume });
-  const settingsQ = useQuery({ queryKey: ['settings'], queryFn: api.settings.get });
+  const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: () => api.taxonomy() });
+  const volumeQ = useQuery({ queryKey: ['drivers-volume'], queryFn: () => api.driverVolume() });
+  const settingsQ = useQuery({ queryKey: ['settings'], queryFn: () => api.settings.get() });
   const qc = useQueryClient();
   const [openDriver, setOpenDriver] = useState<string | null>(initialDriver ?? null);
   const [driverFilter, setDriverFilter] = useState<string>('');
@@ -3565,14 +3599,17 @@ function StatusBadge({ status }: { status: PostStatus }) {
 // ---------------------------------------------------------------------------
 
 function SentimentTab() {
-  const sentQ = useQuery({ queryKey: ['sentiment-rollup'], queryFn: api.sentimentRollup });
+  const sentQ = useQuery({
+    queryKey: ['sentiment-rollup'],
+    queryFn: () => api.sentimentRollup(),
+  });
   const [openLabel, setOpenLabel] = useState<'positive' | 'neutral' | 'negative' | null>(null);
 
   if (sentQ.isPending) return <SkeletonGrid />;
   if (sentQ.isError)
     return <ErrorMsg msg="Couldn't load sentiment." retry={() => sentQ.refetch()} />;
 
-  const series = sentQ.data.series;
+  const series = sentQ.data?.series ?? [];
   const totals = series.reduce(
     (acc, day) => {
       acc.positive += day.positive;
@@ -3636,13 +3673,7 @@ function SentimentTab() {
         <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
           Daily sentiment volume · 30 days
         </h2>
-        <Suspense
-          fallback={
-            <div className="h-64 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
-          }
-        >
-          <SentimentChartLazy series={series} />
-        </Suspense>
+        <SentimentChart series={series} />
       </section>
     </div>
   );
@@ -3714,7 +3745,7 @@ function SentimentDrillCard({
 }
 
 function SentimentPostList({ label }: { label: 'positive' | 'neutral' | 'negative' }) {
-  const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: api.taxonomy });
+  const taxonomyQ = useQuery({ queryKey: ['taxonomy'], queryFn: () => api.taxonomy() });
   const q = useQuery({
     queryKey: ['sentiment-posts', label],
     queryFn: () => api.sentimentPosts(label, { days: 30, limit: 50 }),
@@ -3912,7 +3943,7 @@ function Incidents() {
 
 function Themes() {
   const qc = useQueryClient();
-  const q = useQuery({ queryKey: ['themes'], queryFn: api.themes });
+  const q = useQuery({ queryKey: ['themes'], queryFn: () => api.themes() });
   const [regenerating, setRegenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const regenerate = async () => {
@@ -4058,7 +4089,7 @@ function PipelineStats({ moduleKey }: { moduleKey: string }) {
   const [open, setOpen] = useState(false);
   const debugQ = useQuery({
     queryKey: ['admin-debug'],
-    queryFn: api.adminDebug,
+    queryFn: () => api.adminDebug(),
     enabled: open,
     staleTime: 5_000,
     refetchInterval: 10_000,
@@ -4844,7 +4875,7 @@ function InstallDialog({
 // ---------------------------------------------------------------------------
 
 function Agents() {
-  const agentsQ = useQuery({ queryKey: ['agents'], queryFn: api.agents });
+  const agentsQ = useQuery({ queryKey: ['agents'], queryFn: () => api.agents() });
   const leaderboardQ = useQuery({
     queryKey: ['agent-leaderboard'],
     queryFn: () => api.agentLeaderboard(30),

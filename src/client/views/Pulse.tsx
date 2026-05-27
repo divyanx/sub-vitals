@@ -19,7 +19,7 @@ interface Props {
 }
 
 export function Pulse({ onOpenDashboard }: Props) {
-  const stats = useQuery({ queryKey: ['pulse-stats'], queryFn: api.pulseStats });
+  const stats = useQuery({ queryKey: ['pulse-stats'], queryFn: () => api.pulseStats() });
 
   return (
     <main className="mx-auto flex h-full max-w-2xl flex-col px-5 py-6">
