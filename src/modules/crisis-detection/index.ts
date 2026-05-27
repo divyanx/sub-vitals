@@ -45,7 +45,7 @@ const HOUR_TTL_SEC = 30 * 24 * 60 * 60; // 30 days
 /** How many recent hour buckets to sample for the baseline (14 days) */
 const MAX_SAMPLE = 336;
 /** Minimum comments in current hour before we even attempt spike detection */
-const MIN_HOUR_TOTAL = 5;
+const MIN_HOUR_TOTAL = 3;
 /** Neg rate threshold: 50% of comments negative */
 const NEG_RATE_THRESHOLD = 0.5;
 /** Volume spike multiplier vs p95 */
@@ -209,12 +209,16 @@ async function detectSpike(
     negs.push(Number(b.neg ?? '0'));
   }
 
-  if (totals.length < 6) return null; // not enough history
+  if (totals.length < 1) return null; // not enough history
 
   const p95Total = percentile(totals, 95);
   const p95Neg = percentile(negs, 95);
   const negRate = hourTotal > 0 ? hourNeg / hourTotal : 0;
 
+  const freshSub = totals.length < 24;
+  if (freshSub && hourTotal >= MIN_HOUR_TOTAL && negRate >= 0.4) {
+    return `High negative rate on new community: ${Math.round(negRate * 100)}% negative (${hourNeg}/${hourTotal})`;
+  }
   if (hourTotal > p95Total * VOLUME_SPIKE_MULTIPLIER) {
     return `Volume spike: ${hourTotal} comments this hour vs p95 baseline ${p95Total.toFixed(1)}`;
   }

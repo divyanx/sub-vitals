@@ -4304,7 +4304,11 @@ const PROMPT_VARIABLES = [
 
 function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: () => void }) {
   const qc = useQueryClient();
-  const [activeTab, setActiveTab] = useState<DrawerTab>('prompts');
+  const [activeTab, setActiveTab] = useState<DrawerTab>(
+    new Set(['volume-spike-detector', 'team-response-tracker']).has(pipeline.id)
+      ? 'thresholds'
+      : 'prompts',
+  );
   const [systemPrompt, setSystemPrompt] = useState('');
   const [userPrompt, setUserPrompt] = useState('');
   const [thresholds, setThresholds] = useState<Record<string, number>>({});
@@ -4393,8 +4397,11 @@ function PipelineDrawer({ pipeline, onClose }: { pipeline: Pipeline; onClose: ()
     }
   };
 
+  const HARDCODED_NO_PROMPTS = new Set(['volume-spike-detector', 'team-response-tracker']);
+  const hidePrompts = HARDCODED_NO_PROMPTS.has(pipeline.id);
+
   const DRAWER_TABS: { id: DrawerTab; label: string }[] = [
-    { id: 'prompts', label: 'Prompts' },
+    ...(hidePrompts ? [] : [{ id: 'prompts' as DrawerTab, label: 'Prompts' }]),
     { id: 'thresholds', label: 'Thresholds' },
     { id: 'test', label: 'Test' },
     { id: 'stats', label: 'Stats' },
