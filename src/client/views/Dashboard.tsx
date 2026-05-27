@@ -9,7 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tinykeys } from 'tinykeys';
 // BUILTIN_PIPELINES removed — Pipelines tab now driven by pipeline-instances API
 import type { Pipeline } from '../../shared/types.js';
@@ -52,7 +52,11 @@ import {
 } from '../lib/api.ts';
 import { absoluteTime, isoTime, relativeTime } from '../lib/format-time.ts';
 import { TOOLTIPS } from '../lib/tooltips.ts';
-import { ContentBrowser as ContentBrowserLazy } from './ContentBrowser.tsx';
+
+const ContentBrowserLazy = lazy(() =>
+  import('./ContentBrowser.tsx').then((m) => ({ default: m.ContentBrowser })),
+);
+
 import {
   DriversToastContainer,
   RoutingConfigSection,
@@ -60,13 +64,18 @@ import {
   useDriversToast,
 } from './DriversConfig.tsx';
 import { Insights } from './Insights.tsx';
-import { Lab as LabLazy } from './Lab.tsx';
+
+const LabLazy = lazy(() => import('./Lab.tsx').then((m) => ({ default: m.Lab })));
+
 import { Onboarding } from './Onboarding.tsx';
-import { Rules as RulesLazy } from './Rules.tsx';
-import { SentimentChart as SentimentChartLazy } from './SentimentChart.tsx';
+
+const RulesLazy = lazy(() => import('./Rules.tsx').then((m) => ({ default: m.Rules })));
+const SentimentChartLazy = lazy(() =>
+  import('./SentimentChart.tsx').then((m) => ({ default: m.SentimentChart })),
+);
 // Lazy-load heavy tabs — each is code-split into its own async chunk so the
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
-import { Settings } from './Settings.tsx';
+const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
 
 type Tab = 'posts' | 'pipelines' | 'rules' | 'settings';
 
@@ -455,7 +464,9 @@ export function Dashboard({
             )}
             {tab === 'rules' && <RulesLazy />}
             {tab === 'settings' && (
-              <SettingsPane section={settingsSection} onSection={navigateToSettings} />
+              <Suspense fallback={<SkeletonGrid />}>
+                <SettingsPane section={settingsSection} onSection={navigateToSettings} />
+              </Suspense>
             )}
           </>
         </ErrorBoundary>
@@ -859,7 +870,9 @@ function Posts({
             </div>
             <div className="flex-1 overflow-auto p-6">
               <>
-                <ContentBrowserLazy />
+                <Suspense fallback={<SkeletonGrid />}>
+                  <ContentBrowserLazy />
+                </Suspense>
               </>
             </div>
           </div>
@@ -3623,7 +3636,13 @@ function SentimentTab() {
         <h2 className="mb-3 text-sm uppercase tracking-wide text-[var(--text-muted)]">
           Daily sentiment volume · 30 days
         </h2>
-        <SentimentChartLazy series={series} />
+        <Suspense
+          fallback={
+            <div className="h-64 animate-pulse rounded-lg border border-[var(--border)] bg-[var(--surface)]" />
+          }
+        >
+          <SentimentChartLazy series={series} />
+        </Suspense>
       </section>
     </div>
   );
