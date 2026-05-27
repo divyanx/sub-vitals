@@ -24,6 +24,7 @@
  */
 
 import { context, reddit, redis } from '@devvit/web/server';
+import { buildBrandPrefix, getBrandContext } from '@shared/brand-context.js';
 import { processedOnce } from '@shared/idempotency.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
@@ -130,10 +131,12 @@ export const impostorDetectionModule: RedLatticeModule = {
       return;
     }
 
+    const brand = await getBrandContext();
     const result = await llmObject({
       name: 'impostor-judge',
       schema: llmSchema,
       system:
+        buildBrandPrefix(brand) +
         'You audit Reddit comments for whether the author is FALSELY claiming to be an employee or representative of a brand. A genuine claim from someone unverified is a problem because they may commit the brand to things or mislead users. Return a strict judgment.',
       prompt: [
         `Brand we're protecting: ${brandName}`,

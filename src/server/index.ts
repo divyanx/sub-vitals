@@ -52,6 +52,7 @@ import {
   findModel,
   isStructuredOutputCapable,
 } from '@shared/ai-models.js';
+import { buildBrandPrefix, getBrandContext } from '@shared/brand-context.js';
 import { buildWeeklyDigest, gatherDigestStats } from '@shared/digest.js';
 import { dispatch, registerModule } from '@shared/dispatcher.js';
 import { K, today, yyyymm } from '@shared/keys.js';
@@ -644,10 +645,12 @@ app.post('/api/posts/:postId/draft-reply', async (c) => {
     .filter((x): x is string => typeof x === 'string')
     .join('\n');
 
+  const __brand = await getBrandContext();
   const result = await llmObject({
     name: 'draft-reply',
     schema: draftReplySchema,
     system:
+      buildBrandPrefix(__brand) +
       'You are an experienced brand customer-experience writer drafting candidate Reddit comment replies for a brand support team to choose from and refine before posting.',
     prompt,
     maxTokens: 900,
@@ -1007,10 +1010,11 @@ app.post('/api/pipelines/builtin/:id/test', async (c) => {
   // rejects properties missing from `required`, which is what .optional()
   // produces. The model returns null when it has nothing to say.
   const testSchema = z.object({ output: z.string(), label: z.string().nullable() });
+  const __brand = await getBrandContext();
   const result = await llmObject({
     name: `pipeline-test-${id}`,
     schema: testSchema,
-    system: systemPrompt,
+    system: buildBrandPrefix(__brand) + systemPrompt,
     prompt,
     maxTokens: 300,
   });
@@ -1158,10 +1162,11 @@ app.post('/api/pipelines/custom/:id/test', async (c) => {
   // .nullable() not .optional() — see comment in the /builtin/:id/test
   // endpoint above. OpenAI strict mode rejects optional properties.
   const testSchema = z.object({ output: z.string(), label: z.string().nullable() });
+  const __brand = await getBrandContext();
   const result = await llmObject({
     name: `custom-pipeline-test-${id}`,
     schema: testSchema,
-    system: pipeline.systemPrompt,
+    system: buildBrandPrefix(__brand) + pipeline.systemPrompt,
     prompt,
     maxTokens: 300,
   });
@@ -1484,11 +1489,13 @@ app.post('/api/pipelines/instances/:id/test', async (c) => {
     reasoning: z.string().nullable(),
   });
 
+  const __brand = await getBrandContext();
   const result = await llmObject({
     name: `instance-test-${id}`,
     schema: testSchema,
     system:
-      config.systemPrompt ?? `You are running the ${instance.name} pipeline. Respond concisely.`,
+      buildBrandPrefix(__brand) +
+      (config.systemPrompt ?? `You are running the ${instance.name} pipeline. Respond concisely.`),
     prompt: userPrompt,
     maxTokens: 400,
   });
@@ -2552,10 +2559,12 @@ app.post('/api/settings/test-draft', async (c) => {
     .filter((x): x is string => typeof x === 'string')
     .join('\n');
 
+  const __brand = await getBrandContext();
   const result = await llmObject({
     name: 'draft-reply',
     schema: testDraftSchema,
     system:
+      buildBrandPrefix(__brand) +
       'You are an experienced brand customer-experience writer drafting candidate Reddit comment replies for a brand support team to choose from and refine before posting.',
     prompt,
     maxTokens: 900,

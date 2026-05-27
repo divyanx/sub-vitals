@@ -10,6 +10,7 @@
  */
 
 import { context, reddit, redis } from '@devvit/web/server';
+import { buildBrandPrefix, getBrandContext } from '@shared/brand-context.js';
 import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, K, today } from '@shared/keys.js';
 import { llmObject } from '@shared/llm.js';
@@ -345,10 +346,12 @@ async function judge(
   if (trimmed.length < LLM_MIN_TEXT_LEN) return { ...lexicon, scoredBy: 'lexicon' };
   if (Math.abs(lexicon.score) >= LLM_AMBIGUITY_BAND) return { ...lexicon, scoredBy: 'lexicon' };
 
+  const brand = await getBrandContext();
   const result = await llmObject({
     name: 'sentiment-judge',
     schema: llmSchema,
     system:
+      buildBrandPrefix(brand) +
       'You judge the sentiment of short Reddit posts about a brand product. Reply with a label (positive/neutral/negative), a score from -1 (very negative) to +1 (very positive), and a one-sentence reasoning.',
     prompt: `Text:\n"""${trimmed.slice(0, 1500)}"""`,
     maxTokens: 120,

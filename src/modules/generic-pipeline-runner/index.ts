@@ -22,12 +22,12 @@
  * after a config tweak is safe.
  */
 
+import { buildBrandPrefix, getBrandContext } from '@shared/brand-context.js';
 import { clearProcessedSentinel, processedOnce } from '@shared/idempotency.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { getInstance, listEnabledInstances } from '@shared/pipeline-instances.js';
 import { enqueueRetry } from '@shared/retry-queue.js';
-import { readEffectiveSetting } from '@shared/settings-overrides.js';
 import { recordTag } from '@shared/tags.js';
 import type {
   OnCommentCreateRequest,
@@ -169,15 +169,8 @@ async function runInstance(instance: PipelineInstance, ctx: RunCtx): Promise<boo
   const rawSystem = renderTemplate(instance.config.systemPrompt, ctx);
   const user = renderTemplate(instance.config.userPrompt, ctx);
 
-  const [brandName, brandVoice] = await Promise.all([
-    readEffectiveSetting<string>('brand-name'),
-    readEffectiveSetting<string>('brand-voice'),
-  ]);
-  const contextParts: string[] = [];
-  if (brandName) contextParts.push(`Brand/community: ${brandName}`);
-  if (brandVoice) contextParts.push(`Context: ${brandVoice}`);
-  const system =
-    contextParts.length > 0 ? `${contextParts.join('. ')}.\n\n${rawSystem}` : rawSystem;
+  const brand = await getBrandContext();
+  const system = buildBrandPrefix(brand) + rawSystem;
 
   // Empty prompts mean this pipeline is regex-only (brand-mention-counter,
   // PII regex pre-filter) and isn't ready for generic LLM execution. Skip

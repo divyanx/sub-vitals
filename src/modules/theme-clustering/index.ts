@@ -11,6 +11,7 @@
 
 import { context } from '@devvit/web/server';
 import { recordAudit } from '@modules/audit-log/index.js';
+import { buildBrandPrefix, getBrandContext } from '@shared/brand-context.js';
 import { llmObject } from '@shared/llm.js';
 import { log } from '@shared/log.js';
 import { requireMod } from '@shared/permissions.js';
@@ -178,10 +179,12 @@ export async function regenerateThemesDetailed(): Promise<RegenerateResult> {
   ].join('\n');
 
   // 3. LLM call
+  const brand = await getBrandContext();
   const result = await llmObject({
     name: 'theme-clustering',
     schema: clusterSchema,
     system:
+      buildBrandPrefix(brand) +
       'You are a CX analyst clustering Reddit community posts by their underlying issue theme. Return structured JSON only.',
     prompt,
     maxTokens: 1200,

@@ -21,6 +21,7 @@
 
 import { createOpenAI } from '@ai-sdk/openai';
 import { context, reddit, redis, settings } from '@devvit/web/server';
+import { getBrandContext } from '@shared/brand-context.js';
 import { K } from '@shared/keys.js';
 import { DEFAULT_MODEL, getEffectiveModel, readMonthlyCents } from '@shared/llm.js';
 import { log } from '@shared/log.js';
@@ -207,13 +208,23 @@ async function buildSystemPrompt(ctx: CopilotContextHint | undefined): Promise<s
       `When the user says "this post" / "this pipeline", default to that id.`
     : '';
 
-  const [brandName, brandVoice] = await Promise.all([
-    readEffectiveSetting<string>('brand-name').catch(() => undefined),
-    readEffectiveSetting<string>('brand-voice').catch(() => undefined),
-  ]);
+  const brand = await getBrandContext();
   const brandBlock =
-    brandName || brandVoice
-      ? `\n\nCommunity context:\n${brandName ? `- Brand: ${brandName}\n` : ''}${brandVoice ? `- Description: ${brandVoice}\n` : ''}`
+    brand.name || brand.description
+      ? `
+
+Community context:
+${
+  brand.name
+    ? `- Brand: ${brand.name}
+`
+    : ''
+}${
+  brand.description
+    ? `- Description: ${brand.description}
+`
+    : ''
+}`
       : '';
 
   return [

@@ -28,6 +28,7 @@
 
 import { context, reddit, redis } from '@devvit/web/server';
 import { recordAudit } from '@modules/audit-log/index.js';
+import { buildBrandPrefix, getBrandContext } from '@shared/brand-context.js';
 import { processedOnce } from '@shared/idempotency.js';
 import { dateRange, K, today } from '@shared/keys.js';
 import { llmObject } from '@shared/llm.js';
@@ -623,10 +624,13 @@ async function classifyWithLlm(args: {
   const categoryList = args.taxonomy
     .map((t) => `- ${t.id}: ${t.label}${t.description ? ` — ${t.description}` : ''}`)
     .join('\n');
+  const brand = await getBrandContext();
+  const brandPrefix = buildBrandPrefix(brand);
   const result = await llmObject({
     name: 'contact-drivers-tag',
     schema,
     system:
+      brandPrefix +
       'You categorize Reddit posts in a brand support subreddit by their contact driver (why the customer is posting). ' +
       'Choose the single best matching category. Prefer the most specific leaf category when you are confident it applies. ' +
       'Return a root category when no leaf clearly fits, or when your confidence in any leaf is below 0.7. ' +
