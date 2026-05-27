@@ -257,6 +257,17 @@ function BrandIdentitySection({
     },
   });
 
+  const resetMut = useMutation({
+    mutationFn: () => api.settings.resetBrand(),
+    onSuccess: (data) => {
+      setBrandName(data.brandName);
+      setBrandVoice(data.brandVoice);
+      toast('success', 'Brand identity reset to subreddit defaults.');
+      onSaved();
+    },
+    onError: (err: Error) => toast('error', err.message),
+  });
+
   const testDraft = async () => {
     setDraftLoading(true);
     setDraftError(null);
@@ -349,7 +360,17 @@ function BrandIdentitySection({
           </ul>
         </div>
       ) : null}
-      <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
+      <div className="flex items-center gap-3">
+        <SaveButton onClick={() => mut.mutate()} loading={mut.isPending} />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => resetMut.mutate()}
+          isLoading={resetMut.isPending}
+        >
+          Reset to community defaults
+        </Button>
+      </div>
     </Section>
   );
 }

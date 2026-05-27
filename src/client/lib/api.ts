@@ -736,6 +736,14 @@ export const api = {
         cached: boolean;
       };
     },
+    resetBrand: async (): Promise<{ ok: boolean; brandName: string; brandVoice: string }> => {
+      const r = await fetch('/api/settings/reset-brand', { method: 'POST' });
+      if (!r.ok) {
+        const err = await r.json().catch(() => ({}));
+        throw new Error((err as { error?: string }).error ?? `HTTP ${r.status}`);
+      }
+      return (await r.json()) as { ok: boolean; brandName: string; brandVoice: string };
+    },
   },
   pipelines: {
     getBuiltin: (id: string) =>

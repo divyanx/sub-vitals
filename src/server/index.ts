@@ -2465,6 +2465,22 @@ app.put('/api/settings', async (c) => {
   });
 });
 
+app.post('/api/settings/reset-brand', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  const subName = context.subredditName;
+  if (!subName) return c.json({ error: 'no subreddit context' }, 400);
+  try {
+    const sub = await reddit.getSubredditByName(subName);
+    const brandName = sub.title || subName;
+    const brandVoice = sub.description?.slice(0, 500) || '';
+    await writeOverrideSetting('brand-name', brandName);
+    await writeOverrideSetting('brand-voice', brandVoice);
+    return c.json({ ok: true, brandName, brandVoice });
+  } catch (err) {
+    return c.json({ error: String(err) }, 500);
+  }
+});
+
 app.post('/api/settings/test-draft', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
 

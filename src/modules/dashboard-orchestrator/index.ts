@@ -15,6 +15,7 @@
 import { context, reddit, redis } from '@devvit/web/server';
 import { K } from '@shared/keys.js';
 import { log } from '@shared/log.js';
+import { readEffectiveSetting, writeOverrideSetting } from '@shared/settings-overrides.js';
 import type { OnAppInstallRequest, OnAppUpgradeRequest, RedLatticeModule } from '@shared/types.js';
 
 export const dashboardOrchestratorModule: RedLatticeModule = {
@@ -28,10 +29,12 @@ export const dashboardOrchestratorModule: RedLatticeModule = {
 
   async onAppInstall(_event: OnAppInstallRequest): Promise<void> {
     await ensurePinnedDashboard('install');
+    await autoPopulateBrandIdentity();
   },
 
   async onAppUpgrade(_event: OnAppUpgradeRequest): Promise<void> {
     await ensurePinnedDashboard('upgrade');
+    await autoPopulateBrandIdentity();
   },
 };
 
@@ -43,6 +46,38 @@ const SPLASH_OPTS = {
   appDisplayName: 'SubVitals',
   appIconUri: 'icon-1024.png',
 } as const;
+
+/**
+ * Fetch subreddit title + description from Reddit and write them as default
+ * brand-name / brand-voice settings. Only writes if the setting is not already
+ * configured so manual overrides are never clobbered.
+ */
+async function autoPopulateBrandIdentity(): Promise<void> {
+  const subName = context.subredditName;
+  if (!subName) return;
+  try {
+    const sub = await reddit.getSubredditByName(subName);
+    const existingName = await readEffectiveSetting<string>('brand-name').catch(() => undefined);
+    const existingVoice = await readEffectiveSetting<string>('brand-voice').catch(() => undefined);
+
+    // Only set defaults if not already configured
+    if (!existingName) {
+      const brandName = sub.title || subName;
+      await writeOverrideSetting('brand-name', brandName);
+    }
+    if (!existingVoice) {
+      const desc = sub.description;
+      if (desc) {
+        await writeOverrideSetting('brand-voice', desc.slice(0, 500));
+      }
+    }
+    log.info('dashboard-orchestrator: brand identity auto-populated', { subName });
+  } catch (err) {
+    log.warn('dashboard-orchestrator: failed to auto-populate brand identity', {
+      err: String(err),
+    });
+  }
+}
 
 async function ensurePinnedDashboard(trigger: 'install' | 'upgrade'): Promise<void> {
   const sub = context.subredditName;
