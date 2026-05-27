@@ -240,7 +240,7 @@ rl:onboarded:{userId}             string          (onboarding completion flag)
 
 The product has pivoted multiple times. Key decisions in chronological order:
 
-1. **2026-05-16** — Renamed BrandPulse → SubVitals
+1. **2026-05-16** — Renamed SubVitals → SubVitals
 2. **2026-05-16** — Adopted Devvit Web (`@devvit/web`) over classic Devvit
 3. **2026-05-17** — Switched from `latest` to `next` dist-tag (0.12.24-next-...) — runtime install was broken in 0.12.23
 4. **2026-05-17** — All-in on Devvit, deprioritize standalone webapp

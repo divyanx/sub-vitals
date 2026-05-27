@@ -4,7 +4,7 @@
 **Tools:** OBS / QuickTime + ScreenStudio / Loom (zoom + auto-cursor zoom for clickable detail)
 **Voice:** Friendly, confident, fast-paced. No fluff.
 **Setup before recording:**
-- Run `npm run seed:demo -- --sub r/redlattice_divyanx_` to populate real data
+- Run `npm run seed:demo -- --sub r/sub_vitals_dev` to populate real data
 - Wait ~5 min for AI to finish auto-tagging + sentiment scoring
 - Browser at 1440×900, no extensions visible, system audio off
 - Browser zoomed to 110% so text is crisp
@@ -136,7 +136,7 @@
 
 ## Shot list checklist (before you start recording)
 
-- [ ] Test sub `r/redlattice_divyanx_` seeded with `npm run seed:demo`
+- [ ] Test sub `r/sub_vitals_dev` seeded with `npm run seed:demo`
 - [ ] At least 1 active incident in the system (the seeder creates one)
 - [ ] At least 1 AI-tagged hierarchical driver (Bug → Crash)
 - [ ] At least 1 theme generated (run "Regenerate now" once)

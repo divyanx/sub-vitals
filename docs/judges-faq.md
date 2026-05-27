@@ -71,7 +71,7 @@ All scaffolded but gated off. Will ship through Studio post-hackathon.
 
 ## Did you really build this in 11 days?
 
-Yes — May 16 to May 27, 2026. ~120 hours of intentional work. Sub-agent orchestration via Claude Code accelerated the parallel development across Devvit + Studio + Docs.
+Yes — May 16 to May 27, 2026. ~120 hours of intentional work. 
 
 Stats at submission:
 - **Devvit app**: ~85 e2e tests, ~60 unit, 10 functional tabs, 11 modules, 30+ commits

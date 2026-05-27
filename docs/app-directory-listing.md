@@ -79,7 +79,7 @@ From `devvit.json`:
 
 ## Screenshots to capture
 
-Capture these in order using the playtest sub (`r/redlattice_divyanx_`) with
+Capture these in order using the playtest sub (`r/sub_vitals_dev`) with
 realistic seed data loaded (`npx tsx scripts/seed-demo-data.ts`).
 
 | # | File | What to show |
@@ -97,7 +97,7 @@ realistic seed data loaded (`npx tsx scripts/seed-demo-data.ts`).
 ## Demo subreddit
 
 ```
-r/redlattice_divyanx_
+r/sub_vitals_dev
 ```
 
 Devvit playtest subreddit. Has seed data from `scripts/seed-demo-data.ts`.
