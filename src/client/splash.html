@@ -39,16 +39,23 @@
       margin-bottom: 2rem;
       line-height: 1.5;
     }
+    .actions {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1rem;
+    }
     .launch-btn {
       display: inline-flex;
       align-items: center;
+      justify-content: center;
       gap: 0.5rem;
-      padding: 0.875rem 2rem;
+      padding: 0.75rem 1.75rem;
       background: #ff4500;
       color: white;
       border: none;
-      border-radius: 12px;
-      font-size: 1rem;
+      border-radius: 10px;
+      font-size: 0.9rem;
       font-weight: 600;
       cursor: pointer;
       transition: background 0.15s, transform 0.1s;
@@ -56,13 +63,12 @@
     .launch-btn:hover { background: #e03d00; }
     .launch-btn:active { transform: scale(0.97); }
     .badge {
-      display: inline-block;
-      margin-top: 1.5rem;
+      display: block;
       padding: 0.25rem 0.75rem;
       background: #1a1a1a;
       border: 1px solid #333;
       border-radius: 999px;
-      font-size: 0.75rem;
+      font-size: 0.7rem;
       color: #737373;
     }
   </style>
@@ -72,10 +78,12 @@
     <img src="logo-256.png" alt="SubVitals" class="logo" />
     <h1>SubVitals · Live Analytics</h1>
     <p class="desc">Customer experience mod cockpit for brand subreddits. Auto-classification, sentiment tracking, crisis detection, and AI-powered triage.</p>
-    <button type="button" class="launch-btn" id="launch-btn">
-      Open Dashboard →
-    </button>
-    <div class="badge">Mod-only · Powered by AI</div>
+    <div class="actions">
+      <button type="button" class="launch-btn" id="launch-btn">
+        Open Dashboard →
+      </button>
+      <div class="badge">Mod-only · Powered by AI</div>
+    </div>
   </div>
   <script type="module">
     import { requestExpandedMode } from '@devvit/web/client';
