@@ -10,13 +10,7 @@
     "redis": true,
     "http": {
       "enable": true,
-      "domains": [
-        "api.openai.com",
-        "generativelanguage.googleapis.com",
-        "openrouter.ai",
-        "*.openrouter.ai",
-        "studio.sub-vitals.app"
-      ]
+      "domains": ["api.openai.com"]
     },
     "media": true
   },

@@ -10,7 +10,6 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-// @ts-expect-error — tinykeys exports map lacks a "types" field; types live at dist/tinykeys.d.ts
 import { tinykeys } from 'tinykeys';
 // BUILTIN_PIPELINES removed — Pipelines tab now driven by pipeline-instances API
 import type { Pipeline } from '../../shared/types.js';
