@@ -86,15 +86,6 @@ async function ensurePinnedDashboard(trigger: 'install' | 'upgrade'): Promise<vo
     const post = await reddit.submitCustomPost({
       title: 'SubVitals · Live Analytics',
       subredditName: sub,
-      ...({
-        splash: {
-          appDisplayName: 'SubVitals',
-          appIconUri: 'icon-1024.png',
-          heading: 'SubVitals · Live Analytics',
-          description: 'Customer experience mod cockpit for brand subreddits',
-          buttonLabel: 'Open Dashboard',
-        },
-      } as Record<string, unknown>),
     });
     await redis.set(K.pulsePostId(), post.id);
     try {
