@@ -2673,7 +2673,7 @@ function Overview({
     const series = rawSeries.slice(-14);
     return taxonomy.map((node) => {
       const values = series.map((d) => d.counts?.[node.id] ?? 0);
-      const current = values.at(-1) ?? 0;
+      const current = values.reduce((sum, v) => sum + v, 0);
       return { node, values, current };
     });
   }, [volumeQ.data, taxonomyQ.data]);
@@ -2837,7 +2837,7 @@ function Overview({
                     type="button"
                     onClick={() => navigateTo('pipelines', { instance: 'pi_intent-classifier' })}
                     className="group flex flex-col gap-1.5 rounded-lg border border-[var(--border)] bg-[var(--surface)] p-3 text-left transition hover:border-[var(--border)] hover:bg-[var(--input-bg)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-orange-500"
-                    aria-label={`${node.label}: ${current} posts today. Click to view intent.`}
+                    aria-label={`${node.label}: ${current} posts (14d). Click to view intent.`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <span className="flex min-w-0 items-center gap-1.5">
