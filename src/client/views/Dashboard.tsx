@@ -9,7 +9,7 @@
 
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
-import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { tinykeys } from 'tinykeys';
 // BUILTIN_PIPELINES removed — Pipelines tab now driven by pipeline-instances API
 import type { Pipeline } from '../../shared/types.js';
@@ -52,6 +52,7 @@ import {
 } from '../lib/api.ts';
 import { absoluteTime, isoTime, relativeTime } from '../lib/format-time.ts';
 import { TOOLTIPS } from '../lib/tooltips.ts';
+import { ContentBrowser as ContentBrowserLazy } from './ContentBrowser.tsx';
 import {
   DriversToastContainer,
   RoutingConfigSection,
@@ -59,19 +60,13 @@ import {
   useDriversToast,
 } from './DriversConfig.tsx';
 import { Insights } from './Insights.tsx';
+import { Lab as LabLazy } from './Lab.tsx';
 import { Onboarding } from './Onboarding.tsx';
-
+import { Rules as RulesLazy } from './Rules.tsx';
+import { SentimentChart as SentimentChartLazy } from './SentimentChart.tsx';
 // Lazy-load heavy tabs — each is code-split into its own async chunk so the
 // initial JS bundle stays lean. The skeleton fallback renders instantly.
-const Settings = lazy(() => import('./Settings.tsx').then((m) => ({ default: m.Settings })));
-const LabLazy = lazy(() => import('./Lab.tsx').then((m) => ({ default: m.Lab })));
-
-import { SentimentChart as SentimentChartLazy } from './SentimentChart.tsx';
-
-const RulesLazy = lazy(() => import('./Rules.tsx').then((m) => ({ default: m.Rules })));
-const ContentBrowserLazy = lazy(() =>
-  import('./ContentBrowser.tsx').then((m) => ({ default: m.ContentBrowser })),
-);
+import { Settings } from './Settings.tsx';
 
 type Tab = 'posts' | 'pipelines' | 'rules' | 'settings';
 
@@ -437,7 +432,7 @@ export function Dashboard({
       <AiHealthBanner />
       <main className="mx-auto w-full max-w-full flex-1 px-6 py-8">
         <ErrorBoundary resetKey={tab}>
-          <Suspense fallback={<SkeletonGrid />}>
+          <>
             {tab === 'posts' && (
               <Posts
                 activeDriver={activeDriver ?? undefined}
@@ -462,7 +457,7 @@ export function Dashboard({
             {tab === 'settings' && (
               <SettingsPane section={settingsSection} onSection={navigateToSettings} />
             )}
-          </Suspense>
+          </>
         </ErrorBoundary>
       </main>
 
@@ -863,9 +858,9 @@ function Posts({
               </button>
             </div>
             <div className="flex-1 overflow-auto p-6">
-              <Suspense fallback={<SkeletonGrid />}>
+              <>
                 <ContentBrowserLazy />
-              </Suspense>
+              </>
             </div>
           </div>
         </div>
@@ -1718,7 +1713,7 @@ function SettingsPane({
 
       {/* Main content */}
       <div className="min-w-0 flex-1">
-        <Suspense fallback={<SkeletonGrid />}>
+        <>
           {section === 'brand' && <Settings initialSection="brand" />}
           {section === 'team' && (
             <div className="space-y-8">
@@ -1737,7 +1732,7 @@ function SettingsPane({
           {section === 'audit' && <Audit />}
           {section === 'export' && <ExportTab />}
           {section === 'lab' && <LabLazy />}
-        </Suspense>
+        </>
       </div>
     </div>
   );
