@@ -2691,6 +2691,29 @@ app.post('/api/onboarding/complete', async (c) => {
   return c.json({ ok: true });
 });
 
+app.post('/api/admin/recreate-dashboard-post', async (c) => {
+  if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
+  try {
+    const oldId = await redis.get(K.pulsePostId());
+    await redis.del(K.pulsePostId());
+    const sub = context.subredditName;
+    if (!sub) return c.json({ error: 'no subreddit context' }, 400);
+    const post = await reddit.submitCustomPost({
+      title: 'SubVitals · Live Analytics',
+      subredditName: sub,
+    });
+    await redis.set(K.pulsePostId(), post.id);
+    try {
+      await post.sticky(2);
+    } catch {
+      /* non-fatal */
+    }
+    return c.json({ ok: true, oldPostId: oldId, newPostId: post.id });
+  } catch (err) {
+    return c.json({ error: String(err) }, 500);
+  }
+});
+
 app.post('/api/onboarding/reset', async (c) => {
   if (!(await requireMod())) return c.json({ error: 'mod-only' }, 403);
   const userId = context.username ?? 'unknown';
