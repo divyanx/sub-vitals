@@ -7,7 +7,6 @@
  * activity feed with deep links back to the actual Reddit posts.
  */
 
-import { exitExpandedMode, getWebViewMode, requestExpandedMode } from '@devvit/web/client';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type React from 'react';
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -538,28 +537,6 @@ function Header({ onOpenCmd }: { onOpenCmd: () => void }) {
         </div>
 
         <div className="ml-auto flex items-center gap-2">
-          {/* Fullscreen toggle */}
-          <button
-            type="button"
-            onClick={(e) => {
-              try {
-                if (getWebViewMode() === 'expanded') {
-                  exitExpandedMode(e.nativeEvent);
-                } else {
-                  requestExpandedMode(e.nativeEvent, 'default');
-                }
-              } catch {
-                /* ignore */
-              }
-            }}
-            aria-label="Toggle fullscreen"
-            className="flex min-h-[44px] items-center gap-1.5 rounded-[var(--r-2)] border border-[var(--n-4)] bg-[var(--n-2)] px-2.5 py-1.5 text-[length:var(--t-xs)] text-[var(--n-8)] transition hover:border-[var(--accent-9)] hover:text-[var(--n-11)]"
-          >
-            <span className="hidden sm:inline">
-              {getWebViewMode() === 'expanded' ? 'Exit fullscreen' : 'Fullscreen'}
-            </span>
-            <span className="sm:hidden">⛶</span>
-          </button>
           {/* ⌘K command palette trigger */}
           <button
             type="button"
